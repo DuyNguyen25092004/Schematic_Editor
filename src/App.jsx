@@ -67,8 +67,8 @@ const initialNodes = mockData.documents[0].instances.map((inst) => ({
 function snapPoint(p, nodes, wires = []) {
   let best = null;
   let bestDist = SNAP_RADIUS;
-  
-  // 1. Ưu tiên 1: Snap vào các chân linh kiện (Ports)
+
+  // 1. Ưu tiên 1: Snap vào chân linh kiện (Ports)
   for (const n of nodes) {
     for (const port of PORTS) {
       const tPort = getTransformedPort(port, n);
@@ -81,35 +81,51 @@ function snapPoint(p, nodes, wires = []) {
       }
     }
   }
-  if (best) return best; 
+  if (best) return best;
 
-  // 2. Ưu tiên 2: Snap vào các đường dây điện hiện có
+  // 1.5. Ưu tiên mới: Snap CHÍNH XÁC vào đầu mút của các wire có sẵn
+  // (tránh lệch tọa độ do phép chiếu, gây tính sai junction dot)
+  for (const w of wires) {
+    const pts = resolvePoints(w.points, nodes, w.lockedVertical);
+    const ends = [pts[0], pts[pts.length - 1]];
+    for (const end of ends) {
+      const d = Math.hypot(end.x - p.x, end.y - p.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = end.nodeId
+          ? { x: end.x, y: end.y, nodeId: end.nodeId, portId: end.portId }
+          : { x: end.x, y: end.y }; // lấy nguyên tọa độ gốc, không tính lại
+      }
+    }
+  }
+  if (best) return best;
+
+  // 2. Ưu tiên cuối: Snap vào giữa các đường dây (giữ nguyên như cũ)
   if (wires) {
     for (const w of wires) {
-      const pts = resolvePoints(w.points, nodes, w.lockedVertical); // thêm tham số
+      const pts = resolvePoints(w.points, nodes, w.lockedVertical);
       for (let i = 0; i < pts.length - 1; i++) {
         const a = pts[i];
-        const b = pts[i+1];
-        
+        const b = pts[i + 1];
+
         let projX = p.x;
         let projY = p.y;
-        
-        // Tìm hình chiếu của chuột lên đoạn thẳng dây điện
-        if (Math.abs(a.x - b.x) < 1) { // Dây dọc
+
+        if (Math.abs(a.x - b.x) < 1) {
           projX = a.x;
           projY = Math.max(Math.min(a.y, b.y), Math.min(p.y, Math.max(a.y, b.y)));
-        } else { // Dây ngang
+        } else {
           projY = a.y;
           projX = Math.max(Math.min(a.x, b.x), Math.min(p.x, Math.max(a.x, b.x)));
         }
-        
+
         const d = Math.hypot(projX - p.x, projY - p.y);
         if (d < bestDist) {
           bestDist = d;
-          best = { 
-            x: Math.round(projX / GRID) * GRID, 
+          best = {
+            x: Math.round(projX / GRID) * GRID,
             y: Math.round(projY / GRID) * GRID,
-            onWire: true // Cờ đánh dấu chuột đang chạm vào dây
+            onWire: true,
           };
         }
       }
@@ -119,57 +135,73 @@ function snapPoint(p, nodes, wires = []) {
   return best || { x: Math.round(p.x / GRID) * GRID, y: Math.round(p.y / GRID) * GRID };
 }
 
+// Hàm quy đổi toạ độ về đơn vị lưới nguyên — DÙNG CHUNG cho mọi nơi so sánh điểm
+function toGridUnit(v) {
+  return Math.round(v / GRID);
+}
+
+// So sánh 2 điểm bằng số nguyên lưới tuyệt đối — không còn phụ thuộc ngưỡng khoảng cách nữa
+function sameGridPoint(a, b) {
+  return toGridUnit(a.x) === toGridUnit(b.x) && toGridUnit(a.y) === toGridUnit(b.y);
+}
+
 function getJunctionDots(wires, nodes) {
-  const resolved = wires.map(w => resolvePoints(w.points, nodes, w.lockedVertical)); // thêm tham số
-  const dots = [];
-  const isSame = (p1, p2) => Math.abs(p1.x - p2.x) < 1 && Math.abs(p1.y - p2.y) < 1;
-  
-  // 1. Chỉ thu thập các điểm LÀ ĐẦU MÚT của dây (không tính các điểm gắn vào chân linh kiện)
+  const resolved = wires.map((w) => resolvePoints(w.points, nodes, w.lockedVertical));
+  const u = toGridUnit; // dùng chung hàm quy đổi lưới với mergeTouchingWires
+
   const candidates = [];
-  resolved.forEach(pts => {
-    if (pts.length >= 2) {
-      if (!pts[0].nodeId) candidates.push(pts[0]);
-      if (!pts[pts.length - 1].nodeId) candidates.push(pts[pts.length - 1]);
-    }
+  resolved.forEach((pts) => {
+    pts.forEach((p) => {
+      // Bỏ qua điểm đã bind cứng vào chân linh kiện — junction dot chỉ cần xét
+      // tại các điểm dây-với-dây; nếu muốn xét cả trường hợp nhiều dây chụm
+      // vào chung 1 chân thì bỏ luôn điều kiện if bên dưới.
+      candidates.push({ x: u(p.x), y: u(p.y) });
+    });
   });
 
-  // Lọc trùng lặp để xét mỗi tọa độ 1 lần
-  const uniqueCandidates = [];
-  candidates.forEach(c => {
-    if (!uniqueCandidates.some(u => isSame(u, c))) {
-      uniqueCandidates.push({ x: c.x, y: c.y });
-    }
+  const points = [];
+  candidates.forEach((c) => {
+    if (!points.some((p) => p.x === c.x && p.y === c.y)) points.push(c);
   });
 
-  // 2. Đếm số "hướng" dây đi ra từ mỗi điểm đầu mút
-  uniqueCandidates.forEach(p => {
-    let directions = 0;
-    
-    resolved.forEach(pts => {
+  const dirKey = (dx, dy) => {
+    if (dx === 0 && dy === 0) return null;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 'R' : 'L';
+    return dy > 0 ? 'D' : 'U';
+  };
+
+  const dots = [];
+  points.forEach((P) => {
+    const directions = new Set();
+
+    resolved.forEach((pts) => {
       for (let i = 0; i < pts.length - 1; i++) {
-        const a = pts[i];
-        const b = pts[i+1];
-        if (isSame(a, b)) continue;
+        const ax = u(pts[i].x), ay = u(pts[i].y);
+        const bx = u(pts[i + 1].x), by = u(pts[i + 1].y);
+        if (ax === bx && ay === by) continue;
 
-        const onVertical = Math.abs(a.x - b.x) < 1 && Math.abs(p.x - a.x) < 1 && p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y);
-        const onHorizontal = Math.abs(a.y - b.y) < 1 && Math.abs(p.y - a.y) < 1 && p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x);
+        const isA = ax === P.x && ay === P.y;
+        const isB = bx === P.x && by === P.y;
 
-        if (onVertical || onHorizontal) {
-          if (isSame(p, a) || isSame(p, b)) {
-            // Điểm này trùng với đầu mút hoặc góc bẻ của đoạn thẳng -> đếm 1 hướng
-            directions += 1; 
-          } else {
-            // Điểm này nằm GIỮA đoạn thẳng (dây đâm xuyên qua) -> đếm 2 hướng
-            directions += 2; 
-          }
+        if (isA) {
+          const d = dirKey(bx - ax, by - ay);
+          if (d) directions.add(d);
+        } else if (isB) {
+          const d = dirKey(ax - bx, ay - by);
+          if (d) directions.add(d);
+        } else {
+          const onVertical = ax === bx && P.x === ax &&
+            P.y > Math.min(ay, by) && P.y < Math.max(ay, by);
+          const onHorizontal = ay === by && P.y === ay &&
+            P.x > Math.min(ax, bx) && P.x < Math.max(ax, bx);
+
+          if (onVertical) { directions.add('U'); directions.add('D'); }
+          if (onHorizontal) { directions.add('L'); directions.add('R'); }
         }
       }
     });
 
-    // 3. Chấm đen chỉ hiện khi có từ 3 nhánh dây trở lên (Ngã 3, Ngã 4)
-    if (directions >= 3) {
-      dots.push(p);
-    }
+    if (directions.size >= 3) dots.push({ x: P.x * GRID, y: P.y * GRID });
   });
 
   return dots;
@@ -201,17 +233,21 @@ function pointsToPolyline(pts) {
 function resolvePoints(pts, nodes, lockedVertical) {
   if (!pts || pts.length < 2) return pts;
 
+  const snap = (v) => Math.round(v / GRID) * GRID; // thêm hàm làm tròn lưới
+
   const at = (p) => {
     if (!p.nodeId) return null;
     const n = nodes.find((n) => n.id === p.nodeId);
     const port = PORTS.find((pt) => pt.id === p.portId);
     if (!n || !port) return null;
-    // Dùng tọa độ đã xoay/lật
     const tPort = getTransformedPort(port, n);
-    return { x: Math.round(n.position.x) + tPort.x, y: Math.round(n.position.y) + tPort.y };
+    return {
+      x: snap(Math.round(n.position.x) + tPort.x),
+      y: snap(Math.round(n.position.y) + tPort.y),
+    };
   };
 
-  let out = pts.map((p) => ({ ...p }));
+  let out = pts.map((p) => ({ ...p, x: snap(p.x), y: snap(p.y) })); // snap toàn bộ điểm đầu vào
   const last = out.length - 1;
 
   const a = at(out[0]);
@@ -220,27 +256,14 @@ function resolvePoints(pts, nodes, lockedVertical) {
   if (a) { out[0].x = a.x; out[0].y = a.y; }
   if (b) { out[last].x = b.x; out[last].y = b.y; }
 
-  if (out.length === 2) {
-    // Ưu tiên cờ đã lưu; nếu không có (undefined/null) mới tự tính như cũ
-    const originalVertical = (lockedVertical !== undefined && lockedVertical !== null)
-      ? lockedVertical
-      : Math.abs(pts[0].x - pts[1].x) < Math.abs(pts[0].y - pts[1].y);
-
-    const rerouted = orthoPath(
-      { ...out[0], nodeId: pts[0].nodeId, portId: pts[0].portId },
-      { ...out[1], nodeId: pts[last].nodeId, portId: pts[last].portId },
-      originalVertical
-    );
-    return rerouted;
-  }
-
+  // ... phần còn lại giữ nguyên, nhưng khi splice thêm điểm bend mới cũng snap:
   if (a) {
     const vertical = Math.abs(pts[0].x - pts[1].x) < Math.abs(pts[0].y - pts[1].y);
     if (vertical) {
-      if (Math.abs(out[1].x - out[0].x) > 0.5) out.splice(1, 0, { x: out[0].x, y: out[1].y });
+      if (Math.abs(out[1].x - out[0].x) > 0.5) out.splice(1, 0, { x: snap(out[0].x), y: snap(out[1].y) });
       else out[1].x = out[0].x;
     } else {
-      if (Math.abs(out[1].y - out[0].y) > 0.5) out.splice(1, 0, { x: out[1].x, y: out[0].y });
+      if (Math.abs(out[1].y - out[0].y) > 0.5) out.splice(1, 0, { x: snap(out[1].x), y: snap(out[0].y) });
       else out[1].y = out[0].y;
     }
   }
@@ -250,10 +273,10 @@ function resolvePoints(pts, nodes, lockedVertical) {
     const vertical = Math.abs(pts[pts.length - 1].x - pts[pts.length - 2].x)
                    < Math.abs(pts[pts.length - 1].y - pts[pts.length - 2].y);
     if (vertical) {
-      if (Math.abs(out[l - 1].x - out[l].x) > 0.5) out.splice(l, 0, { x: out[l].x, y: out[l - 1].y });
+      if (Math.abs(out[l - 1].x - out[l].x) > 0.5) out.splice(l, 0, { x: snap(out[l].x), y: snap(out[l - 1].y) });
       else out[l - 1].x = out[l].x;
     } else {
-      if (Math.abs(out[l - 1].y - out[l].y) > 0.5) out.splice(l, 0, { x: out[l - 1].x, y: out[l].y });
+      if (Math.abs(out[l - 1].y - out[l].y) > 0.5) out.splice(l, 0, { x: snap(out[l - 1].x), y: snap(out[l].y) });
       else out[l - 1].y = out[l].y;
     }
   }
@@ -357,6 +380,68 @@ function QuickAddMenu({ onPick, onClose }) {
     </div>
   );
 }
+// Chuẩn hoá: gộp mọi cặp wire có đầu mút tự do trùng nhau thành 1 wire liền mạch.
+// Chạy lặp cho tới khi không còn cặp nào để gộp — đảm bảo dù bug xảy ra ở đâu,
+// trạng thái wires luôn "sạch" trước khi vẽ junction dot.
+// Trong mergeTouchingWires: thay isNear(...) bằng sameGridPoint(...)
+function mergeTouchingWires(wires, nodes) {
+  let list = wires.map((w) => ({ ...w }));
+  let mergedAny = true;
+
+  while (mergedAny) {
+    mergedAny = false;
+
+    outer:
+    for (let i = 0; i < list.length; i++) {
+      for (let j = 0; j < list.length; j++) {
+        if (i === j) continue;
+        const A = list[i];
+        const B = list[j];
+
+        const ptsA = resolvePoints(A.points, nodes, A.lockedVertical);
+        const ptsB = resolvePoints(B.points, nodes, B.lockedVertical);
+        const aFirst = ptsA[0], aLast = ptsA[ptsA.length - 1];
+        const bFirst = ptsB[0], bLast = ptsB[ptsB.length - 1];
+
+        let mergedPoints = null;
+
+        if (!aLast.nodeId && !bFirst.nodeId && sameGridPoint(aLast, bFirst)) {
+          mergedPoints = [...A.points.slice(0, -1), ...B.points];
+        } else if (!aLast.nodeId && !bLast.nodeId && sameGridPoint(aLast, bLast)) {
+          mergedPoints = [...A.points.slice(0, -1), ...[...B.points].reverse()];
+        } else if (!aFirst.nodeId && !bLast.nodeId && sameGridPoint(aFirst, bLast)) {
+          mergedPoints = [...B.points.slice(0, -1), ...A.points];
+        } else if (!aFirst.nodeId && !bFirst.nodeId && sameGridPoint(aFirst, bFirst)) {
+          mergedPoints = [...[...B.points].reverse().slice(0, -1), ...A.points];
+        }
+
+        if (mergedPoints) {
+          const merged = { ...A, points: mergedPoints, lockedVertical: undefined, net: A.net || B.net };
+          list = list.filter((_, idx) => idx !== i && idx !== j);
+          list.push(merged);
+          mergedAny = true;
+          break outer;
+        }
+      }
+    }
+  }
+
+  return list;
+}
+
+// findExtendableWire cũng đổi sang sameGridPoint
+function findExtendableWire(point, wires, nodes) {
+  for (const w of wires) {
+    const pts = resolvePoints(w.points, nodes, w.lockedVertical);
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+    if (!first.nodeId && sameGridPoint(first, point)) return { wireId: w.id, atStart: true };
+    if (!last.nodeId && sameGridPoint(last, point)) return { wireId: w.id, atStart: false };
+  }
+  return null;
+}
+
+
 
 function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, selected, setSelected }) {  
   const { screenToFlowPosition } = useReactFlow();
@@ -405,20 +490,20 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, sel
     }, 220);
   };
 
-  const handleDoubleClick = (e) => {
-    clearTimeout(clickTimer.current);
-    clickTimer.current = null;
-    const p = toFlow(e);
-    setDraft((prev) => {
-      if (!prev) return null;
-      const last = prev[prev.length - 1];
-      const pts = (Math.abs(last.x - p.x) < 1 && Math.abs(last.y - p.y) < 1)
-        ? prev
-        : [...prev, ...orthoPath(last, p).slice(1)];
-      if (pts.length >= 2) setWires((ws) => [...ws, { id: `wire-${Date.now()}`, points: pts }]);
-      return null;
-    });
-  };
+    const handleDoubleClick = (e) => {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      const p = toFlow(e);
+      setDraft((prev) => {
+        if (!prev) return null;
+        const last = prev[prev.length - 1];
+        const pts = (Math.abs(last.x - p.x) < 1 && Math.abs(last.y - p.y) < 1)
+          ? prev
+          : [...prev, ...orthoPath(last, p).slice(1)];
+        if (pts.length >= 2) setWires((ws) => [...ws, { id: `wire-${Date.now()}`, points: pts }]);
+        return null;
+      });
+    };
 
   const preview = draft && cursor ? orthoPath(draft[draft.length - 1], cursor) : null;
 
@@ -629,7 +714,19 @@ function GhostIcon({ type }) {
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState([]);
-  const [wires, setWires] = useState([]);
+
+  // ĐỔI: useState đổi tên thành setWiresRaw (nội bộ), rồi định nghĩa setWires bọc bên dưới
+  const [wires, setWiresRaw] = useState([]);
+
+  const nodesRef = useRef(nodes);
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+
+  const setWires = useCallback((updater) => {
+    setWiresRaw((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      return mergeTouchingWires(next, nodesRef.current);
+    });
+  }, []);
   
   const [isWiringMode, setIsWiringMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
@@ -937,6 +1034,8 @@ function Flow() {
     };
   }, [placingType, screenToFlowPosition, addNodeAt, snappedGhostScreenPos]);
 
+
+
   // --- NÂNG CẤP XÓA: HỖ TRỢ XÓA NHIỀU DÂY ĐIỆN CÙNG LÚC ---
   const deleteSelected = useCallback(() => {
     const activeNodes = nodes.filter((n) => n.selected).map((n) => n.id);
@@ -997,26 +1096,54 @@ function Flow() {
 
       if (e.key === 'm' || e.key === 'M') {
         const targetNodes = activeNodes.length > 0
-        ? activeNodes
-        : (selected?.kind === 'node' ? [nodes.find((n) => n.id === selected.id)].filter(Boolean) : []);
+          ? activeNodes
+          : (selected?.kind === 'node' ? [nodes.find((n) => n.id === selected.id)].filter(Boolean) : []);
 
-        const targetWires = activeWires.length > 0
-        ? activeWires
-        : (selected?.kind === 'wire' ? [wires.find((w) => w.id === selected.id)].filter(Boolean) : []);
+        let targetWires = activeWires.length > 0
+          ? activeWires
+          : (selected?.kind === 'wire' ? [wires.find((w) => w.id === selected.id)].filter(Boolean) : []);
+
+        // --- MỞ RỘNG targetWires: kéo theo mọi dây chạm đầu tự do vào dây đang chọn (lan truyền) ---
+        const isSamePoint = (p1, p2) => Math.abs(p1.x - p2.x) < 1 && Math.abs(p1.y - p2.y) < 1;
+        const resolvedWires = wires.map((w) => ({ w, pts: resolvePoints(w.points, nodes, w.lockedVertical) }));
+
+        let changed = true;
+        const includedIds = new Set(targetWires.map((w) => w.id));
+        while (changed) {
+          changed = false;
+          const currentFreeEndpoints = [];
+          resolvedWires.forEach(({ w, pts }) => {
+            if (!includedIds.has(w.id)) return;
+            if (!pts[0].nodeId) currentFreeEndpoints.push(pts[0]);
+            if (!pts[pts.length - 1].nodeId) currentFreeEndpoints.push(pts[pts.length - 1]);
+          });
+
+          resolvedWires.forEach(({ w, pts }) => {
+            if (includedIds.has(w.id)) return;
+            const wEndpoints = [];
+            if (!pts[0].nodeId) wEndpoints.push(pts[0]);
+            if (!pts[pts.length - 1].nodeId) wEndpoints.push(pts[pts.length - 1]);
+
+            const touches = wEndpoints.some((ep) => currentFreeEndpoints.some((fp) => isSamePoint(ep, fp)));
+            if (touches) {
+              includedIds.add(w.id);
+              changed = true;
+            }
+          });
+        }
+        targetWires = wires.filter((w) => includedIds.has(w.id));
+        // ------------------------------------------------------------------------------------------
+
+        const targetNodeIds = targetNodes.map((n) => n.id);
 
         if (targetNodes.length > 0 || targetWires.length > 0) {
           const flowPos = screenToFlowPosition(lastMouse.current);
-          const targetNodeIds = targetNodes.map((n) => n.id);
 
-          // Khóa hướng cho: (a) các dây được chọn để move trực tiếp, VÀ (b) các dây có 1 đầu gắn vào node đang move
           setWires((ws) => ws.map((w) => {
             if (w.points.length !== 2) return w;
-
             const isDirectlySelected = targetWires.some((tw) => tw.id === w.id);
             const isConnectedToMovingNode = w.points.some((p) => p.nodeId && targetNodeIds.includes(p.nodeId));
-
             if (!isDirectlySelected && !isConnectedToMovingNode) return w;
-
             const lockedVertical = Math.abs(w.points[0].x - w.points[1].x) < Math.abs(w.points[0].y - w.points[1].y);
             return { ...w, lockedVertical };
           }));
@@ -1025,24 +1152,17 @@ function Flow() {
             startX: Math.round(flowPos.x / GRID) * GRID,
             startY: Math.round(flowPos.y / GRID) * GRID,
             items: targetNodes.map((n) => ({ id: n.id, initialX: n.position.x, initialY: n.position.y })),
-            wireItems: targetWires.map((w) => {
-              const allAnchored = w.points.every((p) => p.nodeId);
-              // Nếu TẤT CẢ điểm đều bị neo -> gỡ neo (bỏ nodeId/portId) để có thể move tự do
-              const initialPoints = allAnchored
-                ? w.points.map((p) => ({ x: p.x, y: p.y })) // bỏ nodeId, portId
-                : w.points.map((p) => ({ ...p }));
-              return {
-                id: w.id,
-                initialPoints,
-              };
-            }),
+            wireItems: targetWires.map((w) => ({
+              id: w.id,
+              initialPoints: w.points.map((p) => ({ x: p.x, y: p.y })), // luôn gỡ neo khi move trực tiếp
+            })),
           });
           setIsMoveMode(true);
         } else {
           setIsMoveMode(true);
         }
-  setIsCopyMode(false); setIsWiringMode(false); setSelected(null);
-}
+        setIsCopyMode(false); setIsWiringMode(false); setSelected(null);
+      }
       else if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey) { setIsCopyMode(true); setIsMoveMode(false); setIsWiringMode(false); setSelected(null); }
       else if (e.key === 'w' || e.key === 'W') { setIsWiringMode(true); setIsMoveMode(false); setIsCopyMode(false); setSelected(null); }
       else if (e.key === 'i' || e.key === 'I') { setQuickAddOpen(true); setSelected(null); }
