@@ -1,0 +1,142 @@
+{
+  "documents": [
+    {
+      "annotations": [
+        {
+          "alignment": "start",
+          "anchor": {
+            "fallbackPosition": {
+              "x": 140,
+              "y": 170
+            },
+            "kind": "object",
+            "localOffset": {
+              "x": 20,
+              "y": 10
+            },
+            "objectId": "M1"
+          },
+          "binding": {
+            "instanceId": "M1",
+            "kind": "instance-reference"
+          },
+          "id": "instance-label-M1",
+          "kind": "instance-label",
+          "locked": false,
+          "rotation": 0
+        },
+        {
+          "alignment": "start",
+          "anchor": {
+            "fallbackPosition": {
+              "x": 140,
+              "y": 110
+            },
+            "kind": "object",
+            "localOffset": {
+              "x": 20,
+              "y": 10
+            },
+            "objectId": "M2"
+          },
+          "binding": {
+            "instanceId": "M2",
+            "kind": "instance-reference"
+          },
+          "id": "instance-label-M2",
+          "kind": "instance-label",
+          "locked": false,
+          "rotation": 0
+        }
+      ],
+      "connectivityEvidence": [],
+      "constraints": [],
+      "drafting": {
+        "objects": []
+      },
+      "id": "document-main",
+      "instances": [
+        {
+          "id": "M1",
+          "netlist": {
+            "parameters": {
+              "l": "150n",
+              "m": "1",
+              "nf": "1",
+              "w": "1u"
+            }
+          },
+          "placement": {
+            "mirror": "none",
+            "position": {
+              "x": 120,
+              "y": 160
+            },
+            "rotation": 0
+          },
+          "reference": "M1",
+          "symbolId": "nmos",
+          "symbolVariantId": "textbook-3terminal"
+        },
+        {
+          "id": "M2",
+          "netlist": {
+            "parameters": {
+              "l": "150n",
+              "m": "1",
+              "nf": "1",
+              "w": "1u"
+            }
+          },
+          "placement": {
+            "mirror": "none",
+            "position": {
+              "x": 120,
+              "y": 100
+            },
+            "rotation": 0
+          },
+          "reference": "M2",
+          "symbolId": "nmos",
+          "symbolVariantId": "textbook-3terminal"
+        }
+      ],
+      "junctions": [],
+      "layoutGroups": [],
+      "name": "dut",
+      "netlist": {
+        "formalParameters": [],
+        "name": "dut",
+        "terminals": []
+      },
+      "nets": [],
+      "noConnects": [],
+      "presentation": {
+        "compactness": "normal",
+        "grid": 10,
+        "styleProfileId": "razavi-textbook-v1"
+      },
+      "revision": 2,
+      "routes": [],
+      "sourceStatus": "connectivity-modified"
+    }
+  ],
+  "externalSubcircuitDefinitions": [],
+  "id": "project-main",
+  "name": "New Circuit",
+  "schemaVersion": 57,
+  "simulationFolders": [],
+  "source": {
+    "dialect": "none",
+    "entry": null,
+    "files": [],
+    "sourcePolicy": "copy"
+  },
+  "structureRevision": 0,
+  "symbolLibrary": {
+    "hash": "razavi-reference-v1",
+    "id": "razavi-symbols",
+    "version": "1"
+  },
+  "topDocumentId": "document-main"
+}
