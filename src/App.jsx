@@ -7,6 +7,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+import CloudPanel from './CloudPanel';
 import mockData from './mockData.json';
 import NmosNode from './NmosNode';
 import PmosNode from './PmosNode'; // Thêm dòng import này
@@ -1855,7 +1856,8 @@ function Flow() {
         <OnlineUsers me={me} others={others} onRename={rename} />
 
         <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
-
+        <CloudPanel nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires} />
+        
         {quickAddOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.15)' }} onClick={() => setQuickAddOpen(false)}>
             <div onClick={(e) => e.stopPropagation()}>
