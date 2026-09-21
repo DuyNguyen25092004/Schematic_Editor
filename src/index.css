@@ -107,3 +107,17 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+/* Vùng phủ mờ khi có nhiều node được chọn cùng lúc (kéo box-select) */
+.react-flow__nodesselection-rect {
+  background: transparent !important;
+  border: none !important;
+}
