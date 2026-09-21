@@ -1,10 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDPvMOW_yHpWhdvsYenSrJiQBGZeKWb_ow",
   authDomain: "schematiceditor.firebaseapp.com",
+  databaseURL: "https://schematiceditor-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "schematiceditor",
   storageBucket: "schematiceditor.firebasestorage.app",
   messagingSenderId: "426478121890",
@@ -13,7 +15,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const db = getFirestore(app);
+export const db = getFirestore(app);     // Firestore: dữ liệu mạch
+export const rtdb = getDatabase(app);    // Realtime DB: con trỏ, presence
 export const auth = getAuth(app);
 
 // Trả về user khi đã đăng nhập (ẩn danh) xong

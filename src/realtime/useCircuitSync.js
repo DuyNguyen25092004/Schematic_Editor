@@ -3,10 +3,14 @@ import { collection, doc, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db, ensureSignedIn } from './firebase';
 
 const NODE_STYLE = { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' };
+const stable = (v) => JSON.stringify(v, (k, val) =>
+  val && typeof val === 'object' && !Array.isArray(val)
+    ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {})
+    : val);
+const clean = (o) => JSON.parse(JSON.stringify(o));
 
-const stripNode = (n) => ({ type: n.type, position: n.position, data: n.data });
-const stripWire = (w) => ({ points: w.points, net: w.net ?? null });
-
+const stripNode = (n) => clean({ type: n.type, position: n.position, data: n.data });
+const stripWire = (w) => clean({ points: w.points, net: w.net ?? null });
 export function useCircuitSync({
   circuitId, nodes, wires, setNodes, setWiresRaw,
   isEditingLocally, seedNodes = [],
