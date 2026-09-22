@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { collection, doc, onSnapshot, writeBatch } from 'firebase/firestore';
+import {
+  collection, doc, onSnapshot, writeBatch, getDocs, setDoc, deleteDoc,
+  runTransaction, serverTimestamp, Timestamp, query, where, limit,
+} from 'firebase/firestore';
 import { db, ensureSignedIn } from './firebase';
 
 const NODE_STYLE = { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' };
@@ -11,6 +14,49 @@ const clean = (o) => JSON.parse(JSON.stringify(o));
 
 const stripNode = (n) => clean({ type: n.type, position: n.position, data: n.data });
 const stripWire = (w) => clean({ points: w.points, net: w.net ?? null });
+
+// ---------- DỌN PHÒNG CŨ (cờ lastActive) ----------
+const STALE_MS = 5 * 60 * 1000;     // phòng không ai hoạt động > 30 phút = cũ
+const HEARTBEAT_MS = 3 * 60 * 1000;  // khi tab mở, cập nhật cờ mỗi 5 phút
+
+const roomRef = (id) => doc(db, 'circuits', id);
+const touch = (id) => setDoc(roomRef(id), { lastActive: serverTimestamp() }, { merge: true });
+
+// Xóa toàn bộ nodes + wires của phòng (chia batch <= 400)
+const wipeRoom = async (id) => {
+  for (const col of ['nodes', 'wires']) {
+    const s = await getDocs(collection(db, 'circuits', id, col));
+    for (let i = 0; i < s.docs.length; i += 400) {
+      const b = writeBatch(db);
+      s.docs.slice(i, i + 400).forEach((d) => b.delete(d.ref));
+      await b.commit();
+    }
+  }
+};
+
+// Đặt cờ = bây giờ. Trả về true nếu phòng đang cũ VÀ mình là người thắng quyền xóa.
+const claimIfStale = (id) => runTransaction(db, async (tx) => {
+  const snap = await tx.get(roomRef(id));
+  const last = snap.exists() ? snap.data().lastActive : null;
+  const stale = !!last && Date.now() - last.toMillis() > STALE_MS;
+  tx.set(roomRef(id), { lastActive: serverTimestamp() }, { merge: true });
+  return stale;
+});
+
+// Dọn giúp tối đa 5 phòng khác đã cũ
+const sweepOthers = async (currentId) => {
+  const cutoff = Timestamp.fromMillis(Date.now() - STALE_MS);
+  const q = query(collection(db, 'circuits'), where('lastActive', '<', cutoff), limit(100));
+  const snap = await getDocs(q);
+  for (const d of snap.docs) {
+    if (d.id === currentId) continue;
+    if (await claimIfStale(d.id)) {
+      await wipeRoom(d.id);
+      await deleteDoc(roomRef(d.id));
+    }
+  }
+};
+
 export function useCircuitSync({
   circuitId, nodes, wires, setNodes, setWiresRaw,
   isEditingLocally, seedNodes = [],
@@ -22,11 +68,29 @@ export function useCircuitSync({
 
   // ---------- NHẬN ----------
   useEffect(() => {
-    let unsubN, unsubW, cancelled = false;
+    let unsubN, unsubW, timer, cancelled = false;
 
-    ensureSignedIn().then(() => {
+    const beat = () => touch(circuitId).catch(console.error);
+    const onVisible = () => { if (document.visibilityState === 'visible') beat(); };
+
+    (async () => {
+      await ensureSignedIn();
       if (cancelled) return;
 
+      // 1) Vào phòng: nếu phòng đã cũ thì xóa dữ liệu cũ TRƯỚC khi nạp
+      try {
+        if (await claimIfStale(circuitId)) await wipeRoom(circuitId);
+        sweepOthers(circuitId).catch(console.error); // dọn phòng khác, không chờ
+      } catch (e) {
+        console.error(e);
+      }
+      if (cancelled) return;
+
+      // 2) Giữ cờ "đang hoạt động"
+      timer = setInterval(beat, HEARTBEAT_MS);
+      document.addEventListener('visibilitychange', onVisible);
+
+      // 3) Đồng bộ như cũ
       unsubN = onSnapshot(collection(db, 'circuits', circuitId, 'nodes'), (snap) => {
         // Phòng trống lần đầu -> seed từ mockData
         if (!seeded.current && snap.empty && seedNodes.length) {
@@ -53,7 +117,7 @@ export function useCircuitSync({
               syncedNodes.current.delete(id);
               return;
             }
-            const d = ch.doc.data();
+            const { expireAt: _e, ...d } = ch.doc.data(); // bỏ expireAt cũ (nếu còn sót từ lúc thử TTL)
             const json = JSON.stringify(d);
             const old = next.find((n) => n.id === id);
             if (old && syncedNodes.current.get(id) === json) return; // echo của mình
@@ -76,7 +140,7 @@ export function useCircuitSync({
               syncedWires.current.delete(id);
               return;
             }
-            const d = ch.doc.data();
+            const { expireAt: _e, ...d } = ch.doc.data();
             const json = JSON.stringify(d);
             const old = next.find((w) => w.id === id);
             if (old && syncedWires.current.get(id) === json) return;
@@ -87,9 +151,14 @@ export function useCircuitSync({
           return next;
         });
       });
-    });
+    })();
 
-    return () => { cancelled = true; unsubN?.(); unsubW?.(); };
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      unsubN?.(); unsubW?.();
+    };
   }, [circuitId, setNodes, setWiresRaw]); // seedNodes cố ý không đưa vào deps
 
   // ---------- GỬI ----------
