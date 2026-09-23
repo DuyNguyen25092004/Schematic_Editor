@@ -18,7 +18,8 @@ If you are developing a production application, we recommend using TypeScript wi
 Clone of cadence virtuoso schematic capture
 
 # Structure of the Folder
-`src/
+```
+src/
 ├─ App.jsx
 ├─ Flow.jsx
 ├─ constants.js
@@ -32,4 +33,5 @@ Clone of cadence virtuoso schematic capture
 ├─ data/       mockData.json                   
 ├─ components/ ComponentPalette, QuickAddMenu, WiringLayer, WireHandles,
 │              PresenceLayer, RoomBar, OnlineUsers, PropertyPanel (.jsx)
-└─ hooks/      useCopyImage.js, useKeyboardShortcuts.js`
+└─ hooks/      useCopyImage.js, useKeyboardShortcuts.js
+```
