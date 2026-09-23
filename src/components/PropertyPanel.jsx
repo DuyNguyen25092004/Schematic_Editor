@@ -46,11 +46,28 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
   return (
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Dây nối</div>
-      <label style={label}>Tên net</label>
-      <input style={input} value={wire.net || ''}
-             placeholder="(chưa đặt tên)"
-             onChange={(e) => setWires((ws) => ws.map((w) =>
-               w.id === wire.id ? { ...w, net: e.target.value } : w))} />
+      <label style={label}>Tên dây</label>
+      <input style={input} value={wire.name || ''}
+            placeholder="(chưa đặt tên)"
+            onChange={(e) => setWires((ws) => ws.map((w) =>
+              w.id === wire.id ? { ...w, name: e.target.value } : w))} />
+      <label style={label}>Màu dây</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <input
+          type="color"
+          style={{ width: 36, height: 28, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}
+          value={wire.color || '#000000'}
+          onChange={(e) => setWires((ws) => ws.map((w) =>
+            w.id === wire.id ? { ...w, color: e.target.value } : w))} />
+        <button
+          type="button"
+          style={{ fontSize: 12, background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
+          onClick={() => setWires((ws) => ws.map((w) =>
+            w.id === wire.id ? { ...w, color: undefined } : w))}
+        >
+          Mặc định
+        </button>
+      </div>
       <div style={{ color: '#666', marginBottom: 10 }}>
         {fmt(ends[0])} → {fmt(ends[1])}
       </div>

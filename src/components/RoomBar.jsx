@@ -37,7 +37,7 @@ function RoomBar({ circuitId }) {
 
   return (
     <div style={{
-      position: 'absolute', top: 10, left: 16, zIndex: 21, display: 'flex', flexDirection: 'column',
+      
       gap: 6, background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: 8,
       boxShadow: '0 2px 8px rgba(0,0,0,.1)', fontFamily: 'sans-serif', fontSize: 12,
     }}>
