@@ -1,0 +1,240 @@
+=====================================================================
+  TRÌNH SOẠN THẢO SƠ ĐỒ MẠCH (MOSFET) - REACT FLOW
+  Tài liệu tổ chức mã nguồn
+=====================================================================
+
+1. TỔNG QUAN
+---------------------------------------------------------------------
+Ứng dụng web vẽ sơ đồ mạch điện với linh kiện NMOS / PMOS:
+  - Kéo thả / đặt linh kiện lên lưới (grid 10px).
+  - Nối dây trực giao (chỉ ngang/dọc), tự hút vào chân linh kiện,
+    đầu mút dây, hoặc giữa dây khác (tạo chấm giao).
+  - Di chuyển, sao chép, xoay, lật linh kiện và dây.
+  - Chọn vùng (box-select), copy vùng chọn thành ảnh trong suốt.
+  - Cộng tác realtime: nhiều người cùng một "phòng", thấy con trỏ
+    và vùng chọn của nhau.
+  - Lưu/tải qua CloudPanel (driveStorage).
+
+Công nghệ: React, reactflow, html-to-image, Firebase (realtime).
+
+Chạy dự án:
+    npm install
+    npm run dev
+
+
+2. CẤU TRÚC THƯ MỤC
+---------------------------------------------------------------------
+src/
+ |- App.jsx
+ |- Flow.jsx
+ |- constants.js
+ |- geometry/     grid.js, ports.js, pathUtils.js
+ |- routing/      router.js, resolveWire.js
+ |- wires/        snap.js, wireOps.js
+ |- symbols/      index.jsx
+ |- nodes/        NmosNode.jsx, PmosNode.jsx
+ |- cloud/        CloudPanel.jsx, driveStorage.js
+ |- realtime/     circuitId.js, firebase.js, useCircuitSync.js,
+ |                usePresence.js
+ |- data/         mockData.json
+ |- components/   ComponentPalette, QuickAddMenu, WiringLayer,
+ |                WireHandles, PresenceLayer, RoomBar, OnlineUsers,
+ |                PropertyPanel (.jsx)
+ `- hooks/        useCopyImage.js, useKeyboardShortcuts.js
+
+
+3. MÔ TẢ TỪNG FILE
+---------------------------------------------------------------------
+
+3.1 Gốc
+  App.jsx
+      Điểm vào của giao diện. Chỉ bọc <Flow /> trong
+      <ReactFlowProvider> để các hook của reactflow dùng được.
+
+  Flow.jsx
+      Component chính, "nhạc trưởng" của ứng dụng. Giữ:
+        - State: nodes, wires, chế độ (wiring/move/copy), moveGroup,
+          copyGroup, selected, placingType, ghost khi kéo thả...
+        - Bọc setWires để luôn tự gộp dây chạm nhau
+          (mergeTouchingWires).
+        - Gọi các hook: useCircuitSync, usePresence, useCopyImage,
+          useKeyboardShortcuts.
+        - Xử lý chuột: di chuyển, box-select, thả linh kiện, click
+          node, click nền.
+        - Ghép toàn bộ giao diện (palette, canvas, các lớp phủ,
+          panel).
+      Ngoài ra chứa CIRCUIT_ID, nodeTypes (phải để ngoài component)
+      và initialNodes (dữ liệu khởi tạo từ mockData).
+
+  constants.js
+      Hằng số dùng chung: GRID, SNAP_RADIUS, MID_WIRE_SNAP_RADIUS,
+      OBSTACLE_MARGIN, PORTS (vị trí chân gate/drain/source) và
+      COMPONENT_LIBRARY (danh sách linh kiện đặt được).
+
+3.2 geometry/  (hình học thuần, không có React)
+  grid.js
+      toGridUnit(v): đổi toạ độ sang số nguyên ô lưới.
+      sameGridPoint(a, b): so sánh 2 điểm theo ô lưới.
+
+  ports.js
+      getSymbolBBox(node): hộp bao thật của ký hiệu (đã tính xoay
+      và lật), dùng cho box-select, vật cản, viền chọn.
+      getTransformedPort(port, node): toạ độ chân sau khi xoay/lật.
+      getTransformedPortDirection(portId, node): hướng "đi ra" của
+      chân sau khi xoay/lật (dùng để tạo đoạn stub khi định tuyến).
+
+  pathUtils.js
+      Các hàm xử lý đường gấp khúc (polyline):
+        projectOnPath   chiếu một điểm lên đường dây
+        bind            giữ thông tin gắn kết (nodeId/portId/onWireId)
+        orthoPath       tạo đường trực giao giữa 2 điểm
+        pointsToPolyline  đổi mảng điểm sang chuỗi cho SVG
+        simplifyMiddle  bỏ điểm trùng/thẳng hàng ở giữa
+        removeSpikes    loại "gai" nhỏ do né vật cản
+        orthogonalize   chèn góc để mọi đoạn ngang hoặc dọc
+
+3.3 routing/  (định tuyến dây)
+  router.js
+      Bộ định tuyến trực giao né linh kiện bằng Dijkstra trên lưới
+      Hanan. Có phạt khi rẽ (BEND_COST) và phạt khi trùng đoạn
+      dây khác (OVERLAP_PENALTY).
+      Chính: routeOrtho, getObstacles, edgeKey, dirIndex.
+
+  resolveWire.js
+      Biến dây "logic" (mảng points có gắn nodeId/onWireId) thành
+      đường vẽ thật:
+        resolveWire     hàm lõi, trả về { skeleton, path }
+        resolveSkeleton lấy khung điểm (dùng cho tay nắm kéo dây)
+        resolvePoints   lấy đường đã vẽ (dùng khắp nơi)
+      Mặc định KHÔNG định tuyến, chỉ ghép trực giao các điểm đã
+      vẽ. Chỉ khi wire.routed = true (sau xoay/lật) mới chạy router.
+
+3.4 wires/  (thao tác trên dây)
+  snap.js
+      snapPoint: hút con trỏ theo thứ tự ưu tiên
+          1) chân linh kiện  2) đầu mút dây  3) giữa dây
+          4) điểm lưới thường
+      attachFreeEndpointsToPorts: sau khi thả (move/copy), gắn lại
+      các đầu dây tự do vào chân/dây gần nhất.
+
+  wireOps.js
+      mergeTouchingWires  gộp các dây có đầu tự do trùng nhau
+      getJunctionDots     tính vị trí các chấm giao
+      offsetSegment       kéo lệch một đoạn dây
+      fixOrthogonalChain  giữ dây vuông góc sau khi kéo
+
+3.5 symbols/
+  index.jsx
+      Ký hiệu SVG của linh kiện và registry:
+        NmosSymbol, PmosSymbol
+        SYMBOLS   ánh xạ type -> component ký hiệu
+        MiniIcon  icon nhỏ trong sidebar / menu nhanh
+        GhostIcon bản mờ full-size khi đang kéo/đặt linh kiện
+
+3.6 nodes/
+  NmosNode.jsx, PmosNode.jsx
+      Node tuỳ biến của reactflow, hiển thị linh kiện, áp dụng xoay
+      (data.rot) và lật (data.flip). Được đăng ký trong nodeTypes
+      ở Flow.jsx.
+
+3.7 components/  (giao diện, đều dùng default export)
+  ComponentPalette.jsx  Sidebar trái: danh sách linh kiện kéo thả.
+  QuickAddMenu.jsx      Hộp chọn nhanh khi bấm phím I.
+  WiringLayer.jsx       Lớp SVG vẽ tất cả dây, chấm giao, dây đang
+                        vẽ phác, con trỏ hút; xử lý click/double-click
+                        khi ở chế độ nối dây.
+  WireHandles.jsx       Tay nắm chỉnh dây đang chọn: kéo đầu mút,
+                        kéo lệch từng đoạn.
+  PresenceLayer.jsx     Vẽ con trỏ và viền chọn của người khác.
+  RoomBar.jsx           Hiển thị mã phòng, chia sẻ, tham gia, tạo mới.
+  OnlineUsers.jsx       Danh sách người đang online (bấm để đổi tên).
+  PropertyPanel.jsx     Panel thuộc tính: sửa reference/W/L của
+                        linh kiện, tên net của dây, nút xoá.
+
+3.8 hooks/
+  useCopyImage.js
+      Chụp vùng đang chọn thành ảnh PNG trong suốt và ghi vào
+      clipboard (tạm bỏ chọn khi chụp rồi khôi phục).
+
+  useKeyboardShortcuts.js
+      Toàn bộ phím tắt (xem mục 5).
+
+3.9 cloud/
+  CloudPanel.jsx   Giao diện lưu/tải mạch.
+  driveStorage.js Lớp truy cập lưu trữ đám mây.
+
+3.10 realtime/
+  circuitId.js       Lấy/tạo mã phòng (getCircuitId), tạo link
+                     (roomUrl), vào phòng (joinRoom), phòng mới
+                     (newRoom).
+  firebase.js        Khởi tạo Firebase.
+  useCircuitSync.js  Đồng bộ nodes/wires giữa các người dùng. Tạm
+                     dừng nhận thay đổi khi đang thao tác cục bộ
+                     (isEditingLocally).
+  usePresence.js     Con trỏ, màu, tên, danh sách chọn của mọi người.
+
+3.11 data/
+  mockData.json      Dữ liệu mẫu để khởi tạo mạch (seedNodes).
+
+
+4. MÔ HÌNH DỮ LIỆU
+---------------------------------------------------------------------
+Node (linh kiện):
+    { id, type: 'nmos'|'pmos', position: {x, y},
+      data: { reference, w, l, rot?, flip? }, selected? }
+
+Wire (dây):
+    { id, points: [...], net?, routed?, selected? }
+    Mỗi điểm: { x, y, nodeId?, portId?, onWireId? }
+      - nodeId + portId : đầu dây gắn vào chân linh kiện
+      - onWireId        : đầu dây gắn vào giữa một dây khác
+      - không có gì     : điểm tự do
+
+Chân (PORTS): gate, drain, source (toạ độ trong khung 160x100).
+
+
+5. PHÍM TẮT VÀ THAO TÁC
+---------------------------------------------------------------------
+    F            Vừa khung nhìn (fit view)
+    W            Chế độ nối dây (click thêm điểm, double-click kết
+                 thúc, Backspace xoá điểm cuối)
+    M            Di chuyển vùng chọn (hoặc click 1 linh kiện)
+    C            Sao chép vùng chọn (hoặc click 1 linh kiện)
+    R            Xoay 90 độ
+    Ctrl+R       Lật ngang
+    I            Mở menu đặt linh kiện nhanh
+    Delete/Backspace  Xoá phần đang chọn
+    Esc          Huỷ chế độ hiện tại
+    Chuột giữa/phải kéo   Di chuyển khung nhìn
+    Chuột trái kéo        Chọn vùng
+    Chuột phải            Menu "Copy as Image"
+
+
+6. QUAN HỆ PHỤ THUỘC (chỉ import theo một chiều, tránh vòng lặp)
+---------------------------------------------------------------------
+  constants -> geometry/grid -> geometry/ports -> geometry/pathUtils
+      -> routing/router -> routing/resolveWire
+      -> wires/snap, wires/wireOps
+      -> symbols -> components, hooks -> Flow -> App
+
+Quy tắc: file ở tầng dưới KHÔNG được import ngược lên tầng trên.
+
+
+7. QUY ƯỚC MÃ NGUỒN
+---------------------------------------------------------------------
+  - components/  : export default.
+  - hooks/, geometry/, routing/, wires/, constants : named export.
+  - nodeTypes phải khai báo ngoài component Flow, nếu không
+    reactflow sẽ cảnh báo và re-render liên tục.
+  - Mọi so sánh toạ độ nên đi qua toGridUnit/sameGridPoint.
+
+
+8. CÁCH THÊM LINH KIỆN MỚI (ví dụ: điện trở)
+---------------------------------------------------------------------
+  1. constants.js       : thêm mục vào COMPONENT_LIBRARY
+                          (type, label, refPrefix, defaultData).
+  2. symbols/index.jsx  : viết ResistorSymbol và thêm vào SYMBOLS.
+  3. nodes/             : tạo ResistorNode.jsx (theo mẫu NmosNode).
+  4. Flow.jsx           : đăng ký vào nodeTypes.
+  5. Nếu linh kiện có số chân/vị trí chân khác MOSFET, cần mở rộng
+     PORTS và getSymbolBBox / getTransformedPortDirection theo type.
