@@ -8,7 +8,7 @@ const NODE_STYLE = {
   border: 'none', padding: 0, boxShadow: 'none',
 };
 const box = {
-  position: 'absolute', top: 70, right: 10, zIndex: 20, width: 270,
+  width: 270, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', // vị trí do khung chung trong App.jsx quyết định
   background: '#fff', border: '1px solid #ddd', borderRadius: 8,
   boxShadow: '0 4px 12px rgba(0,0,0,0.12)', padding: 10,
   fontFamily: 'sans-serif', fontSize: 13, color: '#222',
@@ -16,7 +16,7 @@ const box = {
 const input = { width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 6 };
 const btn = { padding: '6px 10px', marginRight: 6, cursor: 'pointer' };
 
-export default function CloudPanel({ nodes, wires, setNodes, setWires }) {
+export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom }) {
   const [open, setOpen] = useState(false);
   const [logged, setLogged] = useState(isLoggedIn());
   const [list, setList] = useState([]);
@@ -52,6 +52,7 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires }) {
     };
     const res = await driveSave(name, payload, currentId);
     setCurrentId(res.id);
+    if (!currentId) onOpenRoom?.(res.id); // file mới lưu -> vào phòng realtime của file
     setMsg('Đã lưu vào Drive ✔');
     await refresh();
   });
@@ -62,6 +63,7 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires }) {
     setWires(data.wires || []);
     setCurrentId(f.id);
     setName(f.name.replace('.schem.json', ''));
+    onOpenRoom?.(f.id); // phòng realtime = id file Drive
     setMsg('Đã mở: ' + f.name);
   });
 
@@ -74,11 +76,12 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires }) {
 
   const newDoc = () => {
     setNodes([]); setWires([]); setCurrentId(null); setName('So do moi');
+    onNewRoom?.();
   };
 
   if (!open) {
     return (
-      <button style={{ ...btn, position: 'absolute', top: 70, right: 10, zIndex: 20 }}
+      <button style={btn}
         onClick={() => setOpen(true)}>
         ☁ Drive
       </button>

@@ -3,8 +3,8 @@ import { useReactFlow, useStore } from 'reactflow';
 import { snapPoint } from '../wires/snap';
 import { getJunctionDots } from '../wires/wireOps';
 import { resolvePoints } from '../routing/resolveWire';
-import { orthoPath, pointsToPolyline } from '../geometry/pathUtils';
 import WireHandles from './WireHandles';
+import { orthoPath, pointsToPolyline, midOfPolyline } from '../geometry/pathUtils';
 
 function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, selected, setSelected }) {  
   const { screenToFlowPosition } = useReactFlow();
@@ -98,38 +98,57 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, sel
         }}
       >
         <svg style={{ position: 'absolute', overflow: 'visible', pointerEvents: 'none', userSelect: 'none' }}>
-          {wires.map((w) => {
-            const pts = pointsToPolyline(resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed));
-            const isSel = w.selected || (selected?.kind === 'wire' && selected.id === w.id);
-            return (
-              <g key={w.id}>
-                <polyline
-                  points={pts} fill="none" stroke="transparent" strokeWidth={10}
-                  style={{
-                    // Tắt hẳn khi đang wiring HOẶC đang kéo chọn vùng
-                    pointerEvents: (isWiringMode || isBoxSelecting) ? 'none' : 'stroke',
-                    cursor: 'pointer',
-                    userSelect: 'none',                              // <-- thêm
-                  }}
-                  onMouseDown={(e) => { e.preventDefault(); }}         // <-- thêm dòng này
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    setSelected({ kind: 'wire', id: w.id }); 
-                    setWires(ws => ws.map(wire => ({ ...wire, selected: wire.id === w.id })));
-                  }}
-                />
-                <polyline
-                  points={pts} fill="none" pointerEvents="none"
-                  stroke={isSel ? '#1677ff' : '#000'}
-                  strokeWidth={isSel ? 2.5 : 2}
-                  strokeLinecap="square" strokeLinejoin="miter"
-                  shapeRendering="crispEdges"
-                />
-
-
-              </g>
-            );
-          })}
+            {wires.map((w) => {
+              const rp = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
+              const pts = pointsToPolyline(rp);
+              const isSel = w.selected || (selected?.kind === 'wire' && selected.id === w.id);
+              const wireColor = w.color || '#000';
+              const mid = w.name ? midOfPolyline(rp) : null;
+              return (
+                <g key={w.id}>
+                  <polyline
+                    points={pts} fill="none" stroke="transparent" strokeWidth={10}
+                    style={{
+                      pointerEvents: (isWiringMode || isBoxSelecting) ? 'none' : 'stroke',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                    onMouseDown={(e) => { e.preventDefault(); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected({ kind: 'wire', id: w.id });
+                      setWires(ws => ws.map(wire => ({ ...wire, selected: wire.id === w.id })));
+                    }}
+                  />
+                  {isSel && (
+                    <polyline
+                      points={pts} fill="none" pointerEvents="none"
+                      stroke="#1677ff" strokeOpacity={0.5} strokeWidth={6}
+                      strokeLinecap="round" strokeLinejoin="round"
+                    />
+                  )}
+                  <polyline
+                    points={pts} fill="none" pointerEvents="none"
+                    stroke={wireColor}
+                    strokeWidth={isSel ? 2.5 : 2}
+                    strokeLinecap="square" strokeLinejoin="miter"
+                    shapeRendering="crispEdges"
+                  />
+                  {mid && (
+                    <text
+                      x={mid.x} y={mid.y - 4}
+                      textAnchor="middle" fontSize={11} fontFamily="sans-serif"
+                      fill={isSel ? '#1677ff' : wireColor}
+                      pointerEvents="none"
+                      style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}
+                    >
+                      {w.name}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          
           {/* 1. Render tất cả các dấu chấm giao nhau (Solder Dots) của các dây cố định */}
           {getJunctionDots(wires, nodes).map((dot, idx) => (
             <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r={3.5} fill="#000" pointerEvents="none" />

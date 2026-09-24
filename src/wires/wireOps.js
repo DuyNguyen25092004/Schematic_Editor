@@ -77,7 +77,10 @@ export function mergeTouchingWires(wires, nodes) {
         }
 
         if (mergedPoints) {
-          const merged = { ...A, points: mergedPoints, lockedVertical: undefined, net: A.net || B.net };
+          const merged = {
+            ...A, points: mergedPoints, lockedVertical: undefined,
+            net: A.net || B.net, name: A.name || B.name, color: A.color || B.color,
+          };
           list = list
             .filter((_, idx) => idx !== i && idx !== j)
             .map((w) => ({

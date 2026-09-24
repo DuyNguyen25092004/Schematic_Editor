@@ -121,3 +121,26 @@ export function orthogonalize(pts) {
   }
   return res;
 }
+
+// Điểm nằm giữa (theo độ dài) của một đường gấp khúc — dùng để đặt nhãn tên dây
+export function midOfPolyline(pts) {
+  if (!pts || pts.length === 0) return { x: 0, y: 0 };
+  if (pts.length === 1) return pts[0];
+  const segLens = [];
+  let total = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    segLens.push(d);
+    total += d;
+  }
+  let target = total / 2;
+  for (let i = 0; i < segLens.length; i++) {
+    if (target <= segLens[i] || i === segLens.length - 1) {
+      const t = segLens[i] ? target / segLens[i] : 0;
+      const a = pts[i], b = pts[i + 1];
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    target -= segLens[i];
+  }
+  return pts[Math.floor(pts.length / 2)];
+}

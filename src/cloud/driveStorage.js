@@ -1,5 +1,6 @@
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+// ĐỔI: scope rộng hơn để thấy được file/thư mục người khác share (Editor/Viewer)
+const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
 const SUFFIX = '.schem.json';
 let token = null;
 
@@ -29,7 +30,7 @@ export function driveLogout() {
   token = null;
 }
 
-async function call(url, options = {}) {
+export async function call(url, options = {}) {
   const r = await fetch(url, {
     ...options,
     headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
@@ -42,6 +43,7 @@ async function call(url, options = {}) {
   return r;
 }
 
+// Danh sách file của riêng người đang đăng nhập (giữ để tương thích tính năng cũ, không dùng cho group)
 export async function driveList() {
   const q = encodeURIComponent(`name contains '${SUFFIX}' and trashed=false`);
   const r = await call(
@@ -51,8 +53,24 @@ export async function driveList() {
   return (await r.json()).files ?? [];
 }
 
-export async function driveSave(name, data, fileId = null) {
-  const meta = fileId ? {} : { name: name + SUFFIX, mimeType: 'application/json' };
+// MỚI: danh sách file .schem.json trong 1 thư mục cụ thể (thư mục group đã được share)
+export async function driveListFolder(folderId) {
+  const q = encodeURIComponent(
+    `'${folderId}' in parents and name contains '${SUFFIX}' and trashed=false`
+  );
+  const r = await call(
+    `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name,modifiedTime)&orderBy=modifiedTime%20desc&pageSize=100`
+  );
+  return (await r.json()).files ?? [];
+}
+
+// fileId = null -> tạo file mới; có fileId -> ghi đè nội dung
+// folderId (tùy chọn) -> khi tạo file mới, đặt vào đúng thư mục group
+export async function driveSave(name, data, fileId = null, folderId = null) {
+  const meta = fileId
+    ? {}
+    : { name: name + SUFFIX, mimeType: 'application/json', ...(folderId ? { parents: [folderId] } : {}) };
   const body = new FormData();
   body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
   body.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
@@ -67,7 +85,13 @@ export async function driveSave(name, data, fileId = null) {
 
 export async function driveLoad(fileId) {
   const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
-  return r.json();
+  return r.json(); // { nodes, wires }
+}
+
+export async function driveGetEmail() {
+  const r = await call('https://www.googleapis.com/oauth2/v3/userinfo');
+  const d = await r.json();
+  return d.email;
 }
 
 export async function driveDelete(fileId) {

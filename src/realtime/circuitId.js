@@ -1,23 +1,26 @@
 const randomCode = () => Math.random().toString(36).slice(2, 10);
 
-// Chỉ giữ chữ thường, số, gạch ngang, gạch dưới (an toàn cho đường dẫn Firestore/RTDB)
+// Giữ chữ hoa + tới 64 ký tự vì phòng có thể là id file Google Drive
 export function cleanRoomCode(s) {
-  return (s || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+  return (s || '').trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
 }
 
-// Lấy ?c=xxx; nếu chưa có thì tạo mới và ghi vào URL
+function writeUrl(id) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('c', id);
+  window.history.replaceState(null, '', url);
+}
+
 export function getCircuitId() {
   const url = new URL(window.location.href);
   let id = cleanRoomCode(url.searchParams.get('c'));
   if (!id) {
     id = randomCode();
-    url.searchParams.set('c', id);
-    window.history.replaceState(null, '', url);
+    writeUrl(id);
   }
   return id;
 }
 
-// Link đầy đủ của một phòng (giữ nguyên domain + tên repo hiện tại)
 export function roomUrl(id) {
   const url = new URL(window.location.href);
   url.search = '';
@@ -26,7 +29,6 @@ export function roomUrl(id) {
   return url.toString();
 }
 
-// Vào phòng theo mã. Tải lại trang để mọi trạng thái được khởi tạo sạch cho phòng mới
 export function joinRoom(code) {
   const id = cleanRoomCode(code);
   if (!id) return false;
@@ -36,4 +38,15 @@ export function joinRoom(code) {
 
 export function newRoom() {
   window.location.href = roomUrl(randomCode());
+}
+
+// ---- Đổi phòng TẠI CHỖ (không reload) ----
+export function setCircuitId(id) {
+  const clean = cleanRoomCode(id);
+  writeUrl(clean);
+  return clean;
+}
+
+export function newCircuitId() {
+  return setCircuitId(randomCode());
 }

@@ -8,7 +8,7 @@ import NmosNode from './nodes/NmosNode';
 import PmosNode from './nodes/PmosNode';
 
 import { useCircuitSync } from './realtime/useCircuitSync';
-import { getCircuitId } from './realtime/circuitId';
+import { getCircuitId, setCircuitId as persistCircuitId, newCircuitId } from './realtime/circuitId';
 import { usePresence } from './realtime/usePresence';
 
 import { GRID, COMPONENT_LIBRARY } from './constants';
@@ -27,9 +27,8 @@ import OnlineUsers from './components/OnlineUsers';
 import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import GroupPanel from './cloud/GroupPanel';
 
-
-const CIRCUIT_ID = getCircuitId();
 
 const nodeTypes = { nmos: NmosNode, pmos: PmosNode };
 
@@ -78,8 +77,16 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
+  const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
+  const switchCircuitRoom = useCallback((id) => {
+    persistCircuitId(id);
+    setCircuitIdState(id);
+  }, []);
+  const startNewCircuitRoom = useCallback(() => {
+    setCircuitIdState(newCircuitId());
+  }, []);
   useCircuitSync({
-    circuitId: CIRCUIT_ID,
+    circuitId: circuitId,
     nodes, wires, setNodes, setWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
@@ -97,7 +104,7 @@ function Flow() {
   if (selected && !selectedIds.includes(selected.id)) selectedIds.push(selected.id);
 
   const { others, me, sendCursor, rename } = usePresence({
-    circuitId: CIRCUIT_ID,
+    circuitId: circuitId,
     selectedIds,
   });
 
@@ -507,10 +514,24 @@ function Flow() {
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} />
         <OnlineUsers me={me} others={others} onRename={rename} />
-        <RoomBar circuitId={CIRCUIT_ID} />
+        
 
         <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
-        <CloudPanel nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires} />
+        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+        <RoomBar circuitId={circuitId} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <GroupPanel
+            nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWiresRaw}
+            onOpenRoom={switchCircuitRoom}
+            onNewRoom={startNewCircuitRoom}
+          />
+          <CloudPanel
+            nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
+            onOpenRoom={switchCircuitRoom}
+            onNewRoom={startNewCircuitRoom}
+          />
+        </div>
+      </div>
         
         {quickAddOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.15)' }} onClick={() => setQuickAddOpen(false)}>

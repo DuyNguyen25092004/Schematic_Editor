@@ -13,7 +13,9 @@ const stable = (v) => JSON.stringify(v, (k, val) =>
 const clean = (o) => JSON.parse(JSON.stringify(o));
 
 const stripNode = (n) => clean({ type: n.type, position: n.position, data: n.data });
-const stripWire = (w) => clean({ points: w.points, net: w.net ?? null });
+const stripWire = (w) => clean({
+  points: w.points, net: w.net ?? null, name: w.name ?? null, color: w.color ?? null,
+});
 
 // ---------- DỌN PHÒNG CŨ (cờ lastActive) ----------
 const STALE_MS = 5 * 60 * 1000;     // phòng không ai hoạt động > 30 phút = cũ
@@ -65,10 +67,17 @@ export function useCircuitSync({
   const syncedNodes = useRef(new Map()); // id -> JSON đã đồng bộ
   const syncedWires = useRef(new Map());
   const seeded = useRef(false);
-
+  const firstRoom = useRef(true);
   // ---------- NHẬN ----------
   useEffect(() => {
     let unsubN, unsubW, timer, cancelled = false;
+    const isInitialRoom = firstRoom.current;
+    firstRoom.current = false;
+    syncedNodes.current = new Map();
+    syncedWires.current = new Map();
+    seeded.current = !isInitialRoom;   // đổi phòng thì KHÔNG seed mockData
+    setReady(false);
+    let firstNodes = true, firstWires = true;
 
     const beat = () => touch(circuitId).catch(console.error);
     const onVisible = () => { if (document.visibilityState === 'visible') beat(); };
@@ -108,6 +117,9 @@ export function useCircuitSync({
         }
         seeded.current = true;
 
+        const replace = !isInitialRoom && firstNodes && !snap.empty;
+        firstNodes = false;
+
         setNodes((ns) => {
           let next = [...ns];
           snap.docChanges().forEach((ch) => {
@@ -131,8 +143,10 @@ export function useCircuitSync({
       });
 
       unsubW = onSnapshot(collection(db, 'circuits', circuitId, 'wires'), (snap) => {
-        setWiresRaw((ws) => { // RAW: không qua mergeTouchingWires
-          let next = [...ws];
+        const replace = !isInitialRoom && firstWires && !snap.empty;
+        firstWires = false;
+        setWiresRaw((ws) => {
+          let next = replace ? [] : [...ws];   // trước là [...ws]
           snap.docChanges().forEach((ch) => {
             const id = ch.doc.id;
             if (ch.type === 'removed') {
