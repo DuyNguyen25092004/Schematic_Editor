@@ -1,5 +1,5 @@
 import React from 'react';
-
+import { GRID, VDD_BAR, getVddSpan, getSymbolBox } from '../constants';
 
 // ============ SYMBOL REGISTRY — thêm linh kiện mới chỉ cần đăng ký ở đây ============
 export function NmosSymbol({ strokeWidth = 2 }) {
@@ -84,15 +84,12 @@ export function CapacitorSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function VddSymbol({ strokeWidth = 2 }) {
+export function VddSymbol({ strokeWidth = 2, data }) {
   const bar = strokeWidth * 2;
+  const { left, right } = getVddSpan(data);
   return (
-    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" fill="none" shapeRendering="crispEdges">
-      <rect x="38" y={50 - bar / 2} width="24" height={bar} fill="#000" stroke="none" />
-      <line x1="43" y1="50" x2="43" y2="61" />
-      <line x1="50" y1="50" x2="50" y2="70" />
-      <line x1="57" y1="50" x2="57" y2="61" />
-    </g>
+    <rect x={VDD_BAR.x0 - left * GRID} y={VDD_BAR.y - bar / 2} width={(left + right) * GRID} height={bar}
+          fill="#000" stroke="none" shapeRendering="crispEdges" />
   );
 }
 
@@ -170,15 +167,21 @@ export const SYMBOLS = {
   fdopamp: FdOpampSymbol,
 };
 
-// Icon nhỏ trong sidebar — CHỈ để hiển thị danh sách, không dùng làm ảnh kéo
-export function MiniIcon({ type }) {
+// Icon nhỏ trong sidebar / menu nhanh — CHỈ để hiển thị, không dùng làm ảnh kéo.
+// Cắt viewBox theo hộp bao của ký hiệu để icon lấp đầy khung, nét vẽ giữ ~1.8px dù phóng to/thu nhỏ.
+export function MiniIcon({ type, width = 28, height = 20 }) {
   const Symbol = SYMBOLS[type] || NmosSymbol;
+  const box = getSymbolBox(type);
+  const pad = 6;
+  const vbX = box.x - pad, vbY = box.y - pad, vbW = box.w + pad * 2, vbH = box.h + pad * 2;
+  const scale = Math.min(width / vbW, height / vbH);
+  const sw = Math.min(6, Math.max(2, 1.8 / scale));
   return (
     <svg
-      width="28" height="20" viewBox="0 0 160 100"
-      style={{ width: 28, height: 20, flexShrink: 0, display: 'block' }}
+      width={width} height={height} viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
+      style={{ width, height, flexShrink: 0, display: 'block' }}
     >
-      <Symbol strokeWidth={6} />
+      <Symbol strokeWidth={sw} />
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { GRID } from '../constants';
+import { GRID, NO_JUNCTION_DOT_TYPES } from '../constants';
 import { toGridUnit, sameGridPoint } from '../geometry/grid';
 import { resolvePoints } from '../routing/resolveWire';
 
@@ -14,6 +14,8 @@ export function getJunctionDots(wires, nodes) {
     const res = resolvePoints(raw, nodes, w.lockedVertical, wires, w.id, w.routed);
     [[raw[0], res[0]], [raw[raw.length - 1], res[res.length - 1]]].forEach(([r, p]) => {
       if (r.nodeId) {
+        const hostNode = nodes.find((n) => n.id === r.nodeId);
+        if (hostNode && NO_JUNCTION_DOT_TYPES.has(hostNode.type)) return;
         const k = `${r.nodeId}.${r.portId}`;
         const c = portCount.get(k) || { n: 0, x: p.x, y: p.y };
         c.n += 1;

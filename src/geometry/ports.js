@@ -1,4 +1,5 @@
-import { getPorts, getSymbolBox } from '../constants';
+import { findPort, getSymbolBox } from '../constants';   // thay getPorts bằng findPort
+
 
 // Bounding box thật của ký hiệu MOSFET trong hệ tọa độ flow (đã tính xoay + lật),
 // khớp với vùng viền xanh khi chọn node — dùng để box-select cho đúng kích thước
@@ -8,7 +9,7 @@ export function getSymbolBBox(node) {
   const flip = node.data.flip || false;
   const cx = 40, cy = 50;
   // Khớp với vùng viền xanh: left:16,top:27,width:36,height:46
-  const box = getSymbolBox(node.type);
+  const box = getSymbolBox(node.type, node.data);          // trong getSymbolBBox
   const corners = [
     { x: box.x, y: box.y }, { x: box.x + box.w, y: box.y },
     { x: box.x + box.w, y: box.y + box.h }, { x: box.x, y: box.y + box.h },
@@ -44,7 +45,7 @@ export const PORT_OUT_DIRECTION = {
 // Xoay/lật hướng đi ra theo đúng rot/flip của node — dùng CHUNG logic xoay với getTransformedPort
 // nhưng không có phép tịnh tiến (vì đây là vector hướng, không phải toạ độ điểm)
 export function getTransformedPortDirection(portId, node) {
-  const port = getPorts(node.type).find((p) => p.id === portId);
+  const port = findPort(node.type, portId, node.data);     // trong getTransformedPortDirection
   const dir = port?.dir || PORT_OUT_DIRECTION[portId];
   if (!dir) return { x: 0, y: 0 };
   const rot = node.data.rot || 0;

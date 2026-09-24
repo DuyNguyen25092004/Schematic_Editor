@@ -11,7 +11,7 @@ export function snapPoint(p, nodes, wires = []) {
 
   // 1. Ưu tiên 1: Snap vào chân linh kiện (Ports)
   for (const n of nodes) {
-    for (const port of getPorts(n.type)) {
+    for (const port of getPorts(n.type, n.data)) {
       const tPort = getTransformedPort(port, n);
       const px = Math.round(n.position.x) + tPort.x;
       const py = Math.round(n.position.y) + tPort.y;
@@ -90,7 +90,7 @@ export function attachFreeEndpointsToPorts(wires, nodes, wireAttachIds = null) {
   const findPort = (p) => {
     let best = null, bestDist = SNAP_RADIUS;
     for (const n of nodes) {
-      for (const port of getPorts(n.type)) {
+      for (const port of getPorts(n.type, n.data)) {
         const tPort = getTransformedPort(port, n);
         const px = Math.round(n.position.x) + tPort.x;
         const py = Math.round(n.position.y) + tPort.y;

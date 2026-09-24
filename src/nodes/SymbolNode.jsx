@@ -1,21 +1,18 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 import { SYMBOLS } from '../symbols';
-import { getPorts, getSymbolBox } from '../constants';
+import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan } from '../constants';
 
-// Vị trí + phía của chữ (chưa xoay), toạ độ trong node 160x100. Loại nào không có mục = không hiện chữ.
+// (VDD tính riêng bên dưới vì vị trí nhãn phụ thuộc độ dài thanh)
 const LABELS = {
-  vdd:     { x: 50, y: 45, side: 'top' },
   opamp:   { x: 36, y: 16, side: 'top' },
   fdopamp: { x: 36, y: 16, side: 'top' },
 };
-
 const SIDE_VEC = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
 const vecToSide = ([x, y]) => (x > 0 ? 'right' : x < 0 ? 'left' : y > 0 ? 'bottom' : 'top');
 const dirToPosition = ({ x, y }) =>
   (x < 0 ? Position.Left : x > 0 ? Position.Right : y < 0 ? Position.Top : Position.Bottom);
 
-// Lật ngang rồi xoay quanh tâm (giống CSS `rotate() scaleX()` của node)
 function transformVec(dx, dy, flip, rot) {
   if (flip) dx = -dx;
   const a = ((rot % 360) + 360) % 360;
@@ -27,14 +24,23 @@ function transformVec(dx, dy, flip, rot) {
 
 export default function SymbolNode({ data, selected, type }) {
   const Symbol = SYMBOLS[type];
-  const ports = getPorts(type);
-  const box = getSymbolBox(type);
+  const ports = getPorts(type, data);
+  const box = getSymbolBox(type, data);
   const rot = data.rot || 0;
   const flip = data.flip || false;
   const transformStr = `rotate(${rot}deg) scaleX(${flip ? -1 : 1})`;
 
+  // VDD rail: thanh có thể kéo dài -> vùng vẽ và vị trí nhãn phụ thuộc data.len
+    // VDD rail: thanh có thể kéo dài -> vùng vẽ và vị trí nhãn phụ thuộc data.left / data.len
+  const isVdd = type === 'vdd';
+  const span = isVdd ? getVddSpan(data) : null;
+  const vddEnd = isVdd ? VDD_BAR.x0 + span.right * GRID : 0;
+  // Vùng vẽ SVG: mở rộng cả sang trái (x âm) lẫn phải khi thanh được kéo dài
+  const svgX0 = isVdd ? Math.min(0, VDD_BAR.x0 - span.left * GRID - 10) : 0;
+  const svgW = (isVdd ? Math.max(160, vddEnd + 20) : 160) - svgX0;
+
   let label = null;
-  const cfg = LABELS[type];
+  const cfg = isVdd ? { x: vddEnd + 8, y: VDD_BAR.y, side: 'right' } : LABELS[type];
   if (cfg) {
     const [rx, ry] = transformVec(cfg.x - 40, cfg.y - 50, flip, rot);
     const side = vecToSide(transformVec(...SIDE_VEC[cfg.side], flip, rot));
@@ -48,10 +54,13 @@ export default function SymbolNode({ data, selected, type }) {
   }[label.side];
   const isVerticalSide = label && (label.side === 'top' || label.side === 'bottom');
 
+  const ref = data.reference || '';
+  const isVddLabel = isVdd && /^V.+/.test(ref);
+
   return (
     <div style={{ position: 'relative', width: '160px', height: '100px', boxSizing: 'border-box' }}>
       <div style={{ width: '100%', height: '100%', transform: transformStr, transformOrigin: '40px 50px' }}>
-        {ports.map((p) => (
+        {!isVdd && ports.map((p) => (
           <Handle key={p.id} type="source" position={dirToPosition(p.dir)} id={p.id}
             style={{ left: `${p.x}px`, top: `${p.y}px`, transform: 'translate(-50%,-50%)', opacity: 0,
                      width: 20, height: 20, zIndex: 100, border: 'none' }} />
@@ -68,8 +77,17 @@ export default function SymbolNode({ data, selected, type }) {
           }} />
         )}
 
-        <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
-          <Symbol strokeWidth={2} />
+        {/* VDD: vùng bấm trong suốt phủ đúng thanh (thanh có thể dài hơn khung 160px) */}
+        {isVdd && (
+          <div style={{
+            position: 'absolute', left: `${box.x}px`, top: `${box.y}px`,
+            width: `${box.w}px`, height: `${box.h}px`, zIndex: 4,
+          }} />
+        )}
+
+        <svg width={svgW} height="100" viewBox={`${svgX0} 0 ${svgW} 100`}
+            style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none' }}>
+        <Symbol strokeWidth={2} data={data} />
         </svg>
       </div>
 
@@ -83,9 +101,16 @@ export default function SymbolNode({ data, selected, type }) {
           whiteSpace: 'nowrap', pointerEvents: 'none',
           fontFamily: 'sans-serif', lineHeight: 1.15,
         }}>
-          <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
-            {data.reference}
-          </div>
+          {isVddLabel ? (
+            <div style={{ fontWeight: 900, fontSize: '17px', lineHeight: 1 }}>
+              <span style={{ fontStyle: 'italic' }}>V</span>
+              <span style={{ fontSize: '12px', position: 'relative', top: '4px' }}>{ref.slice(1)}</span>
+            </div>
+          ) : (
+            <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
+              {data.reference}
+            </div>
+          )}
         </div>
       )}
     </div>

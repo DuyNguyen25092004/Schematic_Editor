@@ -5,8 +5,10 @@ import { getJunctionDots } from '../wires/wireOps';
 import { resolvePoints } from '../routing/resolveWire';
 import WireHandles from './WireHandles';
 import { orthoPath, pointsToPolyline, labelPlacement } from '../geometry/pathUtils';
+import VddHandles from './VddHandles';
 
-function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, selected, setSelected }) {  
+
+function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected }) {
   const { screenToFlowPosition } = useReactFlow();
   const [draft, setDraft] = useState(null);
   const [cursor, setCursor] = useState(null);
@@ -169,6 +171,14 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, sel
               />
             ) : null;
           })()}
+
+          {/* Tay nắm kéo dài thanh VDD đang được chọn */}
+          {!isWiringMode && !isBoxSelecting && nodes
+            .filter((n) => n.type === 'vdd' && (n.selected || (selected?.kind === 'node' && selected.id === n.id)))
+            .map((n) => (
+              <VddHandles key={n.id} node={n} wires={wires} setNodes={setNodes}
+                          screenToFlowPosition={screenToFlowPosition} />
+          ))}
 
           {/* 2. Dây đang vẽ phác (Draft) */}
           {draft && (

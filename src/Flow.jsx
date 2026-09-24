@@ -389,7 +389,7 @@ function Flow() {
           const hasSelection = nodes.some(n => n.selected) || wires.some(w => w.selected);
           if (hasSelection) setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0 }}
+        style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0, overflow: 'hidden' }}
       >
         {contextMenu && (
           <div
@@ -502,15 +502,15 @@ function Flow() {
         </ReactFlow>
 
         <div style={{ pointerEvents: isWiringMode ? 'auto' : 'none' }}>
-            <WiringLayer 
-                isWiringMode={isWiringMode} 
-                isBoxSelecting={isBoxSelecting}   
-                nodes={nodes} 
-                wires={wires} 
-                setWires={setWires} 
-                selected={selected} 
-                setSelected={setSelected} 
-
+            <WiringLayer
+                isWiringMode={isWiringMode}
+                isBoxSelecting={isBoxSelecting}
+                nodes={nodes}
+                wires={wires}
+                setWires={setWires}
+                setNodes={setNodes}
+                selected={selected}
+                setSelected={setSelected}
             />
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} />
