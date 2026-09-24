@@ -12,7 +12,7 @@ const {
     setMoveGroup, setCopyGroup, setCursorNodeId,
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
-    screenToFlowPosition, fitView, deleteSelected,
+    screenToFlowPosition, fitView, deleteSelected, undo,
 } = ctx;
  useEffect(() => {
     const handleKeyDown = (e) => {
@@ -21,6 +21,15 @@ const {
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey) {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 300 });
+        return;
+      }
+      
+      // Phím U (hoặc Ctrl+Z): hoàn tác. Không chạy khi đang di chuyển/sao chép dở.
+      if (((e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+          ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !e.shiftKey)) {
+        e.preventDefault();
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId) return;
+        undo?.(() => setSelected(null));
         return;
       }
 
@@ -383,5 +392,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo]);
 }

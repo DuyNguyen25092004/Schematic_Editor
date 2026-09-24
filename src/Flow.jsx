@@ -31,7 +31,7 @@ import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import GroupPanel from './cloud/GroupPanel';
-
+import { useUndo } from './hooks/useUndo';
 
 const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
 
@@ -86,9 +86,12 @@ function Flow() {
   const startNewCircuitRoom = useCallback(() => {
     setCircuitIdState(newCircuitId());
   }, []);
+    // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
+  const { undo, remoteSetNodes, remoteSetWiresRaw } = useUndo({ nodes, wires, setNodes, setWiresRaw, circuitId });
+
   useCircuitSync({
     circuitId: circuitId,
-    nodes, wires, setNodes, setWiresRaw,
+    nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
   });
@@ -322,7 +325,7 @@ function Flow() {
     setMoveGroup, setCopyGroup, setCursorNodeId,
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
-    screenToFlowPosition, fitView, deleteSelected,
+    screenToFlowPosition, fitView, deleteSelected, undo,
   });
  
  useEffect(() => {
