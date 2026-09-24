@@ -6,6 +6,9 @@ import mockData from './data/mockData.json';
 import CloudPanel from './cloud/CloudPanel';
 import NmosNode from './nodes/NmosNode';
 import PmosNode from './nodes/PmosNode';
+import NpnNode from './nodes/NpnNode';
+import TwoTerminalNode from './nodes/TwoTerminalNode';
+import SymbolNode from './nodes/SymbolNode';
 
 import { useCircuitSync } from './realtime/useCircuitSync';
 import { getCircuitId, setCircuitId as persistCircuitId, newCircuitId } from './realtime/circuitId';
@@ -30,9 +33,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import GroupPanel from './cloud/GroupPanel';
 
 
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode };
-
-
+const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id,

@@ -1,0 +1,80 @@
+import React from 'react';
+import { Handle, Position } from 'reactflow';
+import { SYMBOLS } from '../symbols';
+import { getSymbolBox } from '../constants';
+
+// Ký hiệu nằm dọc tại x=50, xoay quanh tâm (40,50).
+// Label cách tâm xoay OFFSET đơn vị về bên phải (chưa xoay), rồi xoay/lật theo node.
+const OFFSET = 26;
+function getLabelAnchor(rot, flip) {
+  const cx = 40, cy = 50;
+  const dx = flip ? -OFFSET : OFFSET;
+  const angle = ((rot % 360) + 360) % 360;
+  let rx = dx, ry = 0;
+  if (angle === 90) { rx = 0; ry = dx; }
+  else if (angle === 180) { rx = -dx; ry = 0; }
+  else if (angle === 270) { rx = 0; ry = -dx; }
+  const side = rx !== 0 ? (rx > 0 ? 'right' : 'left') : (ry > 0 ? 'bottom' : 'top');
+  return { x: cx + rx, y: cy + ry, side };
+}
+
+const handleStyle = (left, top) => ({
+  left, top, transform: 'translate(-50%,-50%)', opacity: 0,
+  width: 20, height: 20, zIndex: 100, border: 'none',
+});
+
+export default function TwoTerminalNode({ data, selected, type }) {
+  const Symbol = SYMBOLS[type];
+  const box = getSymbolBox(type);
+  const rot = data.rot || 0;
+  const flip = data.flip || false;
+  const transformStr = `rotate(${rot}deg) scaleX(${flip ? -1 : 1})`;
+  const anchor = getLabelAnchor(rot, flip);
+
+  const labelTransform = {
+    right:  'translate(0, -50%)',
+    left:   'translate(-100%, -50%)',
+    top:    'translate(-50%, -100%)',
+    bottom: 'translate(-50%, 0)',
+  }[anchor.side];
+  const isVerticalSide = anchor.side === 'top' || anchor.side === 'bottom';
+
+  return (
+    <div style={{ position: 'relative', width: '160px', height: '100px', boxSizing: 'border-box' }}>
+      <div style={{ width: '100%', height: '100%', transform: transformStr, transformOrigin: '40px 50px' }}>
+        <Handle type="target" position={Position.Top} id="p1" style={handleStyle('50px', '30px')} />
+        <Handle type="source" position={Position.Bottom} id="p2" style={handleStyle('50px', '70px')} />
+
+        {selected && (
+          <div style={{
+            position: 'absolute',
+            left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`,
+            border: '2px solid #1677ff', borderRadius: '3px',
+            background: 'rgba(22, 119, 255, 0.08)',
+            boxShadow: '0 0 0 3px rgba(22, 119, 255, 0.15)',
+            pointerEvents: 'none', zIndex: 5,
+          }} />
+        )}
+
+        <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
+          <Symbol strokeWidth={2} />
+        </svg>
+      </div>
+
+      <div style={{
+        position: 'absolute',
+        left: `${anchor.x}px`, top: `${anchor.y}px`,
+        transform: labelTransform,
+        display: 'flex', flexDirection: 'column',
+        alignItems: isVerticalSide ? 'center' : (anchor.side === 'left' ? 'flex-end' : 'flex-start'),
+        whiteSpace: 'nowrap', pointerEvents: 'none',
+        fontFamily: 'sans-serif', lineHeight: 1.15,
+      }}>
+        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
+          {data.reference}
+        </div>
+        {data.value && <div style={{ fontSize: '10px', color: '#555' }}>{data.value}</div>}
+      </div>
+    </div>
+  );
+}

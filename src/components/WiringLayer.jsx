@@ -4,7 +4,7 @@ import { snapPoint } from '../wires/snap';
 import { getJunctionDots } from '../wires/wireOps';
 import { resolvePoints } from '../routing/resolveWire';
 import WireHandles from './WireHandles';
-import { orthoPath, pointsToPolyline, midOfPolyline } from '../geometry/pathUtils';
+import { orthoPath, pointsToPolyline, labelPlacement } from '../geometry/pathUtils';
 
 function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, selected, setSelected }) {  
   const { screenToFlowPosition } = useReactFlow();
@@ -103,7 +103,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, sel
               const pts = pointsToPolyline(rp);
               const isSel = w.selected || (selected?.kind === 'wire' && selected.id === w.id);
               const wireColor = w.color || '#000';
-              const mid = w.name ? midOfPolyline(rp) : null;
+              const mid = w.name ? labelPlacement(rp) : null;
               return (
                 <g key={w.id}>
                   <polyline
@@ -136,8 +136,10 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, sel
                   />
                   {mid && (
                     <text
-                      x={mid.x} y={mid.y - 4}
+                      x={0} y={-5}
+                      transform={`translate(${mid.x} ${mid.y}) rotate(${mid.angle})`}
                       textAnchor="middle" fontSize={11} fontFamily="sans-serif"
+                      fontWeight={700}
                       fill={isSel ? '#1677ff' : wireColor}
                       pointerEvents="none"
                       style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}

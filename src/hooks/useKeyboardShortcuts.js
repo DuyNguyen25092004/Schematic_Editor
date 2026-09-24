@@ -27,6 +27,22 @@ const {
       const activeNodes = nodes.filter((n) => n.selected);
       const activeWires = wires.filter((w) => w.selected);
       
+      // Phím L: đặt tên cho dây đang chọn
+      if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId) return;
+        const wireId = selected?.kind === 'wire' ? selected.id
+          : (activeWires.length === 1 ? activeWires[0].id : null);
+        if (wireId) {
+          e.preventDefault(); // tránh ký tự 'l' bị gõ vào ô vừa focus
+          if (selected?.kind !== 'wire') setSelected({ kind: 'wire', id: wireId });
+          setTimeout(() => {
+            const el = document.getElementById('wire-name-input');
+            if (el) { el.focus(); el.select(); }
+          }, 0);
+          return;
+        }
+      }
+      
       if (e.key === 'r' || e.key === 'R') {
         if (e.repeat) return;
         const targetIds = moveGroup ? moveGroup.items.map((i) => i.id)
@@ -299,7 +315,7 @@ const {
             return {
               ...n,
               id: newId,
-              data: { ...n.data, reference: newId },
+              data: { ...n.data, reference: n.type === 'vdd' ? n.data.reference : newId },
               position: { ...n.position },
               selected: false,
             };
@@ -331,7 +347,7 @@ const {
               }
               return { ...p };
             });
-            return { id: wireIdMap.get(w.id), points, net: w.net, selected: false };
+            return { id: wireIdMap.get(w.id), points, net: w.net, name: w.name, color: w.color, selected: false };
           });
 
           setNodes((ns) => [...ns, ...newNodes]);

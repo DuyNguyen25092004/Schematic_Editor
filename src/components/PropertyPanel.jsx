@@ -1,4 +1,18 @@
 
+const WIRE_COLORS = [
+  { name: 'Mặc định', value: undefined },
+  { name: 'Đỏ', value: '#e53935' },
+  { name: 'Cam', value: '#fb8c00' },
+  { name: 'Vàng', value: '#fdd835' },
+  { name: 'Xanh lá', value: '#43a047' },
+  { name: 'Xanh ngọc', value: '#00acc1' },
+  { name: 'Xanh dương', value: '#1e63e9' },
+  { name: 'Tím', value: '#8e24aa' },
+  { name: 'Hồng', value: '#ec407a' },
+  { name: 'Nâu', value: '#6d4c41' },
+  { name: 'Xám', value: '#757575' },
+];
+
 function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete }) {
   if (!selected) return null;
 
@@ -21,18 +35,38 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
       setNodes((ns) => ns.map((n) =>
         n.id === node.id ? { ...n, data: { ...n.data, [key]: value } } : n));
 
+    const isMos = node.type === 'nmos' || node.type === 'pmos';
+    const title = { nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP', res: 'Res', cap: 'Cap', vdd: 'VDD rail', gnd: 'Ground', opamp: 'Opamp', fdopamp: 'FD opamp' }[node.type] || String(node.type).toUpperCase();
+    const hasValue = node.type === 'res' || node.type === 'cap';
     return (
       <div style={box}>
-        <div style={{ fontWeight: 700, marginBottom: 10 }}>MOSFET — {node.data.reference}</div>
-        <label style={label}>Reference</label>
-        <input style={input} value={node.data.reference}
-               onChange={(e) => patch('reference', e.target.value)} />
-        <label style={label}>W</label>
-        <input style={input} value={node.data.w || ''}
-               onChange={(e) => patch('w', e.target.value)} />
-        <label style={label}>L</label>
-        <input style={input} value={node.data.l || ''}
-               onChange={(e) => patch('l', e.target.value)} />
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>{title} — {node.data.reference}</div>
+        
+        {node.type !== 'gnd' && (
+          <>
+            <label style={label}>Reference</label>
+            <input style={input} value={node.data.reference}
+                  onChange={(e) => patch('reference', e.target.value)} />
+          </>
+        )}
+
+        {hasValue && (
+          <>
+            <label style={label}>Giá trị</label>
+            <input style={input} value={node.data.value || ''}
+                  onChange={(e) => patch('value', e.target.value)} />
+          </>
+        )}
+        {isMos && (
+          <>
+            <label style={label}>W</label>
+            <input style={input} value={node.data.w || ''}
+                  onChange={(e) => patch('w', e.target.value)} />
+            <label style={label}>L</label>
+            <input style={input} value={node.data.l || ''}
+                  onChange={(e) => patch('l', e.target.value)} />
+          </>
+        )}
         <button style={btn} onClick={onDelete}>Xóa linh kiện</button>
       </div>
     );
@@ -47,26 +81,36 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Dây nối</div>
       <label style={label}>Tên dây</label>
-      <input style={input} value={wire.name || ''}
-            placeholder="(chưa đặt tên)"
-            onChange={(e) => setWires((ws) => ws.map((w) =>
-              w.id === wire.id ? { ...w, name: e.target.value } : w))} />
+      <input id="wire-name-input" style={input} value={wire.name || ''}
+        placeholder="(chưa đặt tên) — phím L"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.target.blur(); }
+        }}
+        onChange={(e) => setWires((ws) => ws.map((w) =>
+        w.id === wire.id ? { ...w, name: e.target.value } : w))} />
       <label style={label}>Màu dây</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <input
-          type="color"
-          style={{ width: 36, height: 28, padding: 0, border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}
-          value={wire.color || '#000000'}
-          onChange={(e) => setWires((ws) => ws.map((w) =>
-            w.id === wire.id ? { ...w, color: e.target.value } : w))} />
-        <button
-          type="button"
-          style={{ fontSize: 12, background: 'none', border: '1px solid #ccc', borderRadius: 4, padding: '3px 8px', cursor: 'pointer' }}
-          onClick={() => setWires((ws) => ws.map((w) =>
-            w.id === wire.id ? { ...w, color: undefined } : w))}
-        >
-          Mặc định
-        </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {WIRE_COLORS.map((c) => {
+          const active = (wire.color || undefined) === c.value;
+          const isDefault = c.value === undefined;
+          return (
+            <button
+              key={c.name}
+              type="button"
+              title={c.name}
+              onClick={() => setWires((ws) => ws.map((w) =>
+                w.id === wire.id ? { ...w, color: c.value } : w))}
+              style={{
+                width: 24, height: 24, padding: 0, cursor: 'pointer', borderRadius: '50%',
+                background: isDefault
+                  ? 'linear-gradient(135deg, #fff 46%, #000 46%, #000 54%, #fff 54%)'
+                  : c.value,
+                border: active ? '2px solid #1677ff' : '1px solid #bbb',
+                boxShadow: active ? '0 0 0 2px rgba(22,119,255,.25)' : 'none',
+              }}
+            />
+          );
+        })}
       </div>
       <div style={{ color: '#666', marginBottom: 10 }}>
         {fmt(ends[0])} → {fmt(ends[1])}

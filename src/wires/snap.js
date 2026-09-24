@@ -1,4 +1,4 @@
-import { GRID, SNAP_RADIUS, MID_WIRE_SNAP_RADIUS, PORTS } from '../constants';
+import { GRID, SNAP_RADIUS, MID_WIRE_SNAP_RADIUS, getPorts } from '../constants';
 import { toGridUnit } from '../geometry/grid';
 import { getTransformedPort } from '../geometry/ports';
 import { resolvePoints, resolveWire } from '../routing/resolveWire';
@@ -11,7 +11,7 @@ export function snapPoint(p, nodes, wires = []) {
 
   // 1. Ưu tiên 1: Snap vào chân linh kiện (Ports)
   for (const n of nodes) {
-    for (const port of PORTS) {
+    for (const port of getPorts(n.type)) {
       const tPort = getTransformedPort(port, n);
       const px = Math.round(n.position.x) + tPort.x;
       const py = Math.round(n.position.y) + tPort.y;
@@ -90,7 +90,7 @@ export function attachFreeEndpointsToPorts(wires, nodes, wireAttachIds = null) {
   const findPort = (p) => {
     let best = null, bestDist = SNAP_RADIUS;
     for (const n of nodes) {
-      for (const port of PORTS) {
+      for (const port of getPorts(n.type)) {
         const tPort = getTransformedPort(port, n);
         const px = Math.round(n.position.x) + tPort.x;
         const py = Math.round(n.position.y) + tPort.y;
