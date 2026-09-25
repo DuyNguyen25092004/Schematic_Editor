@@ -144,3 +144,21 @@ export function midOfPolyline(pts) {
   }
   return pts[Math.floor(pts.length / 2)];
 }
+
+// Vị trí + góc xoay để đặt nhãn tên dây SONG SONG với dây:
+// chọn đoạn dài nhất, lấy trung điểm, góc theo hướng đoạn (luôn giữ chữ không bị ngược).
+export function labelPlacement(pts) {
+  if (!pts || pts.length === 0) return { x: 0, y: 0, angle: 0 };
+  if (pts.length === 1) return { x: pts[0].x, y: pts[0].y, angle: 0 };
+  let best = 0, bestLen = -1;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    if (d > bestLen) { bestLen = d; best = i; }
+  }
+  const a = pts[best], b = pts[best + 1];
+  let angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  // đưa về khoảng [-90, 90): ngang -> 0°, dọc -> -90° (đọc từ dưới lên)
+  if (angle >= 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, angle };
+}

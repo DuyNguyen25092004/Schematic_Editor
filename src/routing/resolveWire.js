@@ -1,4 +1,4 @@
-import { GRID, PORTS } from '../constants';
+import { GRID, findPort } from '../constants';   // thay getPorts bằng findPort
 import { toGridUnit } from '../geometry/grid';
 import { getTransformedPort, getTransformedPortDirection } from '../geometry/ports';
 import { projectOnPath, orthogonalize, simplifyMiddle, removeSpikes } from '../geometry/pathUtils';
@@ -15,7 +15,7 @@ export function resolveWire(pts, nodes, allWires = [], depth = 0, selfId = null,
   const atNode = (p) => {
     if (!p.nodeId) return null;
     const n = nodes.find((n) => n.id === p.nodeId);
-    const port = PORTS.find((pt) => pt.id === p.portId);
+    const port = n && findPort(n.type, p.portId, n.data);
     if (!n || !port) return null;
     const tPort = getTransformedPort(port, n);
     return {

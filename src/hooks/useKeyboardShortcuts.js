@@ -12,7 +12,7 @@ const {
     setMoveGroup, setCopyGroup, setCursorNodeId,
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
-    screenToFlowPosition, fitView, deleteSelected,
+    screenToFlowPosition, fitView, deleteSelected, undo,
 } = ctx;
  useEffect(() => {
     const handleKeyDown = (e) => {
@@ -23,9 +23,34 @@ const {
         fitView({ padding: 0.2, duration: 300 });
         return;
       }
+      
+      // Phím U (hoặc Ctrl+Z): hoàn tác. Không chạy khi đang di chuyển/sao chép dở.
+      if (((e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+          ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !e.shiftKey)) {
+        e.preventDefault();
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId) return;
+        undo?.(() => setSelected(null));
+        return;
+      }
 
       const activeNodes = nodes.filter((n) => n.selected);
       const activeWires = wires.filter((w) => w.selected);
+      
+      // Phím L: đặt tên cho dây đang chọn
+      if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId) return;
+        const wireId = selected?.kind === 'wire' ? selected.id
+          : (activeWires.length === 1 ? activeWires[0].id : null);
+        if (wireId) {
+          e.preventDefault(); // tránh ký tự 'l' bị gõ vào ô vừa focus
+          if (selected?.kind !== 'wire') setSelected({ kind: 'wire', id: wireId });
+          setTimeout(() => {
+            const el = document.getElementById('wire-name-input');
+            if (el) { el.focus(); el.select(); }
+          }, 0);
+          return;
+        }
+      }
       
       if (e.key === 'r' || e.key === 'R') {
         if (e.repeat) return;
@@ -299,7 +324,7 @@ const {
             return {
               ...n,
               id: newId,
-              data: { ...n.data, reference: newId },
+              data: { ...n.data, reference: n.type === 'vdd' ? n.data.reference : newId },
               position: { ...n.position },
               selected: false,
             };
@@ -331,7 +356,7 @@ const {
               }
               return { ...p };
             });
-            return { id: wireIdMap.get(w.id), points, net: w.net, selected: false };
+            return { id: wireIdMap.get(w.id), points, net: w.net, name: w.name, color: w.color, selected: false };
           });
 
           setNodes((ns) => [...ns, ...newNodes]);
@@ -367,5 +392,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo]);
 }

@@ -6,6 +6,9 @@ import mockData from './data/mockData.json';
 import CloudPanel from './cloud/CloudPanel';
 import NmosNode from './nodes/NmosNode';
 import PmosNode from './nodes/PmosNode';
+import NpnNode from './nodes/NpnNode';
+import TwoTerminalNode from './nodes/TwoTerminalNode';
+import SymbolNode from './nodes/SymbolNode';
 
 import { useCircuitSync } from './realtime/useCircuitSync';
 import { getCircuitId, setCircuitId as persistCircuitId, newCircuitId } from './realtime/circuitId';
@@ -28,11 +31,9 @@ import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import GroupPanel from './cloud/GroupPanel';
+import { useUndo } from './hooks/useUndo';
 
-
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode };
-
-
+const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id,
@@ -85,9 +86,12 @@ function Flow() {
   const startNewCircuitRoom = useCallback(() => {
     setCircuitIdState(newCircuitId());
   }, []);
+    // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
+  const { undo, remoteSetNodes, remoteSetWiresRaw } = useUndo({ nodes, wires, setNodes, setWiresRaw, circuitId });
+
   useCircuitSync({
     circuitId: circuitId,
-    nodes, wires, setNodes, setWiresRaw,
+    nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
   });
@@ -321,7 +325,7 @@ function Flow() {
     setMoveGroup, setCopyGroup, setCursorNodeId,
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
-    screenToFlowPosition, fitView, deleteSelected,
+    screenToFlowPosition, fitView, deleteSelected, undo,
   });
  
  useEffect(() => {
@@ -388,7 +392,7 @@ function Flow() {
           const hasSelection = nodes.some(n => n.selected) || wires.some(w => w.selected);
           if (hasSelection) setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0 }}
+        style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0, overflow: 'hidden' }}
       >
         {contextMenu && (
           <div
@@ -501,15 +505,15 @@ function Flow() {
         </ReactFlow>
 
         <div style={{ pointerEvents: isWiringMode ? 'auto' : 'none' }}>
-            <WiringLayer 
-                isWiringMode={isWiringMode} 
-                isBoxSelecting={isBoxSelecting}   
-                nodes={nodes} 
-                wires={wires} 
-                setWires={setWires} 
-                selected={selected} 
-                setSelected={setSelected} 
-
+            <WiringLayer
+                isWiringMode={isWiringMode}
+                isBoxSelecting={isBoxSelecting}
+                nodes={nodes}
+                wires={wires}
+                setWires={setWires}
+                setNodes={setNodes}
+                selected={selected}
+                setSelected={setSelected}
             />
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} />
