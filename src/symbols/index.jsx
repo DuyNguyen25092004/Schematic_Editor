@@ -93,6 +93,18 @@ export function VddSymbol({ strokeWidth = 2, data }) {
   );
 }
 
+export function RectSymbol({ data }) {
+  const color = data?.color || '#1677ff';
+  const isNone = color === 'transparent';
+  const opacity = data?.opacity ?? 1;
+  const strokeColor = isNone ? '#555' : color;
+  return (
+    <rect x="6" y="6" width="148" height="88" rx="4"
+          fill={isNone ? 'transparent' : color} fillOpacity={isNone ? 1 : opacity}
+          stroke={strokeColor} strokeWidth="2" />
+  );
+}
+
 export function GroundSymbol({ strokeWidth = 2 }) {
   const plate = strokeWidth * 2;
   return (
@@ -165,13 +177,14 @@ export const SYMBOLS = {
   gnd: GroundSymbol,
   opamp: OpampSymbol,
   fdopamp: FdOpampSymbol,
+  rect: RectSymbol,
 };
 
 // Icon nhỏ trong sidebar / menu nhanh — CHỈ để hiển thị, không dùng làm ảnh kéo.
 // Cắt viewBox theo hộp bao của ký hiệu để icon lấp đầy khung, nét vẽ giữ ~1.8px dù phóng to/thu nhỏ.
-export function MiniIcon({ type, width = 28, height = 20 }) {
+export function MiniIcon({ type, width = 28, height = 20, data }) {
   const Symbol = SYMBOLS[type] || NmosSymbol;
-  const box = getSymbolBox(type);
+  const box = getSymbolBox(type, data);
   const pad = 6;
   const vbX = box.x - pad, vbY = box.y - pad, vbW = box.w + pad * 2, vbH = box.h + pad * 2;
   const scale = Math.min(width / vbW, height / vbH);
@@ -181,21 +194,21 @@ export function MiniIcon({ type, width = 28, height = 20 }) {
       width={width} height={height} viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
       style={{ width, height, flexShrink: 0, display: 'block' }}
     >
-      <Symbol strokeWidth={sw} />
+      <Symbol strokeWidth={sw} data={data} />
     </svg>
   );
 }
 
 // Ghost icon full-size DÙNG CHUNG cho mọi symbol — luôn ép width/height bằng inline style
 // để không bị bất kỳ CSS global nào (của ReactFlow hay thư viện khác) đè kích thước.
-export function GhostIcon({ type }) {
+export function GhostIcon({ type, data }) {
   const Symbol = SYMBOLS[type] || NmosSymbol;
   return (
     <svg
       viewBox="0 0 160 100"
       style={{ width: 160, height: 100, display: 'block' }}
     >
-      <Symbol strokeWidth={2} />
+      <Symbol strokeWidth={2} data={data} />
     </svg>
   );
 }
