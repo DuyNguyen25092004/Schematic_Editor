@@ -31,6 +31,8 @@ import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import GroupPanel from './cloud/GroupPanel';
+import GroupTabBar from './components/GroupTabBar';
+import { useGroups } from './cloud/useGroups';
 import { useUndo } from './hooks/useUndo';
 
 const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
@@ -78,6 +80,7 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
+  const groupsState = useGroups();
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
@@ -380,7 +383,8 @@ function Flow() {
   }, []);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
       <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
 
       <div 
@@ -528,6 +532,13 @@ function Flow() {
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWiresRaw}
             onOpenRoom={switchCircuitRoom}
             onNewRoom={startNewCircuitRoom}
+            logged={groupsState.logged}
+            email={groupsState.email}
+            login={groupsState.login}
+            logout={groupsState.logout}
+            group={groupsState.group}
+            groupId={groupsState.groupId}
+            myRole={groupsState.myRole}
           />
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
@@ -557,6 +568,17 @@ function Flow() {
           </div>
         )}
       </div>
+    </div>
+
+      <GroupTabBar
+        logged={groupsState.logged}
+        email={groupsState.email}
+        myGroups={groupsState.myGroups}
+        groupId={groupsState.groupId}
+        onSelect={groupsState.openGroup}
+        onCreate={groupsState.handleCreateGroup}
+        onLogin={groupsState.login}
+      />
     </div>
   );
 }

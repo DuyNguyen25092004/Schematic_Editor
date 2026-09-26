@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { driveLogin, driveLogout, driveGetEmail, driveListFolder, driveSave, driveLoad, isLoggedIn } from './driveStorage';
-import { createGroup, getGroup, inviteMember, roleOf, findMyGroups } from './groupStorage';
+import { driveListFolder, driveSave, driveLoad } from './driveStorage';
+import { inviteMember } from './groupStorage';
 
 const box = {
   width: 300, // vị trí do khung chung trong App.jsx quyết định
@@ -12,30 +12,18 @@ const box = {
 const input = { width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 6 };
 const btn = { padding: '6px 10px', marginRight: 6, marginBottom: 6, cursor: 'pointer' };
 
-// Giữ lại ?c= (phòng realtime) khi đổi ?g= trên URL
-const urlKeepingRoom = (query = '') => {
-  const p = new URLSearchParams(query);
-  const c = new URLSearchParams(window.location.search).get('c');
-  if (c) p.set('c', c);
-  const qs = p.toString();
-  return window.location.pathname + (qs ? `?${qs}` : '');
-};
 
-export default function GroupPanel({ nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom }) {
+
+export default function GroupPanel({
+  nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
+  logged, email, login, logout, group, groupId, myRole,
+}) {
   const [open, setOpen] = useState(false);
-  const [logged, setLogged] = useState(isLoggedIn());
-  const [email, setEmail] = useState(null);
-
-  const [groupId, setGroupId] = useState(new URLSearchParams(window.location.search).get('g'));
-  const [group, setGroup] = useState(null);
-  const [myRole, setMyRole] = useState(null);
-  const [myGroups, setMyGroups] = useState(null); // null = chưa tải, [] = không có group nào
 
   const [files, setFiles] = useState([]);
   const [currentFileId, setCurrentFileId] = useState(null);
   const [fileName, setFileName] = useState('So do moi');
 
-  const [newGroupName, setNewGroupName] = useState('Nhom moi');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('edit');
 
@@ -49,53 +37,12 @@ export default function GroupPanel({ nodes, wires, setNodes, setWires, onOpenRoo
     setBusy(false);
   };
 
-  // Đăng nhập Drive + lấy email
-  const login = () => run(async () => {
-    await driveLogin();
-    setLogged(true);
-    const em = await driveGetEmail();
-    setEmail(em);
-  });
-  const logout = () => {
-    driveLogout(); setLogged(false); setEmail(null);
-    setGroup(null); setMyGroups(null); setGroupId(null);
-    window.history.pushState({}, '', urlKeepingRoom());
-  };
-
-  // Sau khi có email: nếu URL có ?g=, mở đúng group đó; nếu không, liệt kê TẤT CẢ group của email này
+  // Group đổi (chọn từ tab bar dưới cùng) -> tải lại danh sách file, reset file đang mở
   useEffect(() => {
-    if (!logged || !email) return;
-    run(async () => {
-      if (groupId) {
-        const g = await getGroup(groupId);
-        if (!g) { setMsg('Không tìm thấy group này.'); return; }
-        const role = roleOf(g, email);
-        if (!role) { setMsg('Bạn chưa được mời vào group này.'); return; }
-        setGroup(g); setMyRole(role);
-        const list = await driveListFolder(g.folderId);
-        setFiles(list);
-      } else {
-        const groups = await findMyGroups(email);
-        setMyGroups(groups);
-      }
-    });
-  }, [logged, email, groupId]);
-
-  const openGroup = (g) => {
-    setGroupId(g.id);
-    window.history.pushState({}, '', urlKeepingRoom(`g=${g.id}`));
-  };
-
-  const backToMyGroups = () => {
-    setGroup(null); setGroupId(null); setFiles([]); setCurrentFileId(null);
-    window.history.pushState({}, '', urlKeepingRoom());
-    run(async () => setMyGroups(await findMyGroups(email)));
-  };
-
-  const handleCreateGroup = () => run(async () => {
-    const id = await createGroup(newGroupName, email);
-    openGroup({ id });
-  });
+    setFiles([]); setCurrentFileId(null);
+    if (!group) return;
+    run(async () => setFiles(await driveListFolder(group.folderId)));
+  }, [group?.id]);
 
   const handleInvite = () => run(async () => {
     if (!inviteEmail) return;
@@ -152,36 +99,19 @@ export default function GroupPanel({ nodes, wires, setNodes, setWires, onOpenRoo
         <button style={btn} disabled={busy} onClick={login}>Đăng nhập Google</button>
       )}
 
-      {logged && !group && (
+      {logged && (
         <div style={{ marginBottom: 8 }}>Đăng nhập: {email}</div>
       )}
 
-      {/* Chưa mở group nào -> hiện danh sách group của chính người này, tự tra theo email */}
       {logged && !group && (
-        <>
-          <div style={{ margin: '8px 0', fontWeight: 'bold' }}>Group của bạn:</div>
-          {myGroups === null && <div>Đang tải...</div>}
-          {myGroups?.length === 0 && <div style={{ color: '#888' }}>Bạn chưa thuộc group nào.</div>}
-          {myGroups?.map((g) => (
-            <div key={g.id} style={{ padding: '4px 0', borderTop: '1px solid #eee', cursor: 'pointer' }}
-              onClick={() => openGroup(g)}>
-              {g.name} <span style={{ color: '#888' }}>({roleOf(g, email)})</span>
-            </div>
-          ))}
-
-          <div style={{ marginTop: 12, borderTop: '1px solid #eee', paddingTop: 8 }}>
-            <input style={input} value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="Tên group mới" />
-            <button style={btn} disabled={busy} onClick={handleCreateGroup}>Tạo Group mới</button>
-          </div>
-        </>
+        <div style={{ color: '#888' }}>
+          Chưa chọn group nào — chọn hoặc tạo group ở thanh tab phía dưới màn hình.
+        </div>
       )}
 
       {/* Đã mở đúng 1 group */}
       {logged && group && myRole && (
         <>
-          <div style={{ marginBottom: 4 }}>
-            <span style={{ cursor: 'pointer', color: '#06c' }} onClick={backToMyGroups}>← Group của tôi</span>
-          </div>
           <div style={{ marginBottom: 8 }}>
             Group: <b>{group.name}</b> — quyền của bạn: <b>{myRole}</b>
           </div>
