@@ -25,7 +25,7 @@ import ComponentPalette from './components/ComponentPalette';
 import QuickAddMenu from './components/QuickAddMenu';
 import WiringLayer from './components/WiringLayer';
 import PresenceLayer from './components/PresenceLayer';
-import RoomBar from './components/RoomBar';
+
 import OnlineUsers from './components/OnlineUsers';
 import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
@@ -439,25 +439,7 @@ function Flow() {
           </div>
         )}
         
-        <div 
-          id="ui-overlay" 
-          style={{
-            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
-            background: (isWiringMode || isMoveMode || isCopyMode) ? '#ff4d4f' : '#fff', 
-            color: (isWiringMode || isMoveMode || isCopyMode) ? '#fff' : '#000',
-            padding: '8px 16px', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: 13, whiteSpace: 'nowrap'
-          }}>
-          {isWiringMode && 'Đang NỐI DÂY (W) — Click để vẽ, đúp click kết thúc'}
-          {isMoveMode && (moveGroup ? `Đang DI CHUYỂN ${moveGroup.items.length} linh kiện — R xoay, Ctrl+R lật. Click thả` : 'Chế độ MOVE (M) — Click 1 linh kiện để nhấc lên')}
-          {isCopyMode && (copyGroup
-            ? `Đang SAO CHÉP ${copyGroup.items.length} linh kiện — R xoay, Ctrl+R lật. Click thả`
-            : (cursorNodeId
-                ? 'Đang SAO CHÉP — R xoay, Ctrl+R lật. Click thả'
-                : 'Chế độ COPY (C) — Click 1 linh kiện, hoặc bôi đen 1 khối rồi bấm C'))}
-          {placingType && `Đang đặt ${placingType.label} (I) — Click thả, Esc hủy`}
-          {!isWiringMode && !isMoveMode && !isCopyMode && !placingType && 'Chế độ: BÌNH THƯỜNG (Sẵn sàng chọn)'}
-        </div>
+
 
         <ReactFlow
           nodes={nodes}
@@ -542,7 +524,7 @@ function Flow() {
 
         <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
         <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-        <RoomBar circuitId={circuitId} />
+
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <GroupPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWiresRaw}
