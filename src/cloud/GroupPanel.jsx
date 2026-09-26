@@ -16,7 +16,7 @@ const btn = { padding: '6px 10px', marginRight: 6, marginBottom: 6, cursor: 'poi
 // Việc chọn / tạo group đã chuyển sang GroupTabBar (thanh tab dưới cùng).
 export default function GroupPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
-  logged, email, login, logout, group, groupId, myRole, onResizeRect,
+  logged, email, login, logout, group, groupId, myRole, onResizeRect,onTextChangeRect,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export default function GroupPanel({
     setNodes((data.nodes || []).map((n) => ({
       ...n,
       // rect: khôi phục đúng kích thước đã lưu + gắn lại callback resize
-      data: n.type === 'rect' ? { ...n.data, onResize: onResizeRect } : n.data,
+      data: n.type === 'rect' ? { ...n.data, onResize: onResizeRect, onTextChange: onTextChangeRect } : n.data,
       style: { width: n.data?.width || 160, height: n.data?.height || 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
     })));
     setWires(data.wires || []);

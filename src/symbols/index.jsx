@@ -95,13 +95,17 @@ export function VddSymbol({ strokeWidth = 2, data }) {
 
 // Hình chữ nhật đơn giản (không chân nối) — màu nền và độ trong suốt chỉnh
 // được qua PropertyPanel: data.color (mã hex) và data.opacity (0..1).
+// Hình chữ nhật đơn giản (không chân nối) — màu nền và độ trong suốt chỉnh
+// được qua PropertyPanel: data.color (mã hex) và data.opacity (0..1).
 export function RectSymbol({ data }) {
   const color = data?.color || '#1677ff';
+  const isNone = color === 'transparent';           // "Không màu" -> vẫn phải còn viền
   const opacity = data?.opacity ?? 1;
+  const strokeColor = isNone ? '#555' : color;       // viền xám cố định khi không tô nền
   return (
     <rect x="6" y="6" width="148" height="88" rx="4"
-          fill={color} fillOpacity={opacity}
-          stroke={color} strokeWidth="2" />
+          fill={isNone ? 'transparent' : color} fillOpacity={isNone ? 1 : opacity}
+          stroke={strokeColor} strokeWidth="2" />
   );
 }
 
@@ -182,9 +186,9 @@ export const SYMBOLS = {
 
 // Icon nhỏ trong sidebar / menu nhanh — CHỈ để hiển thị, không dùng làm ảnh kéo.
 // Cắt viewBox theo hộp bao của ký hiệu để icon lấp đầy khung, nét vẽ giữ ~1.8px dù phóng to/thu nhỏ.
-export function MiniIcon({ type, width = 28, height = 20 }) {
+export function MiniIcon({ type, width = 28, height = 20, data }) {
   const Symbol = SYMBOLS[type] || NmosSymbol;
-  const box = getSymbolBox(type);
+  const box = getSymbolBox(type, data);
   const pad = 6;
   const vbX = box.x - pad, vbY = box.y - pad, vbW = box.w + pad * 2, vbH = box.h + pad * 2;
   const scale = Math.min(width / vbW, height / vbH);
@@ -194,21 +198,21 @@ export function MiniIcon({ type, width = 28, height = 20 }) {
       width={width} height={height} viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
       style={{ width, height, flexShrink: 0, display: 'block' }}
     >
-      <Symbol strokeWidth={sw} />
+      <Symbol strokeWidth={sw} data={data} />
     </svg>
   );
 }
 
 // Ghost icon full-size DÙNG CHUNG cho mọi symbol — luôn ép width/height bằng inline style
 // để không bị bất kỳ CSS global nào (của ReactFlow hay thư viện khác) đè kích thước.
-export function GhostIcon({ type }) {
+export function GhostIcon({ type, data }) {
   const Symbol = SYMBOLS[type] || NmosSymbol;
   return (
     <svg
       viewBox="0 0 160 100"
       style={{ width: 160, height: 100, display: 'block' }}
     >
-      <Symbol strokeWidth={2} />
+      <Symbol strokeWidth={2} data={data} />
     </svg>
   );
 }

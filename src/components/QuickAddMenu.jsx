@@ -26,7 +26,7 @@ function QuickAddMenu({ onPick, onClose }) {
           onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f6ff'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
-          <MiniIcon type={comp.type} />
+          <MiniIcon type={comp.type} data={comp.defaultData} />
           {comp.label}
         </div>
       ))}

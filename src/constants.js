@@ -146,5 +146,5 @@ export const COMPONENT_LIBRARY = [
   { type: 'gnd',     category: 'power',       short: 'Ground',  label: 'Ground',    refPrefix: 'GND', defaultData: {} },
   { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U',   defaultData: {} },
   { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U',   defaultData: {} },
-  { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: '#1677ff', opacity: 1, width: 160, height: 100 } },
+  { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

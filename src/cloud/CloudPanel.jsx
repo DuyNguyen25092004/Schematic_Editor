@@ -16,7 +16,7 @@ const box = {
 const input = { width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 6 };
 const btn = { padding: '6px 10px', marginRight: 6, cursor: 'pointer' };
 
-export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom, onResizeRect }) {
+export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom, onResizeRect, onTextChangeRect }) {
   const [open, setOpen] = useState(false);
   const [logged, setLogged] = useState(isLoggedIn());
   const [list, setList] = useState([]);
@@ -62,7 +62,7 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoo
     setNodes(data.nodes.map((n) => ({
       ...n,
       // rect: khôi phục đúng kích thước đã lưu + gắn lại callback resize
-      data: n.type === 'rect' ? { ...n.data, onResize: onResizeRect } : n.data,
+      data: n.type === 'rect' ? { ...n.data, onResize: onResizeRect, onTextChange: onTextChangeRect } : n.data,
       style: { ...NODE_STYLE, width: n.data?.width || 160, height: n.data?.height || 100 },
     })));
     setWires(data.wires || []);

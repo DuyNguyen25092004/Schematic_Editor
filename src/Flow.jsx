@@ -578,7 +578,7 @@ const addNodeAt = useCallback((comp, flowPos) => {
 
         {placingType && ghostScreenPos && (
           <div style={{ position: 'fixed', left: ghostScreenPos.x, top: ghostScreenPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
-            <GhostIcon type={placingType.type} />
+            <GhostIcon type={placingType.type} data={placingType.defaultData} />
           </div>
         )}
       </div>

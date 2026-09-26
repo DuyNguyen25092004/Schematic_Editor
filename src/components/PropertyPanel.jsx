@@ -14,6 +14,7 @@ const WIRE_COLORS = [
 ];
 
 const RECT_COLORS = [
+  { name: 'Không màu', value: 'transparent' },   // + thêm dòng này
   { name: 'Xanh dương', value: '#1677ff' },
   { name: 'Đỏ', value: '#e53935' },
   { name: 'Cam', value: '#fb8c00' },
@@ -75,6 +76,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {RECT_COLORS.map((c) => {
                 const active = (node.data.color || '#1677ff') === c.value;
+                const isNone = c.value === 'transparent';
                 return (
                   <button
                     key={c.name}
@@ -83,7 +85,9 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
                     onClick={() => patch('color', c.value)}
                     style={{
                       width: 24, height: 24, padding: 0, cursor: 'pointer', borderRadius: '50%',
-                      background: c.value,
+                      background: isNone
+                        ? 'linear-gradient(135deg, #fff 46%, #e53935 46%, #e53935 54%, #fff 54%)'
+                        : c.value,
                       border: active ? '2px solid #1677ff' : '1px solid #bbb',
                       boxShadow: active ? '0 0 0 2px rgba(22,119,255,.25)' : 'none',
                     }}
@@ -96,6 +100,14 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
             <input type="range" min={0} max={1} step={0.01} style={{ ...input, padding: 0 }}
                   value={node.data.opacity ?? 1}
                   onChange={(e) => patch('opacity', Number(e.target.value))} />
+            <label style={label}>Chữ trong hình</label>
+            <textarea
+              rows={3}
+              style={{ ...input, resize: 'vertical', fontFamily: 'sans-serif' }}
+              placeholder="Nhập chữ hiển thị trong hình..."
+              value={node.data.text || ''}
+              onChange={(e) => patch('text', e.target.value)}
+            />
           </>
         )}
 
