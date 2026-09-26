@@ -78,6 +78,7 @@ export const FD_OPAMP_PORTS = [
 export const PORTS_BY_TYPE = {
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
+  rect: [], // + thêm dòng này — hình chữ nhật không có chân nối dây
 };
 
 // data: chỉ VDD cần (số chân phụ thuộc độ dài thanh)
@@ -111,6 +112,11 @@ export const getSymbolBox = (type, data) => {
     const { left, right } = getVddSpan(data);
     return { x: 6 - left * GRID, y: 42, w: (left + right) * GRID + 8, h: 16 };
   }
+  // Hình chữ nhật: có thể phóng to/thu nhỏ tự do (kéo cạnh) -> box khớp đúng
+  // kích thước hiện tại (data.width/height), không cố định 160x100 như linh kiện khác.
+  if (type === 'rect') {
+    return { x: 0, y: 0, w: data?.width ?? 160, h: data?.height ?? 100 };
+  }
   return SYMBOL_BOX_BY_TYPE[type] || DEFAULT_SYMBOL_BOX;
 };
 
@@ -125,6 +131,7 @@ export const COMPONENT_CATEGORIES = [
   { id: 'passives',    label: 'Passives' },
   { id: 'power',       label: 'Power and Ports' },
   { id: 'analog',      label: 'Analog Blocks' },
+  { id: 'shapes',      label: 'Shapes' },       // + thêm dòng này
 ];
 
 // ============ THƯ VIỆN LINH KIỆN ============
@@ -139,4 +146,5 @@ export const COMPONENT_LIBRARY = [
   { type: 'gnd',     category: 'power',       short: 'Ground',  label: 'Ground',    refPrefix: 'GND', defaultData: {} },
   { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U',   defaultData: {} },
   { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U',   defaultData: {} },
+  { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: '#1677ff', opacity: 1, width: 160, height: 100 } },
 ];

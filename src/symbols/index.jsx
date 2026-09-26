@@ -93,6 +93,18 @@ export function VddSymbol({ strokeWidth = 2, data }) {
   );
 }
 
+// Hình chữ nhật đơn giản (không chân nối) — màu nền và độ trong suốt chỉnh
+// được qua PropertyPanel: data.color (mã hex) và data.opacity (0..1).
+export function RectSymbol({ data }) {
+  const color = data?.color || '#1677ff';
+  const opacity = data?.opacity ?? 1;
+  return (
+    <rect x="6" y="6" width="148" height="88" rx="4"
+          fill={color} fillOpacity={opacity}
+          stroke={color} strokeWidth="2" />
+  );
+}
+
 export function GroundSymbol({ strokeWidth = 2 }) {
   const plate = strokeWidth * 2;
   return (
@@ -165,6 +177,7 @@ export const SYMBOLS = {
   gnd: GroundSymbol,
   opamp: OpampSymbol,
   fdopamp: FdOpampSymbol,
+  rect: RectSymbol,   // + thêm dòng này
 };
 
 // Icon nhỏ trong sidebar / menu nhanh — CHỈ để hiển thị, không dùng làm ảnh kéo.

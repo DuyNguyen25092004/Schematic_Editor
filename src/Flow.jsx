@@ -34,8 +34,9 @@ import GroupPanel from './cloud/GroupPanel';
 import GroupTabBar from './components/GroupTabBar';   // + thêm dòng này
 import { useGroups } from './cloud/useGroups';          // + thêm dòng này
 import { useUndo } from './hooks/useUndo';
+import RectNode from './nodes/RectNode';
 
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
+const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id,
@@ -92,11 +93,23 @@ function Flow() {
     // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
   const { undo, remoteSetNodes, remoteSetWiresRaw } = useUndo({ nodes, wires, setNodes, setWiresRaw, circuitId });
 
+  // Ghi lại kích thước sau khi kéo cạnh/góc RectNode (chỉ khi thả tay, không phải
+  // trong lúc kéo) — để lưu file và để getSymbolBox tính đúng box-select/vật cản.
+  const handleResizeRect = useCallback((id, { width, height }) => {
+    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, width, height } } : n)));
+  }, [setNodes]);
+
+  const handleRectTextChange = useCallback((id, text) => {
+    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)));
+  }, [setNodes]);
+
   useCircuitSync({
     circuitId: circuitId,
     nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
+    onResizeRect: handleResizeRect,
+    onTextChangeRect: handleRectTextChange,
   });
 
   const { screenToFlowPosition, flowToScreenPosition, fitView } = useReactFlow();
@@ -145,18 +158,21 @@ function Flow() {
     return `${prefix}${i}`;
   }, [nodes]);
 
-  const addNodeAt = useCallback((comp, flowPos) => {
-    const id = nextId(comp.refPrefix);
-    const snappedX = Math.round(flowPos.x / GRID) * GRID;
-    const snappedY = Math.round(flowPos.y / GRID) * GRID;
-    setNodes((ns) => [...ns, {
-      id,
-      type: comp.type,
-      position: { x: snappedX, y: snappedY },
-      data: { reference: id, ...comp.defaultData },
-      style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
-    }]);
-  }, [nextId, setNodes]);
+const addNodeAt = useCallback((comp, flowPos) => {
+  const id = nextId(comp.refPrefix);
+  const snappedX = Math.round(flowPos.x / GRID) * GRID;
+  const snappedY = Math.round(flowPos.y / GRID) * GRID;
+  setNodes((ns) => [...ns, {
+    id,
+    type: comp.type,
+    position: { x: snappedX, y: snappedY },
+    data: { reference: id, ...comp.defaultData, onResize: handleResizeRect, onTextChange: handleRectTextChange },
+    style: {
+      width: comp.defaultData?.width || 160, height: comp.defaultData?.height || 100,
+      background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
+    },
+  }]);
+}, [nextId, setNodes, handleResizeRect, handleRectTextChange]);
 
   const snappedGhostScreenPos = useCallback((clientX, clientY) => {
     const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -539,11 +555,15 @@ function Flow() {
             group={groupsState.group}
             groupId={groupsState.groupId}
             myRole={groupsState.myRole}
+            onResizeRect={handleResizeRect}
+            onTextChangeRect={handleRectTextChange}
           />
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
             onOpenRoom={switchCircuitRoom}
             onNewRoom={startNewCircuitRoom}
+            onResizeRect={handleResizeRect}
+            onTextChangeRect={handleRectTextChange}
           />
         </div>
       </div>

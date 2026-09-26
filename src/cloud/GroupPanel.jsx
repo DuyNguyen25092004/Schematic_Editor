@@ -16,7 +16,7 @@ const btn = { padding: '6px 10px', marginRight: 6, marginBottom: 6, cursor: 'poi
 // Việc chọn / tạo group đã chuyển sang GroupTabBar (thanh tab dưới cùng).
 export default function GroupPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
-  logged, email, login, logout, group, groupId, myRole,
+  logged, email, login, logout, group, groupId, myRole, onResizeRect,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -54,10 +54,15 @@ export default function GroupPanel({
   // Mở file: tải thẳng từ Drive bằng token của người đang đăng nhập
   const openFile = (f) => run(async () => {
     const data = await driveLoad(f.id);
-    setNodes((data.nodes || []).map((n) => ({ ...n, style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' } })));
+    setNodes((data.nodes || []).map((n) => ({
+      ...n,
+      // rect: khôi phục đúng kích thước đã lưu + gắn lại callback resize
+      data: n.type === 'rect' ? { ...n.data, onResize: onResizeRect } : n.data,
+      style: { width: n.data?.width || 160, height: n.data?.height || 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
+    })));
     setWires(data.wires || []);
     setCurrentFileId(f.id);
-    onOpenRoom?.(f.id); // phòng realtime = id file Drive
+    onOpenRoom?.(f.id);
     setFileName(f.name.replace('.schem.json', ''));
     setMsg(`Đã mở: ${f.name}`);
   });
