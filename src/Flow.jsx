@@ -49,10 +49,10 @@ const initialNodes = mockData.documents[0].instances.map((inst) => ({
   type: 'nmos',
   position: {
     x: Math.round(inst.placement.position.x / 10) * 10,
-    y: Math.round(((inst.id === 'M1' || inst.id === 'M_1') ? inst.placement.position.y + 60 : inst.placement.position.y) / 10) * 10,
+    y: Math.round(((inst.id === 'M1' || inst.id === 'M_1' || inst.id === 'M_{1}') ? inst.placement.position.y + 60 : inst.placement.position.y) / 10) * 10,
   },
   data: {
-    reference: formatLatexRef(inst.reference) || (inst.id === 'M1' ? 'M_1' : inst.id === 'M2' ? 'M_2' : inst.id),
+    reference: formatLatexRef(inst.reference) || (inst.id === 'M1' ? 'M_{1}' : inst.id === 'M2' ? 'M_{2}' : formatLatexRef(inst.id)),
     w: inst.netlist.parameters.w,
     l: inst.netlist.parameters.l,
   },
@@ -234,17 +234,21 @@ function Flow() {
   const nextId = useCallback((prefix) => {
     let i = 1;
     const cleanPrefix = prefix.replace(/_$/, '');
+    const isDevicePrefix = ['M', 'Q', 'R', 'C', 'U'].includes(cleanPrefix) || prefix.endsWith('_');
     const existing = new Set(nodes.map((n) => n.id));
     const existingRefs = new Set(nodes.map((n) => n.data?.reference).filter(Boolean));
-    while (
-      existing.has(`${prefix}${i}`) ||
-      existing.has(`${cleanPrefix}${i}`) ||
-      existingRefs.has(`${prefix}${i}`) ||
-      existingRefs.has(`${cleanPrefix}${i}`)
-    ) {
+    const checkExists = (num) => {
+      const v1 = `${cleanPrefix}_{${num}}`;
+      const v2 = `${cleanPrefix}_${num}`;
+      const v3 = `${cleanPrefix}${num}`;
+      const v4 = `${prefix}${num}`;
+      return existing.has(v1) || existing.has(v2) || existing.has(v3) || existing.has(v4) ||
+             existingRefs.has(v1) || existingRefs.has(v2) || existingRefs.has(v3) || existingRefs.has(v4);
+    };
+    while (checkExists(i)) {
       i++;
     }
-    return `${prefix}${i}`;
+    return isDevicePrefix ? `${cleanPrefix}_{${i}}` : `${prefix}${i}`;
   }, [nodes]);
 
   const addNodeAt = useCallback((comp, flowPos) => {
@@ -612,7 +616,7 @@ function Flow() {
                 items: [{ id: node.id, initialX: node.position.x, initialY: node.position.y }]
               });
             } else if (isCopyMode) {
-              const rawPrefix = node.type === 'text' ? 'TXT' : ((node.data?.reference || 'U').replace(/[0-9]/g, '') || 'U');
+              const rawPrefix = node.type === 'text' ? 'TXT' : ((node.data?.reference || 'U').replace(/[0-9{}]/g, '') || 'U');
               const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
                 ? `${rawPrefix.replace(/_$/, '')}_`
                 : rawPrefix;

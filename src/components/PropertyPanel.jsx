@@ -181,13 +181,26 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Dây nối</div>
       
+      <label style={label}>Tên dây (Wire Name / LaTeX)</label>
+      <input
+        style={input}
+        value={wire.name || ''}
+        placeholder="VD: V_{in}, V_{out}..."
+        onChange={(e) => {
+          const val = e.target.value;
+          setWires((ws) => ws.map((w) => (w.id === wire.id ? { ...w, name: val || undefined } : w)));
+        }}
+        onBlur={(e) => {
+          const formatted = formatLatexRef(e.target.value);
+          if (formatted !== e.target.value) {
+            setWires((ws) => ws.map((w) => (w.id === wire.id ? { ...w, name: formatted || undefined } : w)));
+          }
+        }}
+      />
       {wire.name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, color: '#555' }}>
-          <span style={{ flex: 1 }}>Tên cũ: <b>{wire.name}</b></span>
-          <button type="button" style={{ cursor: 'pointer' }}
-            onClick={() => setWires((ws) => ws.map((w) => (w.id === wire.id ? { ...w, name: undefined } : w)))}>
-            Xóa
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '4px 8px', background: '#f5f5f5', borderRadius: 4 }}>
+          <span style={{ fontSize: 11, color: '#666' }}>LaTeX Preview:</span>
+          <LatexText text={formatLatexRef(wire.name)} latex={true} size={14} color="#1677ff" />
         </div>
       )}
       {(wire.labels || []).length > 0 && (

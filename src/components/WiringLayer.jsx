@@ -5,30 +5,8 @@ import { getJunctionDots } from '../wires/wireOps';
 import { resolvePoints } from '../routing/resolveWire';
 import WireHandles from './WireHandles';
 import { orthoPath, pointsToPolyline, labelPlacement, pointAtRatio, projectOnPath } from '../geometry/pathUtils';
-import LatexText from './LatexText';
+import LatexText, { formatLatexRef } from './LatexText';
 import VddHandles from './VddHandles';
-
-
-function WireLabel({ rp, label, interactive, ghost, color, onDoubleClick, onClick }) {
-  const pt = pointAtRatio(rp, label.ratio);
-  return (
-    <foreignObject x={pt.x} y={pt.y} width={1} height={1} style={{ overflow: 'visible' }}>
-      <div
-        onDoubleClick={onDoubleClick}
-        onClick={onClick}
-        style={{
-          position: 'absolute', left: 0, top: 0,
-          transform: pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
-          pointerEvents: interactive ? 'auto' : 'none', cursor: 'pointer', userSelect: 'none',
-          opacity: ghost ? 0.6 : 1,
-          textShadow: '0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff',
-        }}
-      >
-        <LatexText text={label.text} latex={label.latex} size={label.size || 12} color={color} />
-      </div>
-    </foreignObject>
-  );
-}
 
 function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected, attachTool, onAttachLabel, onEditLabel }) {
   const { screenToFlowPosition } = useReactFlow();
@@ -172,38 +150,6 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
                     strokeWidth={(isSel ? 2.5 : 1.5) / strokeScale}
                     strokeLinecap="square" strokeLinejoin="miter"
                   />
-                  {mid && (
-                    <text
-                      x={0} y={-5}
-                      transform={`translate(${mid.x} ${mid.y}) rotate(${mid.angle})`}
-                      textAnchor="middle" fontSize={11} fontFamily="sans-serif"
-                      fontWeight={700}
-                      fill={isSel ? '#1677ff' : wireColor}
-                      pointerEvents="none"
-                      style={{ paintOrder: 'stroke', stroke: '#fff', strokeWidth: 3 }}
-                    >
-                      {w.name}
-                    </text>
-                  )}
-                  {(w.labels || []).map((l) => (
-                    <WireLabel
-                      key={l.id} rp={rp} label={l}
-                      color={isSel ? '#1677ff' : wireColor}
-                      interactive={!isWiringMode && !isBoxSelecting && !attachTool}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelected({ kind: 'wire', id: w.id });
-                        setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
-                      }}
-                      onDoubleClick={(e) => { e.stopPropagation(); onEditLabel?.(w.id, l.id); }}
-                    />
-                  ))}
-                  {attachTool && attachHover?.wireId === w.id && (
-                    <WireLabel
-                      rp={rp} ghost color="#1677ff"
-                      label={{ text: attachTool.text, latex: attachTool.latex, ratio: attachHover.ratio }}
-                    />
-                  )}
                 </g>
               );
             })}
@@ -255,6 +201,116 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
             />
           )}
         </svg>
+
+        {/* Lớp nhãn dây và tên dây (HTML Layer) - hiển thị KaTeX sắc nét, không bị xám khi chụp ảnh */}
+        <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', overflow: 'visible' }}>
+          {wires.map((w) => {
+            const rp = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
+            const isSel = w.selected || (selected?.kind === 'wire' && selected.id === w.id);
+            const wireColor = w.color || '#000';
+            const mid = (w.name && (!w.labels || w.labels.length === 0)) ? pointAtRatio(rp, 0.5) : null;
+
+            return (
+              <React.Fragment key={`lbl-wrap-${w.id}`}>
+                {/* Tên dây wire.name (tự động nhận dạng LaTeX) */}
+                {mid && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelected({ kind: 'wire', id: w.id });
+                      setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: mid.x,
+                      top: mid.y,
+                      transform: mid.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+                      pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
+                      lineHeight: 1,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <LatexText
+                      text={formatLatexRef(w.name)}
+                      latex={true}
+                      size={12}
+                      color={isSel ? '#1677ff' : wireColor}
+                    />
+                  </div>
+                )}
+
+                {/* Các nhãn dán wire.labels */}
+                {(w.labels || []).map((l) => {
+                  const pt = pointAtRatio(rp, l.ratio);
+                  return (
+                    <div
+                      key={l.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelected({ kind: 'wire', id: w.id });
+                        setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onEditLabel?.(w.id, l.id);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: pt.x,
+                        top: pt.y,
+                        transform: pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+                        pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
+                        lineHeight: 1,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <LatexText
+                        text={l.text}
+                        latex={l.latex ?? /[_\^\\{}]/.test(l.text)}
+                        size={l.size || 12}
+                        color={isSel ? '#1677ff' : wireColor}
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* Nhãn nháp khi đang di chuột attach tool */}
+                {attachTool && attachHover?.wireId === w.id && (() => {
+                  const pt = pointAtRatio(rp, attachHover.ratio);
+                  return (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: pt.x,
+                        top: pt.y,
+                        transform: pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                        opacity: 0.6,
+                        textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
+                        lineHeight: 1,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <LatexText
+                        text={attachTool.text}
+                        latex={attachTool.latex ?? /[_\^\\{}]/.test(attachTool.text)}
+                        size={12}
+                        color="#1677ff"
+                      />
+                    </div>
+                  );
+                })()}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
     </>
   );

@@ -309,24 +309,27 @@ const {
           const genId = (prefix) => {
             let i = 1;
             const cleanPrefix = prefix.replace(/_$/, '');
-            while (
-              existingIds.has(`${prefix}${i}`) ||
-              existingIds.has(`${cleanPrefix}${i}`) ||
-              existingRefs.has(`${prefix}${i}`) ||
-              existingRefs.has(`${cleanPrefix}${i}`) ||
-              reserved.has(`${prefix}${i}`) ||
-              reserved.has(`${cleanPrefix}${i}`)
-            ) {
+            const isDevicePrefix = ['M', 'Q', 'R', 'C', 'U'].includes(cleanPrefix) || prefix.endsWith('_');
+            const checkExists = (num) => {
+              const v1 = `${cleanPrefix}_{${num}}`;
+              const v2 = `${cleanPrefix}_${num}`;
+              const v3 = `${cleanPrefix}${num}`;
+              const v4 = `${prefix}${num}`;
+              return existingIds.has(v1) || existingIds.has(v2) || existingIds.has(v3) || existingIds.has(v4) ||
+                     existingRefs.has(v1) || existingRefs.has(v2) || existingRefs.has(v3) || existingRefs.has(v4) ||
+                     reserved.has(v1) || reserved.has(v2) || reserved.has(v3) || reserved.has(v4);
+            };
+            while (checkExists(i)) {
               i++;
             }
-            const id = `${prefix}${i}`;
+            const id = isDevicePrefix ? `${cleanPrefix}_{${i}}` : `${prefix}${i}`;
             reserved.add(id);
             return id;
           };
 
           const idMap = new Map(); // old nodeId -> new nodeId
           const newNodes = targetNodes.map((n) => {
-            const rawPrefix = n.type === 'text' ? 'TXT' : ((n.data?.reference || 'U').replace(/[0-9]/g, '') || 'U');
+            const rawPrefix = n.type === 'text' ? 'TXT' : ((n.data?.reference || 'U').replace(/[0-9{}]/g, '') || 'U');
             const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
               ? `${rawPrefix.replace(/_$/, '')}_`
               : rawPrefix;

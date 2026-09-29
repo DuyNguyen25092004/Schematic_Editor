@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { toBlob } from 'html-to-image';
 import { resolvePoints } from '../routing/resolveWire';
 import { getSymbolBBox } from '../geometry/ports';
+import { pointAtRatio } from '../geometry/pathUtils';
 
 
 export function useCopyImage({
@@ -41,6 +42,20 @@ const handleCopyImage = useCallback(() => {
             maxX = Math.max(maxX, p.x);
             maxY = Math.max(maxY, p.y);
         });
+        (w.labels || []).forEach(l => {
+            const pt = pointAtRatio(pts, l.ratio);
+            minX = Math.min(minX, pt.x - 30);
+            minY = Math.min(minY, pt.y - 20);
+            maxX = Math.max(maxX, pt.x + 30);
+            maxY = Math.max(maxY, pt.y + 20);
+        });
+        if (w.name) {
+            const mid = pointAtRatio(pts, 0.5);
+            minX = Math.min(minX, mid.x - 30);
+            minY = Math.min(minY, mid.y - 20);
+            maxX = Math.max(maxX, mid.x + 30);
+            maxY = Math.max(maxY, mid.y + 20);
+        }
     });
 
     if (minX === Infinity) return;
@@ -72,7 +87,10 @@ const handleCopyImage = useCallback(() => {
 
     // Đợi 1 khung hình để React re-render xong (màu về lại bình thường) rồi mới chụp
     requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+        if (document.fonts?.ready) {
+            try { await document.fonts.ready; } catch { /* ignore */ }
+        }
         toBlob(exportArea, {
             backgroundColor: 'rgba(0,0,0,0)', 
             pixelRatio: dpr, 
