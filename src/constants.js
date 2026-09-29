@@ -75,10 +75,23 @@ export const FD_OPAMP_PORTS = [
   { id: 'outp', x: 80, y: 70, dir: { x: 1, y: 0 } },
 ];
 
+export const LOGIC_1_PORTS = [
+  { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 80, y: 50, dir: { x: 1, y: 0 } },
+];
+export const LOGIC_2_PORTS = [
+  { id: 'in1', x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'in2', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 80, y: 50, dir: { x: 1, y: 0 } },
+];
+
 export const PORTS_BY_TYPE = {
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
   vsource: TWO_TERM_PORTS, isource: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
+  inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
+  and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
+  xor: LOGIC_2_PORTS, xnor: LOGIC_2_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
   text: [], // văn bản tự do không có chân nối dây
 };
@@ -110,6 +123,14 @@ export const SYMBOL_BOX_BY_TYPE = {
   gnd: { x: 40, y: 27, w: 20, h: 28 },
   opamp: { x: 6, y: 16, w: 78, h: 68 },
   fdopamp: { x: 6, y: 16, w: 78, h: 68 },
+  inverter: { x: 10, y: 30, w: 70, h: 40 },
+  buffer:   { x: 10, y: 30, w: 70, h: 40 },
+  and:      { x: 10, y: 30, w: 70, h: 40 },
+  or:       { x: 10, y: 30, w: 70, h: 40 },
+  nand:     { x: 10, y: 30, w: 70, h: 40 },
+  nor:      { x: 10, y: 30, w: 70, h: 40 },
+  xor:      { x: 10, y: 30, w: 70, h: 40 },
+  xnor:     { x: 10, y: 30, w: 70, h: 40 },
 };
 export const getSymbolBox = (type, data) => {
   if (type === 'vdd') {
@@ -125,7 +146,7 @@ export const getSymbolBox = (type, data) => {
 export const nodeBoxStyle = (n) => ({
   ...(n.type === 'text' ? {} : { width: n.data?.width || 160, height: n.data?.height || 100 }),
   background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
-});
+  });
 
 export const MID_WIRE_SNAP_RADIUS = 5; // chỉ hút vào GIỮA dây khi click rất sát (nửa ô lưới)
 
@@ -138,22 +159,31 @@ export const COMPONENT_CATEGORIES = [
   { id: 'passives',    label: 'Passives' },
   { id: 'power',       label: 'Power and Ports' },
   { id: 'analog',      label: 'Analog Blocks' },
+  { id: 'logic',       label: 'Logic Gates' },
   { id: 'shapes',      label: 'Shapes' },
 ];
 
 // ============ THƯ VIỆN LINH KIỆN ============
 export const COMPONENT_LIBRARY = [
-  { type: 'nmos',    category: 'transistors', short: 'NMOS',    label: 'NMOS',      refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
-  { type: 'pmos',    category: 'transistors', short: 'PMOS',    label: 'PMOS',      refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
-  { type: 'npn',     category: 'transistors', short: 'NPN',     label: 'BJT NPN',   refPrefix: 'Q_',  defaultData: {} },
-  { type: 'pnp',     category: 'transistors', short: 'PNP',     label: 'BJT PNP',   refPrefix: 'Q_',  defaultData: {} },
-  { type: 'res',     category: 'passives',    short: 'Res',     label: 'Điện trở',  refPrefix: 'R_',  defaultData: { value: '1k' } },
-  { type: 'cap',     category: 'passives',    short: 'Cap',     label: 'Tụ điện',   refPrefix: 'C_',  defaultData: { value: '1p' } },
-  { type: 'vdd',     category: 'power',       short: 'VDD',     label: 'VDD rail',  refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
-  { type: 'gnd',     category: 'power',       short: 'Ground',  label: 'Ground',    refPrefix: 'GND', defaultData: {} },
-  { type: 'vsource', category: 'power',       short: 'Vdc',     label: 'Nguồn áp (V)', refPrefix: 'V_', defaultData: { value: '1V' } },
-  { type: 'isource', category: 'power',       short: 'Idc',     label: 'Nguồn dòng (I)', refPrefix: 'I_', defaultData: { value: '1mA' } },
-  { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U_',  defaultData: {} },
-  { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U_',  defaultData: {} },
-  { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
+  { type: 'nmos',     category: 'transistors', short: 'NMOS',    label: 'NMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
+  { type: 'pmos',     category: 'transistors', short: 'PMOS',    label: 'PMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
+  { type: 'npn',      category: 'transistors', short: 'NPN',     label: 'BJT NPN',       refPrefix: 'Q_',  defaultData: {} },
+  { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: {} },
+  { type: 'res',      category: 'passives',    short: 'Res',     label: 'Điện trở',      refPrefix: 'R_',  defaultData: { value: '1k' } },
+  { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Tụ điện',       refPrefix: 'C_',  defaultData: { value: '1p' } },
+  { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
+  { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
+  { type: 'vsource',  category: 'power',       short: 'Vdc',     label: 'Nguồn áp (V)',  refPrefix: 'V_',  defaultData: { value: '1V' } },
+  { type: 'isource',  category: 'power',       short: 'Idc',     label: 'Nguồn dòng (I)', refPrefix: 'I_', defaultData: { value: '1mA' } },
+  { type: 'opamp',    category: 'analog',      short: 'Opamp',   label: 'Opamp',         refPrefix: 'U_',  defaultData: {} },
+  { type: 'fdopamp',  category: 'analog',      short: 'FD Opamp', label: 'FD opamp',     refPrefix: 'U_',  defaultData: {} },
+  { type: 'inverter', category: 'logic',       short: 'INV',     label: 'Inverter (NOT)', refPrefix: 'U_', defaultData: {} },
+  { type: 'buffer',   category: 'logic',       short: 'BUF',     label: 'Buffer',         refPrefix: 'U_', defaultData: {} },
+  { type: 'and',      category: 'logic',       short: 'AND',     label: 'Cổng AND',       refPrefix: 'U_', defaultData: {} },
+  { type: 'or',       category: 'logic',       short: 'OR',      label: 'Cổng OR',        refPrefix: 'U_', defaultData: {} },
+  { type: 'nand',     category: 'logic',       short: 'NAND',    label: 'Cổng NAND',      refPrefix: 'U_', defaultData: {} },
+  { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'Cổng NOR',       refPrefix: 'U_', defaultData: {} },
+  { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'Cổng XOR',       refPrefix: 'U_', defaultData: {} },
+  { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'Cổng XNOR',      refPrefix: 'U_', defaultData: {} },
+  { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

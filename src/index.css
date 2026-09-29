@@ -125,6 +125,10 @@ code {
 .react-flow__node-nmos, .react-flow__node-pmos, .react-flow__node-npn, .react-flow__node-pnp,
 .react-flow__node-res, .react-flow__node-cap, .react-flow__node-vsource, .react-flow__node-isource,
 .react-flow__node-vdd, .react-flow__node-gnd,
-.react-flow__node-opamp, .react-flow__node-fdopamp {
+.react-flow__node-opamp, .react-flow__node-fdopamp,
+.react-flow__node-inverter, .react-flow__node-buffer,
+.react-flow__node-and, .react-flow__node-or,
+.react-flow__node-nand, .react-flow__node-nor,
+.react-flow__node-xor, .react-flow__node-xnor {
   pointer-events: none !important;
 }

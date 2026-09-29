@@ -57,6 +57,9 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
       res: 'Res', cap: 'Cap', vsource: 'Nguồn áp', isource: 'Nguồn dòng', vdd: 'VDD rail', gnd: 'Ground',
       opamp: 'Opamp', fdopamp: 'FD opamp',
+      inverter: 'Inverter', buffer: 'Buffer',
+      and: 'Cổng AND', or: 'Cổng OR', nand: 'Cổng NAND', nor: 'Cổng NOR',
+      xor: 'Cổng XOR', xnor: 'Cổng XNOR',
       rect: 'Hình chữ nhật',
       text: 'Văn bản',
     }[node.type] || String(node.type).toUpperCase();

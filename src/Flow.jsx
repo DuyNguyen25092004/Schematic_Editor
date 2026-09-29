@@ -42,7 +42,14 @@ import LatexText, { formatLatexRef } from './components/LatexText';
 
 // nodeTypes: thêm  text: TextNode
 
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vsource: TwoTerminalNode, isource: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode, text: TextNode };
+const nodeTypes = {
+  nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode,
+  res: TwoTerminalNode, cap: TwoTerminalNode, vsource: TwoTerminalNode, isource: TwoTerminalNode,
+  vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode,
+  inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
+  nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
+  rect: RectNode, text: TextNode,
+};
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id === 'M1' ? 'M_1' : inst.id === 'M2' ? 'M_2' : inst.id,

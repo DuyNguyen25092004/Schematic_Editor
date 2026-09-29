@@ -4,10 +4,18 @@ import { SYMBOLS } from '../symbols';
 import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan } from '../constants';
 import LatexText, { formatLatexRef } from '../components/LatexText';
 
-// (VDD tính riêng bên dưới vì vị trí nhãn phụ thuộc độ dài thanh)
+const GATE_LABEL = { x: 40, y: 22, side: 'top' };
 const LABELS = {
   opamp:   { x: 36, y: 16, side: 'top' },
   fdopamp: { x: 36, y: 16, side: 'top' },
+  inverter: GATE_LABEL,
+  buffer:   GATE_LABEL,
+  and:      GATE_LABEL,
+  or:       GATE_LABEL,
+  nand:     GATE_LABEL,
+  nor:      GATE_LABEL,
+  xor:      GATE_LABEL,
+  xnor:     GATE_LABEL,
 };
 const SIDE_VEC = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
 const vecToSide = ([x, y]) => (x > 0 ? 'right' : x < 0 ? 'left' : y > 0 ? 'bottom' : 'top');
