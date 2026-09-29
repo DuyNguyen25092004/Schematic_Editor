@@ -23,12 +23,19 @@ export function useGroups() {
   const run = async (fn) => {
     setBusy(true); setMsg('');
     try { return await fn(); }
-    catch (e) { setMsg(e.message); }
+    catch (e) {
+      setMsg(e.message);
+      if (!isLoggedIn()) {
+        setLogged(false);
+        setEmail(null);
+      }
+      return null;
+    }
     finally { setBusy(false); }
   };
 
-  const login = () => run(async () => {
-    await driveLogin();
+  const login = (providedClientId) => run(async () => {
+    await driveLogin(providedClientId);
     setLogged(true);
     setEmail(await driveGetEmail());
   });

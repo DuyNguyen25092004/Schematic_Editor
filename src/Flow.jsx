@@ -674,6 +674,7 @@ function Flow() {
             group={groupsState.group}
             groupId={groupsState.groupId}
             myRole={groupsState.myRole}
+            groupMsg={groupsState.msg}
             onResizeRect={handleResizeRect}
             onTextChangeRect={handleRectTextChange}
           />

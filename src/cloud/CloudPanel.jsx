@@ -4,10 +4,8 @@ import {
 } from './driveStorage';
 import { nodeBoxStyle } from '../constants';
 
-
-
 const box = {
-  width: 270, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', // vị trí do khung chung trong App.jsx quyết định
+  width: 280, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', // vị trí do khung chung trong App.jsx quyết định
   background: '#fff', border: '1px solid #ddd', borderRadius: 8,
   boxShadow: '0 4px 12px rgba(0,0,0,0.12)', padding: 10,
   fontFamily: 'sans-serif', fontSize: 13, color: '#222',
@@ -121,7 +119,7 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoo
         </>
       )}
       {busy && <div style={{ marginTop: 6 }}>Đang xử lý...</div>}
-      {msg && <div style={{ marginTop: 6, color: '#c00' }}>{msg}</div>}
+      {msg && <div style={{ marginTop: 6, color: msg.includes('✔') ? '#2e7d32' : '#c00' }}>{msg}</div>}
     </div>
   );
 }

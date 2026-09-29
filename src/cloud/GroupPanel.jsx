@@ -3,7 +3,6 @@ import { driveListFolder, driveSave, driveLoad } from './driveStorage';
 import { inviteMember } from './groupStorage';
 import { nodeBoxStyle } from '../constants';
 
-
 const box = {
   width: 300, // vị trí do khung chung trong App.jsx quyết định
   maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', // tránh đè nút zoom ở góc trái dưới
@@ -14,11 +13,9 @@ const box = {
 const input = { width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 6 };
 const btn = { padding: '6px 10px', marginRight: 6, marginBottom: 6, cursor: 'pointer' };
 
-
-
 export default function GroupPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
-  logged, email, login, logout, group, groupId, myRole,
+  logged, email, login, logout, group, groupId, myRole, groupMsg,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -38,6 +35,10 @@ export default function GroupPanel({
     catch (e) { setMsg(e.message); }
     setBusy(false);
   };
+
+  const handleLogin = () => run(async () => {
+    await login();
+  });
 
   // Group đổi (chọn từ tab bar dưới cùng) -> tải lại danh sách file, reset file đang mở
   useEffect(() => {
@@ -98,11 +99,11 @@ export default function GroupPanel({
       </div>
 
       {!logged && (
-        <button style={btn} disabled={busy} onClick={login}>Đăng nhập Google</button>
+        <button style={btn} disabled={busy} onClick={handleLogin}>Đăng nhập Google</button>
       )}
 
       {logged && (
-        <div style={{ marginBottom: 8 }}>Đăng nhập: {email}</div>
+        <div style={{ marginBottom: 8 }}>Đăng nhập: <b>{email || '...'}</b></div>
       )}
 
       {logged && !group && (
@@ -161,7 +162,11 @@ export default function GroupPanel({
       )}
 
       {busy && <div style={{ marginTop: 6 }}>Đang xử lý...</div>}
-      {msg && <div style={{ marginTop: 6, color: '#c00' }}>{msg}</div>}
+      {(msg || groupMsg) && (
+        <div style={{ marginTop: 6, color: (msg || groupMsg).includes('✔') ? '#2e7d32' : '#c00' }}>
+          {msg || groupMsg}
+        </div>
+      )}
       {logged && <button style={{ ...btn, marginTop: 8 }} onClick={logout}>Thoát</button>}
     </div>
   );
