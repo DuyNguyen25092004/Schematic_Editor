@@ -18,7 +18,7 @@ export const dirIndex = (d) => DIRS.findIndex((v) => v.x === d.x && v.y === d.y)
 
 // Vật cản = bbox thật của ký hiệu, nới lề rồi làm tròn RA NGOÀI theo lưới
 export function getObstacles(nodes) {
-  return nodes.map((n) => {
+  return nodes.filter((n) => n.type !== 'text').map((n) => {
     const b = getSymbolBBox(n);
     return {
       x1: Math.floor((b.x1 - OBSTACLE_MARGIN) / GRID) * GRID,

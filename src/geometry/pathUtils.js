@@ -162,3 +162,30 @@ export function labelPlacement(pts) {
   if (angle < -90) angle += 180;
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, angle };
 }
+
+export function pointAtRatio(pts, ratio) {
+  if (!pts || pts.length === 0) return { x: 0, y: 0, horizontal: true };
+  if (pts.length === 1) return { x: pts[0].x, y: pts[0].y, horizontal: true };
+  const lens = [];
+  let total = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    lens.push(l);
+    total += l;
+  }
+  const target = Math.max(0, Math.min(1, ratio ?? 0.5)) * total;
+  let acc = 0;
+  for (let i = 0; i < lens.length; i++) {
+    if (acc + lens[i] >= target || i === lens.length - 1) {
+      const a = pts[i], b = pts[i + 1];
+      const t = lens[i] ? (target - acc) / lens[i] : 0;
+      return {
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        horizontal: Math.abs(b.y - a.y) <= Math.abs(b.x - a.x),
+      };
+    }
+    acc += lens[i];
+  }
+  return { x: pts[0].x, y: pts[0].y, horizontal: true };
+}

@@ -2,11 +2,10 @@ import { useState } from 'react';
 import {
   driveLogin, driveLogout, driveList, driveSave, driveLoad, driveDelete, isLoggedIn,
 } from './driveStorage';
+import { nodeBoxStyle } from '../constants';
 
-const NODE_STYLE = {
-  width: 160, height: 100, background: 'transparent',
-  border: 'none', padding: 0, boxShadow: 'none',
-};
+
+
 const box = {
   width: 270, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', // vị trí do khung chung trong App.jsx quyết định
   background: '#fff', border: '1px solid #ddd', borderRadius: 8,
@@ -59,7 +58,7 @@ export default function CloudPanel({ nodes, wires, setNodes, setWires, onOpenRoo
 
   const load = (f) => run(async () => {
     const data = await driveLoad(f.id);
-    setNodes(data.nodes.map((n) => ({ ...n, style: NODE_STYLE })));
+    setNodes(data.nodes.map((n) => ({ ...n, style: nodeBoxStyle(n) })));
     setWires(data.wires || []);
     setCurrentId(f.id);
     setName(f.name.replace('.schem.json', ''));

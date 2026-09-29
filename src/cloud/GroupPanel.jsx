@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { driveListFolder, driveSave, driveLoad } from './driveStorage';
 import { inviteMember } from './groupStorage';
+import { nodeBoxStyle } from '../constants';
+
 
 const box = {
   width: 300, // vị trí do khung chung trong App.jsx quyết định
@@ -54,7 +56,7 @@ export default function GroupPanel({
   // Mở file: tải thẳng từ Drive bằng token của người đang đăng nhập
   const openFile = (f) => run(async () => {
     const data = await driveLoad(f.id);
-    setNodes((data.nodes || []).map((n) => ({ ...n, style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' } })));
+    setNodes((data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })));
     setWires(data.wires || []);
     setCurrentFileId(f.id);
     onOpenRoom?.(f.id); // phòng realtime = id file Drive

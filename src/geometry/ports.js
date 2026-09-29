@@ -5,6 +5,13 @@ import { findPort, getSymbolBox } from '../constants';   // thay getPorts bằng
 // khớp với vùng viền xanh khi chọn node — dùng để box-select cho đúng kích thước
 // nhìn thấy, thay vì dùng cả khung 160x100 ẩn.
 export function getSymbolBBox(node) {
+  if (node.type === 'text') {
+    const lines = String(node.data?.text || '').split('\n');
+    const size = node.data?.size || 14;
+    const w = node.width ?? Math.max(...lines.map((l) => l.length), 1) * size * 0.6 + 8;
+    const h = node.height ?? lines.length * size * 1.3 + 8;
+    return { x1: node.position.x, y1: node.position.y, x2: node.position.x + w, y2: node.position.y + h };
+  }
   const rot = node.data.rot || 0;
   const flip = node.data.flip || false;
   const cx = 40, cy = 50;

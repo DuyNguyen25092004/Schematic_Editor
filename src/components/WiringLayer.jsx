@@ -4,15 +4,38 @@ import { snapPoint } from '../wires/snap';
 import { getJunctionDots } from '../wires/wireOps';
 import { resolvePoints } from '../routing/resolveWire';
 import WireHandles from './WireHandles';
-import { orthoPath, pointsToPolyline, labelPlacement } from '../geometry/pathUtils';
+import { orthoPath, pointsToPolyline, labelPlacement, pointAtRatio, projectOnPath } from '../geometry/pathUtils';
+import LatexText from './LatexText';
 import VddHandles from './VddHandles';
 
 
-function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected }) {
+function WireLabel({ rp, label, interactive, ghost, color, onDoubleClick, onClick }) {
+  const pt = pointAtRatio(rp, label.ratio);
+  return (
+    <foreignObject x={pt.x} y={pt.y} width={1} height={1} style={{ overflow: 'visible' }}>
+      <div
+        onDoubleClick={onDoubleClick}
+        onClick={onClick}
+        style={{
+          position: 'absolute', left: 0, top: 0,
+          transform: pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+          pointerEvents: interactive ? 'auto' : 'none', cursor: 'pointer', userSelect: 'none',
+          opacity: ghost ? 0.6 : 1,
+          textShadow: '0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff',
+        }}
+      >
+        <LatexText text={label.text} latex={label.latex} size={label.size || 12} color={color} />
+      </div>
+    </foreignObject>
+  );
+}
+
+function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected, attachTool, onAttachLabel, onEditLabel }) {
   const { screenToFlowPosition } = useReactFlow();
   const [draft, setDraft] = useState(null);
   const [cursor, setCursor] = useState(null);
   const clickTimer = useRef(null);
+  const [attachHover, setAttachHover] = useState(null);
 
   const transform = useStore((s) => s.transform);
   const [tx, ty, zoom] = transform;
@@ -20,6 +43,8 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
   useEffect(() => {
     if (!isWiringMode) { setDraft(null); setCursor(null); }
   }, [isWiringMode]);
+
+  useEffect(() => { if (!attachTool) setAttachHover(null); }, [attachTool]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -109,20 +134,30 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
               return (
                 <g key={w.id}>
                   <polyline
-                    points={pts} fill="none" stroke="transparent" strokeWidth={10}
+                    points={pts} fill="none" stroke="transparent" strokeWidth={attachTool ? 14 : 10}
                     style={{
                       pointerEvents: (isWiringMode || isBoxSelecting) ? 'none' : 'stroke',
-                      cursor: 'pointer',
+                      cursor: attachTool ? 'copy' : 'pointer',
                       userSelect: 'none',
                     }}
                     onMouseDown={(e) => { e.preventDefault(); }}
+                    onMouseMove={attachTool ? (e) => {
+                      const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+                      setAttachHover({ wireId: w.id, ratio: projectOnPath(rp, fp).ratio });
+                    } : undefined}
+                    onMouseLeave={attachTool ? () => setAttachHover(null) : undefined}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (attachTool) {
+                        const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+                        onAttachLabel?.(w.id, projectOnPath(rp, fp).ratio);
+                        return;
+                      }
                       setSelected({ kind: 'wire', id: w.id });
                       setWires(ws => ws.map(wire => ({ ...wire, selected: wire.id === w.id })));
                     }}
                   />
-                  {isSel && (
+                  {(isSel || (attachTool && attachHover?.wireId === w.id)) && (
                     <polyline
                       points={pts} fill="none" pointerEvents="none"
                       stroke="#1677ff" strokeOpacity={0.5} strokeWidth={6}
@@ -148,6 +183,25 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
                     >
                       {w.name}
                     </text>
+                  )}
+                  {(w.labels || []).map((l) => (
+                    <WireLabel
+                      key={l.id} rp={rp} label={l}
+                      color={isSel ? '#1677ff' : wireColor}
+                      interactive={!isWiringMode && !isBoxSelecting && !attachTool}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelected({ kind: 'wire', id: w.id });
+                        setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
+                      }}
+                      onDoubleClick={(e) => { e.stopPropagation(); onEditLabel?.(w.id, l.id); }}
+                    />
+                  ))}
+                  {attachTool && attachHover?.wireId === w.id && (
+                    <WireLabel
+                      rp={rp} ghost color="#1677ff"
+                      label={{ text: attachTool.text, latex: attachTool.latex, ratio: attachHover.ratio }}
+                    />
                   )}
                 </g>
               );

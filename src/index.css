@@ -121,3 +121,9 @@ code {
   background: transparent !important;
   border: none !important;
 }
+
+.react-flow__node-nmos, .react-flow__node-pmos, .react-flow__node-npn, .react-flow__node-pnp,
+.react-flow__node-res, .react-flow__node-cap, .react-flow__node-vdd, .react-flow__node-gnd,
+.react-flow__node-opamp, .react-flow__node-fdopamp {
+  pointer-events: none !important;
+}

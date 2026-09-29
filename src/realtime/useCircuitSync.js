@@ -4,8 +4,10 @@ import {
   runTransaction, serverTimestamp, Timestamp, query, where, limit,
 } from 'firebase/firestore';
 import { db, ensureSignedIn } from './firebase';
+import { nodeBoxStyle } from '../constants';
 
-const NODE_STYLE = { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' };
+
+
 const stable = (v) => JSON.stringify(v, (k, val) =>
   val && typeof val === 'object' && !Array.isArray(val)
     ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {})
@@ -15,6 +17,7 @@ const clean = (o) => JSON.parse(JSON.stringify(o));
 const stripNode = (n) => clean({ type: n.type, position: n.position, data: n.data });
 const stripWire = (w) => clean({
   points: w.points, net: w.net ?? null, name: w.name ?? null, color: w.color ?? null,
+  labels: w.labels ?? null,
 });
 
 // ---------- DỌN PHÒNG CŨ (cờ lastActive) ----------
@@ -138,7 +141,7 @@ export function useCircuitSync({
             const merged = {
               id, ...d,
               data: d.type === 'rect' ? { ...d.data, onResize: onResizeRect, onTextChange: onTextChangeRect } : d.data,
-              style: { ...NODE_STYLE, width: d.data?.width || 160, height: d.data?.height || 100 },
+              style: nodeBoxStyle({ type: d.type, data: d.data }),
               selected: old?.selected ?? false,
             };
             next = old ? next.map((n) => (n.id === id ? merged : n)) : [...next, merged];

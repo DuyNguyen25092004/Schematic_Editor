@@ -14,7 +14,7 @@ import { useCircuitSync } from './realtime/useCircuitSync';
 import { getCircuitId, setCircuitId as persistCircuitId, newCircuitId } from './realtime/circuitId';
 import { usePresence } from './realtime/usePresence';
 
-import { GRID, COMPONENT_LIBRARY } from './constants';
+import { GRID, COMPONENT_LIBRARY, nodeBoxStyle } from './constants';
 import { getSymbolBBox } from './geometry/ports';
 import { resolvePoints } from './routing/resolveWire';
 import { attachFreeEndpointsToPorts } from './wires/snap';
@@ -36,7 +36,13 @@ import { useGroups } from './cloud/useGroups';
 import { useUndo } from './hooks/useUndo';
 import RectNode from './nodes/RectNode';
 
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode };
+import TextNode from './nodes/TextNode';
+import TextDialog from './components/TextDialog';
+import LatexText from './components/LatexText';
+
+// nodeTypes: thêm  text: TextNode
+
+const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode, text: TextNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id,
@@ -139,6 +145,76 @@ function Flow() {
 
   const [isBoxSelecting, setIsBoxSelecting] = useState(false);
   
+  const [textDialog, setTextDialog] = useState(null);
+  const [textTool, setTextTool] = useState(null);   // { phase: 'place'|'attach', text, latex }
+  const [textGhost, setTextGhost] = useState(null);
+
+  const openTextDialog = useCallback(() => {
+    setSelected(null);
+    setTextTool(null);
+    setTextDialog({ mode: 'create' });
+  }, []);
+  const cancelTextTool = useCallback(() => {
+    setTextDialog(null);
+    setTextTool(null);
+    setTextGhost(null);
+  }, []);
+
+  const handleTextConfirm = useCallback(({ text, latex, attach }) => {
+    const d = textDialog;
+    setTextDialog(null);
+    if (!d) return;
+    if (d.mode === 'edit') {
+      if (d.kind === 'node') {
+        setNodes((ns) => ns.map((n) => (n.id === d.nodeId ? { ...n, data: { ...n.data, text, latex } } : n)));
+      } else {
+        setWires((ws) => ws.map((w) => (w.id === d.wireId
+          ? { ...w, labels: (w.labels || []).map((l) => (l.id === d.labelId ? { ...l, text, latex } : l)) }
+          : w)));
+      }
+      return;
+    }
+    setTextTool({ phase: attach ? 'attach' : 'place', text, latex });
+  }, [textDialog, setNodes, setWires]);
+
+  const handleTextDelete = useCallback(() => {
+    const d = textDialog;
+    setTextDialog(null);
+    if (!d) return;
+    if (d.kind === 'node') {
+      setNodes((ns) => ns.filter((n) => n.id !== d.nodeId));
+      setSelected(null);
+    } else {
+      setWires((ws) => ws.map((w) => (w.id === d.wireId
+        ? { ...w, labels: (w.labels || []).filter((l) => l.id !== d.labelId) }
+        : w)));
+    }
+  }, [textDialog, setNodes, setWires]);
+
+  const handleAttachLabel = useCallback((wireId, ratio) => {
+    if (!textTool) return;
+    const label = {
+      id: `lbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      text: textTool.text, latex: textTool.latex, ratio,
+    };
+    setWires((ws) => ws.map((w) => (w.id === wireId ? { ...w, labels: [...(w.labels || []), label] } : w)));
+    setTextTool(null);
+  }, [textTool, setWires]);
+
+  useEffect(() => {
+    const onEdit = (e) => {
+      if (textTool || moveGroup || copyGroup || cursorNodeId) return;
+      const n = nodesRef.current.find((x) => x.id === e.detail?.id);
+      if (n && n.type === 'text') setTextDialog({ mode: 'edit', kind: 'node', nodeId: n.id, initial: n.data });
+    };
+    window.addEventListener('text-node-edit', onEdit);
+    return () => window.removeEventListener('text-node-edit', onEdit);
+  }, [textTool, moveGroup, copyGroup, cursorNodeId]);
+
+  const handleEditLabel = useCallback((wireId, labelId) => {
+    const label = wiresRef.current.find((w) => w.id === wireId)?.labels?.find((l) => l.id === labelId);
+    if (label) setTextDialog({ mode: 'edit', kind: 'wire', wireId, labelId, initial: label });
+  }, []);
   // --- STATE LƯU TỌA ĐỘ BẮT ĐẦU QUÉT KHỐI ---
   const selectionStart = useRef(null); 
   // -----------------------------------------
@@ -173,6 +249,43 @@ function Flow() {
       },
     }]);
   }, [nextId, setNodes, handleResizeRect, handleRectTextChange]);
+
+  useEffect(() => {
+    if (textTool?.phase !== 'place') return;
+    const snap = (e) => {
+      const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      return { x: Math.round(fp.x / GRID) * GRID, y: Math.round(fp.y / GRID) * GRID };
+    };
+    const onMove = (e) => setTextGhost(flowToScreenPosition(snap(e)));
+    const onClick = (e) => {
+      if (e.target.closest?.('[data-text-ui]')) return;
+      const p = snap(e);
+      const id = nextId('TXT');
+      setNodes((ns) => [...ns, {
+        id, type: 'text', position: p,
+        data: { text: textTool.text, latex: textTool.latex, size: 14 },
+        style: nodeBoxStyle({ type: 'text' }),
+      }]);
+      setTextTool(null);
+      setTextGhost(null);
+    };
+    const t = setTimeout(() => {   // trì hoãn để cú click nút OK không bị tính là click đặt chữ
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('click', onClick);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('click', onClick);
+    };
+  }, [textTool, screenToFlowPosition, flowToScreenPosition, nextId, setNodes]);
+
+  useEffect(() => {
+    if (!textDialog) return;
+    const onKey = (e) => { if (e.key === 'Escape') cancelTextTool(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [textDialog, cancelTextTool]);
 
   const snappedGhostScreenPos = useCallback((clientX, clientY) => {
     const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -225,11 +338,11 @@ function Flow() {
   // --- BẮT ĐẦU VÀ KẾT THÚC QUÉT KHỐI DÂY ĐIỆN ---
   const handleMouseDown = useCallback((e) => {
   if (e.button !== 0) return;
-  if (!isWiringMode && !isMoveMode && !isCopyMode && !placingType) {
+  if (!isWiringMode && !isMoveMode && !isCopyMode && !placingType && !textTool) {
     selectionStart.current = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     setIsBoxSelecting(true); // bắt đầu kéo -> tắt pointer-events của wire
   }
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, screenToFlowPosition]);
+  }, [isWiringMode, isMoveMode, isCopyMode, placingType, textTool, screenToFlowPosition]);
 
   const handleNodesChange = useCallback((changes) => {
     // Loại bỏ các thay đổi type 'select' do React Flow tự phát sinh khi box-select
@@ -345,6 +458,7 @@ function Flow() {
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
+    textTool, openTextDialog, cancelTextTool,
   });
  
  useEffect(() => {
@@ -373,6 +487,7 @@ function Flow() {
   return () => window.removeEventListener('mousedown', forceDropOnClick, { capture: true });
 }, [moveGroup, copyGroup, cursorNodeId]);
   const handlePaneClick = () => {
+    if (textTool) return;
     if (moveGroup || copyGroup || cursorNodeId) {
       setMoveGroup(null);
       setCopyGroup(null);
@@ -452,14 +567,15 @@ function Flow() {
           panOnDrag={[1, 2]} 
           selectionMode="partial" 
 
-          elementsSelectable={!isWiringMode && !placingType && !isMoveMode && !isCopyMode}
-          selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode}     
+          elementsSelectable={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}
+          selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}    
           
           selectNodesOnDrag={false}
           onSelectionStart={handleMouseDown}
           onSelectionEnd={handleMouseUp}
           
           onNodeClick={(e, node) => {
+            if (textTool) return;
             if (moveGroup || copyGroup || cursorNodeId) {
               setMoveGroup(null);
               setCopyGroup(null);
@@ -483,9 +599,9 @@ function Flow() {
                 items: [{ id: node.id, initialX: node.position.x, initialY: node.position.y }]
               });
             } else if (isCopyMode) {
-              const prefix = node.data.reference.replace(/[0-9]/g, '') || 'U';
+              const prefix = node.type === 'text' ? 'TXT' : (node.data.reference.replace(/[0-9]/g, '') || 'U');
               const newId = nextId(prefix);
-              const newNode = { ...node, id: newId, data: { ...node.data, reference: newId }, position: { ...node.position }, selected: false };
+              const newNode = { ...node, id: newId, data: node.type === 'text' ? { ...node.data } : { ...node.data, reference: newId }, position: { ...node.position }, selected: false };
               setNodes((ns) => [...ns, newNode]);
               setCursorNodeId(newId); 
             } else if (!isWiringMode && !placingType) {
@@ -516,6 +632,9 @@ function Flow() {
                 setNodes={setNodes}
                 selected={selected}
                 setSelected={setSelected}
+                attachTool={textTool?.phase === 'attach' ? textTool : null}
+                onAttachLabel={handleAttachLabel}
+                onEditLabel={handleEditLabel}
             />
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} />
@@ -549,7 +668,34 @@ function Flow() {
           />
         </div>
       </div>
-        
+        {textDialog && (
+          <div data-text-ui>
+            <TextDialog
+              key={`${textDialog.mode}-${textDialog.nodeId || textDialog.labelId || 'new'}`}
+              mode={textDialog.mode}
+              initial={textDialog.initial}
+              onConfirm={handleTextConfirm}
+              onCancel={cancelTextTool}
+              onDelete={handleTextDelete}
+            />
+          </div>
+        )}
+
+        {textTool && (
+          <div data-text-ui style={{
+            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
+            background: '#1677ff', color: '#fff', padding: '6px 14px', borderRadius: 16,
+            fontFamily: 'sans-serif', fontSize: 13, pointerEvents: 'none',
+          }}>
+            {textTool.phase === 'attach' ? 'Click vào dây để gắn nhãn' : 'Click để đặt văn bản'} — Esc để hủy
+          </div>
+        )}
+
+        {textTool?.phase === 'place' && textGhost && (
+          <div style={{ position: 'fixed', left: textGhost.x, top: textGhost.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6, padding: 2 }}>
+            <LatexText text={textTool.text} latex={textTool.latex} size={14} />
+          </div>
+        )}
         {quickAddOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.15)' }} onClick={() => setQuickAddOpen(false)}>
             <div onClick={(e) => e.stopPropagation()}>

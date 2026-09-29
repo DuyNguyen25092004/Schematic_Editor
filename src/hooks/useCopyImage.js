@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import { toBlob } from 'html-to-image';
 import { resolvePoints } from '../routing/resolveWire';
+import { getSymbolBBox } from '../geometry/ports';
+
 
 export function useCopyImage({
   nodes, wires, selected, tx, ty, zoom,
@@ -19,6 +21,12 @@ const handleCopyImage = useCallback(() => {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     
     selectedNodes.forEach(n => {
+        if (n.type === 'text') {
+            const b = getSymbolBBox(n);
+            minX = Math.min(minX, b.x1); minY = Math.min(minY, b.y1);
+            maxX = Math.max(maxX, b.x2); maxY = Math.max(maxY, b.y2);
+            return;
+        }
         minX = Math.min(minX, n.position.x);
         minY = Math.min(minY, n.position.y);
         maxX = Math.max(maxX, n.position.x + 160);

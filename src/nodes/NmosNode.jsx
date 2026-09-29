@@ -66,7 +66,7 @@ export default function NmosNode({ data, selected }) {
             zIndex: 5,
           }} />
         )}
-
+        <div style={{ position: 'absolute', left: '16px', top: '27px', width: '36px', height: '46px', pointerEvents: 'all' }} />
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
           <g stroke="#000" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
             <line x1="20" y1="50" x2="28" y2="50" />

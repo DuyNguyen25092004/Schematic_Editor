@@ -51,18 +51,20 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
 
     const isMos = node.type === 'nmos' || node.type === 'pmos';
     const isRect = node.type === 'rect';
+    const isText = node.type === 'text';
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
       res: 'Res', cap: 'Cap', vdd: 'VDD rail', gnd: 'Ground',
       opamp: 'Opamp', fdopamp: 'FD opamp',
       rect: 'Hình chữ nhật',
+      text: 'Văn bản',
     }[node.type] || String(node.type).toUpperCase();
     const hasValue = node.type === 'res' || node.type === 'cap';
     return (
       <div style={box}>
-        <div style={{ fontWeight: 700, marginBottom: 10 }}>{title}{!isRect && ` — ${node.data.reference}`}</div>
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>{title}{!isRect && !isText && ` — ${node.data.reference}`}</div>
         
-        {node.type !== 'gnd' && !isRect && (
+        {node.type !== 'gnd' && !isRect && !isText && (
           <>
             <label style={label}>Reference</label>
             <input style={input} value={node.data.reference}
@@ -111,6 +113,26 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
           </>
         )}
 
+        {isText && (
+          <>
+            <label style={label}>Nội dung</label>
+            <textarea
+              rows={3}
+              style={{ ...input, resize: 'vertical', fontFamily: node.data.latex ? 'monospace' : 'sans-serif' }}
+              value={node.data.text || ''}
+              onChange={(e) => patch('text', e.target.value)}
+            />
+            <label style={{ ...label, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!node.data.latex} onChange={(e) => patch('latex', e.target.checked)} />
+              LaTeX
+            </label>
+            <label style={label}>Cỡ chữ ({node.data.size || 14}px)</label>
+            <input type="range" min={8} max={48} step={1} style={{ ...input, padding: 0 }}
+                  value={node.data.size || 14}
+                  onChange={(e) => patch('size', Number(e.target.value))} />
+          </>
+        )}
+
         {hasValue && (
           <>
             <label style={label}>Giá trị</label>
@@ -128,7 +150,9 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
                   onChange={(e) => patch('l', e.target.value)} />
           </>
         )}
-        <button style={btn} onClick={onDelete}>Xóa linh kiện</button>
+        <button style={btn} onClick={onDelete}>
+          {isText ? 'Xóa văn bản' : 'Xóa linh kiện'}
+          </button>
       </div>
     );
   }
@@ -141,15 +165,24 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
   return (
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>Dây nối</div>
-      <label style={label}>Tên dây</label>
-      <input id="wire-name-input" style={input} value={wire.name || ''}
-        placeholder="(chưa đặt tên) — phím L"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.target.blur(); }
-        }}
-        onChange={(e) => setWires((ws) => ws.map((w) =>
-        w.id === wire.id ? { ...w, name: e.target.value } : w))} />
+      
+      {wire.name && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, color: '#555' }}>
+          <span style={{ flex: 1 }}>Tên cũ: <b>{wire.name}</b></span>
+          <button type="button" style={{ cursor: 'pointer' }}
+            onClick={() => setWires((ws) => ws.map((w) => (w.id === wire.id ? { ...w, name: undefined } : w)))}>
+            Xóa
+          </button>
+        </div>
+      )}
+      {(wire.labels || []).length > 0 && (
+        <div style={{ color: '#888', fontSize: 12, marginBottom: 10 }}>
+          Nhấp đúp vào nhãn trên dây để sửa / xóa.
+        </div>
+      )}
+
       <label style={label}>Màu dây</label>
+      {/* Các code map WIRE_COLORS ở dưới giữ nguyên... */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
         {WIRE_COLORS.map((c) => {
           const active = (wire.color || undefined) === c.value;

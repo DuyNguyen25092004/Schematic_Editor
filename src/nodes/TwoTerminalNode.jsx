@@ -55,7 +55,7 @@ export default function TwoTerminalNode({ data, selected, type }) {
             pointerEvents: 'none', zIndex: 5,
           }} />
         )}
-
+        <div style={{ position: 'absolute', left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`, pointerEvents: 'all' }} />
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
           <Symbol strokeWidth={1.5} />
         </svg>

@@ -13,6 +13,7 @@ const {
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
+    textTool, openTextDialog, cancelTextTool,
 } = ctx;
  useEffect(() => {
     const handleKeyDown = (e) => {
@@ -38,18 +39,11 @@ const {
       
       // Phím L: đặt tên cho dây đang chọn
       if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.repeat || moveGroup || copyGroup || cursorNodeId) return;
-        const wireId = selected?.kind === 'wire' ? selected.id
-          : (activeWires.length === 1 ? activeWires[0].id : null);
-        if (wireId) {
-          e.preventDefault(); // tránh ký tự 'l' bị gõ vào ô vừa focus
-          if (selected?.kind !== 'wire') setSelected({ kind: 'wire', id: wireId });
-          setTimeout(() => {
-            const el = document.getElementById('wire-name-input');
-            if (el) { el.focus(); el.select(); }
-          }, 0);
-          return;
-        }
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId || placingType || textTool) return;
+        e.preventDefault();
+        setIsWiringMode(false); setIsMoveMode(false); setIsCopyMode(false);
+        openTextDialog?.();
+        return;
       }
       
       if (e.key === 'r' || e.key === 'R') {
@@ -70,6 +64,7 @@ const {
           setIsRotatingFlag(true); // <-- BẬT trước khi setNodes/setWires
 
           const targetSet = new Set(targetIds);
+          nodesRef.current.forEach((n) => { if (n.type === 'text') targetSet.delete(n.id); });
           const targetNodesArr = nodesRef.current.filter((n) => targetSet.has(n.id));
           const wireSet = new Set(targetWireIds);
 
@@ -215,10 +210,11 @@ const {
         setIsCopyMode(false);
         setIsWiringMode(false);
         setQuickAddOpen(false);
+        cancelTextTool?.();
         return;
       }
 
-      if (moveGroup || copyGroup || cursorNodeId) return;
+      if (moveGroup || copyGroup || cursorNodeId || textTool) return;
 
       if (e.key === 'm' || e.key === 'M') {
         const targetNodes = activeNodes.length > 0
@@ -318,13 +314,13 @@ const {
 
           const idMap = new Map(); // old nodeId -> new nodeId
           const newNodes = targetNodes.map((n) => {
-            const prefix = (n.data.reference || 'U').replace(/[0-9]/g, '') || 'U';
+            const prefix = n.type === 'text' ? 'TXT' : ((n.data.reference || 'U').replace(/[0-9]/g, '') || 'U');
             const newId = genId(prefix);
             idMap.set(n.id, newId);
             return {
               ...n,
               id: newId,
-              data: { ...n.data, reference: n.type === 'vdd' ? n.data.reference : newId },
+              data: n.type === 'text' ? { ...n.data } : { ...n.data, reference: n.type === 'vdd' ? n.data.reference : newId },
               position: { ...n.position },
               selected: false,
             };
@@ -356,7 +352,7 @@ const {
               }
               return { ...p };
             });
-            return { id: wireIdMap.get(w.id), points, net: w.net, name: w.name, color: w.color, selected: false };
+            return { id: wireIdMap.get(w.id), points, net: w.net, name: w.name, color: w.color, labels: (w.labels || []).map((l) => ({ ...l })), selected: false };
           });
 
           setNodes((ns) => [...ns, ...newNodes]);
@@ -392,5 +388,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool]);
 }

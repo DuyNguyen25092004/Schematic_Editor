@@ -1,7 +1,7 @@
 import { GRID, NO_JUNCTION_DOT_TYPES } from '../constants';
 import { toGridUnit, sameGridPoint } from '../geometry/grid';
 import { resolvePoints } from '../routing/resolveWire';
-
+import { pointAtRatio, projectOnPath } from '../geometry/pathUtils';
 
 export function getJunctionDots(wires, nodes) {
   const dots = [];
@@ -79,9 +79,15 @@ export function mergeTouchingWires(wires, nodes) {
         }
 
         if (mergedPoints) {
+          const remap = (labels, pts) => (labels || []).map((l) => {
+            const pt = pointAtRatio(pts, l.ratio);
+            return { ...l, ratio: projectOnPath(mergedPoints, pt).ratio };
+          });
+          const labels = [...remap(A.labels, ptsA), ...remap(B.labels, ptsB)];
           const merged = {
             ...A, points: mergedPoints, lockedVertical: undefined,
             net: A.net || B.net, name: A.name || B.name, color: A.color || B.color,
+            ...(labels.length ? { labels } : {}),
           };
           list = list
             .filter((_, idx) => idx !== i && idx !== j)

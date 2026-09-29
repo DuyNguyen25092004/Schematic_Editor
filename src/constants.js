@@ -79,6 +79,7 @@ export const PORTS_BY_TYPE = {
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
+  text: [], // văn bản tự do không có chân nối dây
 };
 
 // data: chỉ VDD cần (số chân phụ thuộc độ dài thanh)
@@ -117,6 +118,11 @@ export const getSymbolBox = (type, data) => {
   }
   return SYMBOL_BOX_BY_TYPE[type] || DEFAULT_SYMBOL_BOX;
 };
+
+export const nodeBoxStyle = (n) => ({
+  ...(n.type === 'text' ? {} : { width: n.data?.width || 160, height: n.data?.height || 100 }),
+  background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
+});
 
 export const MID_WIRE_SNAP_RADIUS = 5; // chỉ hút vào GIỮA dây khi click rất sát (nửa ô lưới)
 
