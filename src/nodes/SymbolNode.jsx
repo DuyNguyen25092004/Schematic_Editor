@@ -4,12 +4,12 @@ import { SYMBOLS } from '../symbols';
 import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan } from '../constants';
 import LatexText, { formatLatexRef } from '../components/LatexText';
 
-const GATE_LABEL = { x: 40, y: 22, side: 'top' };
+const GATE_LABEL = { x: 40, y: 35, side: 'top' };
 const LABELS = {
   opamp:   { x: 36, y: 16, side: 'top' },
   fdopamp: { x: 36, y: 16, side: 'top' },
-  inverter: GATE_LABEL,
-  buffer:   GATE_LABEL,
+  inverter: { x: 35, y: 35, side: 'top' },
+  buffer:   { x: 35, y: 35, side: 'top' },
   and:      GATE_LABEL,
   or:       GATE_LABEL,
   nand:     GATE_LABEL,

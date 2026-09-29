@@ -77,9 +77,14 @@ export const FD_OPAMP_PORTS = [
 
 export const LOGIC_1_PORTS = [
   { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
-  { id: 'out', x: 80, y: 50, dir: { x: 1, y: 0 } },
+  { id: 'out', x: 60, y: 50, dir: { x: 1, y: 0 } },
 ];
 export const LOGIC_2_PORTS = [
+  { id: 'in1', x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'in2', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
+export const XNOR_PORTS = [
   { id: 'in1', x: 10, y: 40, dir: { x: -1, y: 0 } },
   { id: 'in2', x: 10, y: 60, dir: { x: -1, y: 0 } },
   { id: 'out', x: 80, y: 50, dir: { x: 1, y: 0 } },
@@ -91,7 +96,7 @@ export const PORTS_BY_TYPE = {
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
   inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
-  xor: LOGIC_2_PORTS, xnor: LOGIC_2_PORTS,
+  xor: LOGIC_2_PORTS, xnor: XNOR_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
   text: [], // văn bản tự do không có chân nối dây
 };
@@ -123,13 +128,13 @@ export const SYMBOL_BOX_BY_TYPE = {
   gnd: { x: 40, y: 27, w: 20, h: 28 },
   opamp: { x: 6, y: 16, w: 78, h: 68 },
   fdopamp: { x: 6, y: 16, w: 78, h: 68 },
-  inverter: { x: 10, y: 30, w: 70, h: 40 },
-  buffer:   { x: 10, y: 30, w: 70, h: 40 },
-  and:      { x: 10, y: 30, w: 70, h: 40 },
-  or:       { x: 10, y: 30, w: 70, h: 40 },
-  nand:     { x: 10, y: 30, w: 70, h: 40 },
-  nor:      { x: 10, y: 30, w: 70, h: 40 },
-  xor:      { x: 10, y: 30, w: 70, h: 40 },
+  inverter: { x: 10, y: 30, w: 50, h: 40 },
+  buffer:   { x: 10, y: 30, w: 50, h: 40 },
+  and:      { x: 10, y: 30, w: 60, h: 40 },
+  or:       { x: 10, y: 30, w: 60, h: 40 },
+  nand:     { x: 10, y: 30, w: 60, h: 40 },
+  nor:      { x: 10, y: 30, w: 60, h: 40 },
+  xor:      { x: 10, y: 30, w: 60, h: 40 },
   xnor:     { x: 10, y: 30, w: 70, h: 40 },
 };
 export const getSymbolBox = (type, data) => {
