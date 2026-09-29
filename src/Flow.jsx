@@ -25,15 +25,18 @@ import ComponentPalette from './components/ComponentPalette';
 import QuickAddMenu from './components/QuickAddMenu';
 import WiringLayer from './components/WiringLayer';
 import PresenceLayer from './components/PresenceLayer';
-import RoomBar from './components/RoomBar';
+
 import OnlineUsers from './components/OnlineUsers';
 import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import GroupPanel from './cloud/GroupPanel';
+import GroupTabBar from './components/GroupTabBar';
+import { useGroups } from './cloud/useGroups';
 import { useUndo } from './hooks/useUndo';
+import RectNode from './nodes/RectNode';
 
-const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode };
+const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
   id: inst.id,
@@ -78,6 +81,7 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
+  const groupsState = useGroups();
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
@@ -87,13 +91,25 @@ function Flow() {
     setCircuitIdState(newCircuitId());
   }, []);
     // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
+    // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
   const { undo, remoteSetNodes, remoteSetWiresRaw } = useUndo({ nodes, wires, setNodes, setWiresRaw, circuitId });
+
+  // Ghi lại kích thước sau khi kéo cạnh/góc RectNode (chỉ khi thả tay) và chữ trong hình
+  const handleResizeRect = useCallback((id, { width, height }) => {
+    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, width, height } } : n)));
+  }, [setNodes]);
+
+  const handleRectTextChange = useCallback((id, text) => {
+    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)));
+  }, [setNodes]);
 
   useCircuitSync({
     circuitId: circuitId,
     nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
+    onResizeRect: handleResizeRect,
+    onTextChangeRect: handleRectTextChange,
   });
 
   const { screenToFlowPosition, flowToScreenPosition, fitView } = useReactFlow();
@@ -150,10 +166,13 @@ function Flow() {
       id,
       type: comp.type,
       position: { x: snappedX, y: snappedY },
-      data: { reference: id, ...comp.defaultData },
-      style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
+      data: { reference: id, ...comp.defaultData, onResize: handleResizeRect, onTextChange: handleRectTextChange },
+      style: {
+        width: comp.defaultData?.width || 160, height: comp.defaultData?.height || 100,
+        background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
+      },
     }]);
-  }, [nextId, setNodes]);
+  }, [nextId, setNodes, handleResizeRect, handleRectTextChange]);
 
   const snappedGhostScreenPos = useCallback((clientX, clientY) => {
     const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -380,7 +399,8 @@ function Flow() {
   }, []);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
       <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
 
       <div 
@@ -419,25 +439,7 @@ function Flow() {
           </div>
         )}
         
-        <div 
-          id="ui-overlay" 
-          style={{
-            position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
-            background: (isWiringMode || isMoveMode || isCopyMode) ? '#ff4d4f' : '#fff', 
-            color: (isWiringMode || isMoveMode || isCopyMode) ? '#fff' : '#000',
-            padding: '8px 16px', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: 13, whiteSpace: 'nowrap'
-          }}>
-          {isWiringMode && 'Đang NỐI DÂY (W) — Click để vẽ, đúp click kết thúc'}
-          {isMoveMode && (moveGroup ? `Đang DI CHUYỂN ${moveGroup.items.length} linh kiện — R xoay, Ctrl+R lật. Click thả` : 'Chế độ MOVE (M) — Click 1 linh kiện để nhấc lên')}
-          {isCopyMode && (copyGroup
-            ? `Đang SAO CHÉP ${copyGroup.items.length} linh kiện — R xoay, Ctrl+R lật. Click thả`
-            : (cursorNodeId
-                ? 'Đang SAO CHÉP — R xoay, Ctrl+R lật. Click thả'
-                : 'Chế độ COPY (C) — Click 1 linh kiện, hoặc bôi đen 1 khối rồi bấm C'))}
-          {placingType && `Đang đặt ${placingType.label} (I) — Click thả, Esc hủy`}
-          {!isWiringMode && !isMoveMode && !isCopyMode && !placingType && 'Chế độ: BÌNH THƯỜNG (Sẵn sàng chọn)'}
-        </div>
+
 
         <ReactFlow
           nodes={nodes}
@@ -522,17 +524,28 @@ function Flow() {
 
         <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
         <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-        <RoomBar circuitId={circuitId} />
+
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <GroupPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWiresRaw}
             onOpenRoom={switchCircuitRoom}
             onNewRoom={startNewCircuitRoom}
+            logged={groupsState.logged}
+            email={groupsState.email}
+            login={groupsState.login}
+            logout={groupsState.logout}
+            group={groupsState.group}
+            groupId={groupsState.groupId}
+            myRole={groupsState.myRole}
+            onResizeRect={handleResizeRect}
+            onTextChangeRect={handleRectTextChange}
           />
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
             onOpenRoom={switchCircuitRoom}
             onNewRoom={startNewCircuitRoom}
+            onResizeRect={handleResizeRect}
+            onTextChangeRect={handleRectTextChange}
           />
         </div>
       </div>
@@ -547,7 +560,7 @@ function Flow() {
 
         {placingType && ghostScreenPos && (
           <div style={{ position: 'fixed', left: ghostScreenPos.x, top: ghostScreenPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
-            <GhostIcon type={placingType.type} />
+            <GhostIcon type={placingType.type} data={placingType.defaultData} />
           </div>
         )}
 
@@ -557,6 +570,17 @@ function Flow() {
           </div>
         )}
       </div>
+    </div>
+
+      <GroupTabBar
+        logged={groupsState.logged}
+        email={groupsState.email}
+        myGroups={groupsState.myGroups}
+        groupId={groupsState.groupId}
+        onSelect={groupsState.openGroup}
+        onCreate={groupsState.handleCreateGroup}
+        onLogin={groupsState.login}
+      />
     </div>
   );
 }

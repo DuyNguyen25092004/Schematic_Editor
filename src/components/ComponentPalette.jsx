@@ -102,7 +102,7 @@ function ComponentPalette({ onComponentDragStart }) {
                         e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
-                      <MiniIcon type={comp.type} width={42} height={30} />
+                      <MiniIcon type={comp.type} width={42} height={30} data={comp.defaultData} />
                       <span>{comp.short || comp.label}</span>
                     </div>
                   ))}

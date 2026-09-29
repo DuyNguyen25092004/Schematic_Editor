@@ -62,6 +62,7 @@ const sweepOthers = async (currentId) => {
 export function useCircuitSync({
   circuitId, nodes, wires, setNodes, setWiresRaw,
   isEditingLocally, seedNodes = [],
+  onResizeRect, onTextChangeRect,
 }) {
   const [ready, setReady] = useState(false);
   const syncedNodes = useRef(new Map()); // id -> JSON đã đồng bộ
@@ -134,7 +135,12 @@ export function useCircuitSync({
             const old = next.find((n) => n.id === id);
             if (old && syncedNodes.current.get(id) === json) return; // echo của mình
             syncedNodes.current.set(id, json);
-            const merged = { id, ...d, style: NODE_STYLE, selected: old?.selected ?? false };
+            const merged = {
+              id, ...d,
+              data: d.type === 'rect' ? { ...d.data, onResize: onResizeRect, onTextChange: onTextChangeRect } : d.data,
+              style: { ...NODE_STYLE, width: d.data?.width || 160, height: d.data?.height || 100 },
+              selected: old?.selected ?? false,
+            };
             next = old ? next.map((n) => (n.id === id ? merged : n)) : [...next, merged];
           });
           return next;
