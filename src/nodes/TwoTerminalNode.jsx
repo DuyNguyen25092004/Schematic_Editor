@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS } from '../symbols';
 import { getSymbolBox } from '../constants';
+import LatexText, { formatLatexRef } from '../components/LatexText';
 
 // Ký hiệu nằm dọc tại x=50, xoay quanh tâm (40,50).
 // Label cách tâm xoay OFFSET đơn vị về bên phải (chưa xoay), rồi xoay/lật theo node.
@@ -24,6 +25,9 @@ const handleStyle = (left, top) => ({
 });
 
 export default function TwoTerminalNode({ data, selected, type }) {
+  const zoom = useStore((s) => s.transform[2]);
+  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+  const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
   const box = getSymbolBox(type);
   const rot = data.rot || 0;
@@ -57,7 +61,7 @@ export default function TwoTerminalNode({ data, selected, type }) {
         )}
         <div style={{ position: 'absolute', left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`, pointerEvents: 'all' }} />
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
-          <Symbol strokeWidth={1.5} />
+          <Symbol strokeWidth={sw} />
         </svg>
       </div>
 
@@ -70,9 +74,12 @@ export default function TwoTerminalNode({ data, selected, type }) {
         whiteSpace: 'nowrap', pointerEvents: 'none',
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
-        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
-          {data.reference}
-        </div>
+        <LatexText
+          text={formatLatexRef(data.reference)}
+          latex={true}
+          size={14}
+          color="#000"
+        />
         {data.value && <div style={{ fontSize: '10px', color: '#555' }}>{data.value}</div>}
       </div>
     </div>

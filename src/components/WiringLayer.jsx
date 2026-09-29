@@ -103,6 +103,8 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
 
   
 
+  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+
   return (
     <>
       <div
@@ -160,16 +162,15 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
                   {(isSel || (attachTool && attachHover?.wireId === w.id)) && (
                     <polyline
                       points={pts} fill="none" pointerEvents="none"
-                      stroke="#1677ff" strokeOpacity={0.5} strokeWidth={6}
+                      stroke="#1677ff" strokeOpacity={0.5} strokeWidth={6 / strokeScale}
                       strokeLinecap="round" strokeLinejoin="round"
                     />
                   )}
                   <polyline
                     points={pts} fill="none" pointerEvents="none"
                     stroke={wireColor}
-                    strokeWidth={isSel ? 2.5 : 1.5}
+                    strokeWidth={(isSel ? 2.5 : 1.5) / strokeScale}
                     strokeLinecap="square" strokeLinejoin="miter"
-                    shapeRendering="crispEdges"
                   />
                   {mid && (
                     <text
@@ -209,7 +210,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
           
           {/* 1. Render tất cả các dấu chấm giao nhau (Solder Dots) của các dây cố định */}
           {getJunctionDots(wires, nodes).map((dot, idx) => (
-            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r={3.5} fill="#000" pointerEvents="none" />
+            <circle key={`dot-${idx}`} cx={dot.x} cy={dot.y} r={3.5 / strokeScale} fill="#000" pointerEvents="none" />
           ))}
 
           {/* Handle chỉnh sửa dây đang được chọn — chỉ hiện khi KHÔNG đang wiring/box-select */}
@@ -232,16 +233,16 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
             .map((n) => (
               <VddHandles key={n.id} node={n} wires={wires} setNodes={setNodes}
                           screenToFlowPosition={screenToFlowPosition} />
-          ))}
+            ))}
 
           {/* 2. Dây đang vẽ phác (Draft) */}
           {draft && (
             <polyline points={pointsToPolyline(draft)} fill="none" stroke="#000"
-                       strokeWidth={1.5} strokeLinecap="square" shapeRendering="crispEdges" />
+                       strokeWidth={1.5 / strokeScale} strokeLinecap="square" />
           )}
           {preview && (
             <polyline points={pointsToPolyline(preview)} fill="none" stroke="#ff4d4f"
-                       strokeWidth={2} strokeDasharray="4 3" />
+                       strokeWidth={2 / strokeScale} strokeDasharray="4 3" />
           )}
           
           {/* 3. Con trỏ chuột: Hiện chấm đỏ nếu vào chân, chấm ĐEN nếu vào dây, chấm xám nếu rảnh */}
@@ -249,7 +250,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
             <circle 
               cx={cursor.x} 
               cy={cursor.y} 
-              r={cursor.portId || cursor.onWireId ? 4 : 2.5}
+              r={(cursor.portId || cursor.onWireId ? 4 : 2.5) / strokeScale}
               fill={cursor.portId ? '#ff4d4f' : (cursor.onWireId ? '#000' : '#888')} 
             />
           )}

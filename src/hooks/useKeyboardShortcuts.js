@@ -303,10 +303,22 @@ const {
 
         if (targetNodes.length > 0 || targetWires.length > 0) {
           // --- Copy cả khối: nhân bản node + wire đã bôi đen, gắn vào con trỏ ---
-          const reserved = new Set(nodes.map((n) => n.id));
+          const existingIds = new Set(nodes.map((n) => n.id));
+          const existingRefs = new Set(nodes.map((n) => n.data?.reference).filter(Boolean));
+          const reserved = new Set();
           const genId = (prefix) => {
             let i = 1;
-            while (reserved.has(`${prefix}${i}`)) i++;
+            const cleanPrefix = prefix.replace(/_$/, '');
+            while (
+              existingIds.has(`${prefix}${i}`) ||
+              existingIds.has(`${cleanPrefix}${i}`) ||
+              existingRefs.has(`${prefix}${i}`) ||
+              existingRefs.has(`${cleanPrefix}${i}`) ||
+              reserved.has(`${prefix}${i}`) ||
+              reserved.has(`${cleanPrefix}${i}`)
+            ) {
+              i++;
+            }
             const id = `${prefix}${i}`;
             reserved.add(id);
             return id;
@@ -314,7 +326,10 @@ const {
 
           const idMap = new Map(); // old nodeId -> new nodeId
           const newNodes = targetNodes.map((n) => {
-            const prefix = n.type === 'text' ? 'TXT' : ((n.data.reference || 'U').replace(/[0-9]/g, '') || 'U');
+            const rawPrefix = n.type === 'text' ? 'TXT' : ((n.data?.reference || 'U').replace(/[0-9]/g, '') || 'U');
+            const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
+              ? `${rawPrefix.replace(/_$/, '')}_`
+              : rawPrefix;
             const newId = genId(prefix);
             idMap.set(n.id, newId);
             return {

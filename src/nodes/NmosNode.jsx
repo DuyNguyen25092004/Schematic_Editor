@@ -1,5 +1,6 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
+import LatexText, { formatLatexRef } from '../components/LatexText';
 
 // Tính vị trí neo của label — quay quanh cùng tâm (40,50) như PORTS,
 // trả về cả hướng (left/right/top/bottom) để biết canh chữ mọc ra phía nào.
@@ -28,6 +29,9 @@ function getLabelAnchor(rot, flip) {
 }
 
 export default function NmosNode({ data, selected }) {
+  const zoom = useStore((s) => s.transform[2]);
+  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+  const sw = 1.5 / strokeScale;
   const rot = data.rot || 0;
   const flip = data.flip || false;
   const transformStr = `rotate(${rot}deg) scaleX(${flip ? -1 : 1})`;
@@ -68,7 +72,7 @@ export default function NmosNode({ data, selected }) {
         )}
         <div style={{ position: 'absolute', left: '16px', top: '27px', width: '36px', height: '46px', pointerEvents: 'all' }} />
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
-          <g stroke="#000" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
+          <g stroke="#000" strokeWidth={sw} strokeLinecap="square" strokeLinejoin="miter" fill="none">
             <line x1="20" y1="50" x2="28" y2="50" />
             <rect x="28" y="40" width="3" height="20" fill="#000" stroke="none" />
             <rect x="33" y="37" width="3" height="26" fill="#000" stroke="none" />
@@ -88,9 +92,12 @@ export default function NmosNode({ data, selected }) {
         whiteSpace: 'nowrap', pointerEvents: 'none',
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
-        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
-          {data.reference}
-        </div>
+        <LatexText
+          text={formatLatexRef(data.reference)}
+          latex={true}
+          size={14}
+          color="#000"
+        />
         {data.w && <div style={{ fontSize: '9px', color: '#555' }}>W={data.w}</div>}
         {data.l && <div style={{ fontSize: '9px', color: '#555' }}>L={data.l}</div>}
       </div>

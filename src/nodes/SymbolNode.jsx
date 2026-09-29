@@ -1,7 +1,8 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS } from '../symbols';
 import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan } from '../constants';
+import LatexText, { formatLatexRef } from '../components/LatexText';
 
 // (VDD tính riêng bên dưới vì vị trí nhãn phụ thuộc độ dài thanh)
 const LABELS = {
@@ -23,6 +24,9 @@ function transformVec(dx, dy, flip, rot) {
 }
 
 export default function SymbolNode({ data, selected, type }) {
+  const zoom = useStore((s) => s.transform[2]);
+  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+  const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
   const ports = getPorts(type, data);
   const box = getSymbolBox(type, data);
@@ -54,8 +58,6 @@ export default function SymbolNode({ data, selected, type }) {
   }[label.side];
   const isVerticalSide = label && (label.side === 'top' || label.side === 'bottom');
 
-  const ref = data.reference || '';
-  const isVddLabel = isVdd && /^V.+/.test(ref);
 
   return (
     <div style={{ position: 'relative', width: '160px', height: '100px', boxSizing: 'border-box' }}>
@@ -87,7 +89,7 @@ export default function SymbolNode({ data, selected, type }) {
         <div style={{ position: 'absolute', left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`, pointerEvents: 'all' }} />
         <svg width={svgW} height="100" viewBox={`${svgX0} 0 ${svgW} 100`}
             style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none' }}>
-        <Symbol strokeWidth={1.5} data={data} />
+        <Symbol strokeWidth={sw} data={data} />
         </svg>
       </div>
 
@@ -101,16 +103,12 @@ export default function SymbolNode({ data, selected, type }) {
           whiteSpace: 'nowrap', pointerEvents: 'none',
           fontFamily: 'sans-serif', lineHeight: 1.15,
         }}>
-          {isVddLabel ? (
-            <div style={{ fontWeight: 900, fontSize: '17px', lineHeight: 1, color: '#000' }}>
-              <span style={{ fontStyle: 'italic' }}>V</span>
-              <span style={{ fontSize: '12px', position: 'relative', top: '4px' }}>{ref.slice(1)}</span>
-            </div>
-          ) : (
-            <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
-              {data.reference}
-            </div>
-          )}
+          <LatexText
+            text={formatLatexRef(data.reference, isVdd)}
+            latex={true}
+            size={isVdd ? 16 : 14}
+            color="#000"
+          />
         </div>
       )}
     </div>

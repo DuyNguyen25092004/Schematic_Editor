@@ -1,6 +1,7 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS, NpnSymbol } from '../symbols';
+import LatexText, { formatLatexRef } from '../components/LatexText';
 
 function getLabelAnchor(rot, flip) {
   const cx = 40, cy = 50;
@@ -31,6 +32,9 @@ const handleStyle = (left, top) => ({
 });
 
 export default function NpnNode({ data, selected, type }) {
+  const zoom = useStore((s) => s.transform[2]);
+  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+  const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type] || NpnSymbol;
   const rot = data.rot || 0;
   const flip = data.flip || false;
@@ -65,7 +69,7 @@ export default function NpnNode({ data, selected, type }) {
         )}
         <div style={{ position: 'absolute', left: '16px', top: '27px', width: '36px', height: '46px', pointerEvents: 'all' }} />
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
-        <Symbol strokeWidth={1.5} />
+        <Symbol strokeWidth={sw} />
         </svg>
       </div>
 
@@ -78,9 +82,12 @@ export default function NpnNode({ data, selected, type }) {
         whiteSpace: 'nowrap', pointerEvents: 'none',
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
-        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
-          {data.reference}
-        </div>
+        <LatexText
+          text={formatLatexRef(data.reference)}
+          latex={true}
+          size={14}
+          color="#000"
+        />
       </div>
     </div>
   );

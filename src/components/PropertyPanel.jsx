@@ -1,3 +1,4 @@
+import LatexText, { formatLatexRef } from './LatexText';
 
 const WIRE_COLORS = [
   { name: 'Mặc định', value: undefined },
@@ -62,13 +63,27 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
     const hasValue = node.type === 'res' || node.type === 'cap';
     return (
       <div style={box}>
-        <div style={{ fontWeight: 700, marginBottom: 10 }}>{title}{!isRect && !isText && ` — ${node.data.reference}`}</div>
+        <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span>{title}</span>
+          {!isRect && !isText && node.data?.reference && (
+            <>
+              <span style={{ color: '#888' }}>—</span>
+              <LatexText text={formatLatexRef(node.data.reference, node.type === 'vdd')} latex={true} size={14} color="#1677ff" />
+            </>
+          )}
+        </div>
         
         {node.type !== 'gnd' && !isRect && !isText && (
           <>
             <label style={label}>Reference</label>
-            <input style={input} value={node.data.reference}
-                  onChange={(e) => patch('reference', e.target.value)} />
+            <input style={input} value={node.data.reference || ''}
+                  onChange={(e) => patch('reference', e.target.value)}
+                  onBlur={(e) => {
+                    const formatted = formatLatexRef(e.target.value, node.type === 'vdd');
+                    if (formatted !== e.target.value) {
+                      patch('reference', formatted);
+                    }
+                  }} />
           </>
         )}
 

@@ -74,7 +74,7 @@
             },
             "rotation": 0
           },
-          "reference": "M1",
+          "reference": "M_1",
           "symbolId": "nmos",
           "symbolVariantId": "textbook-3terminal"
         },
@@ -96,7 +96,7 @@
             },
             "rotation": 0
           },
-          "reference": "M2",
+          "reference": "M_2",
           "symbolId": "nmos",
           "symbolVariantId": "textbook-3terminal"
         }

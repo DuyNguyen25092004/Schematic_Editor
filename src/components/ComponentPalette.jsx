@@ -30,7 +30,7 @@ function ComponentPalette({ onComponentDragStart }) {
   return (
     <div style={{
       position: 'relative', zIndex: 30,
-      width: 232, minWidth: 232, height: '100%', background: '#fff',
+      width: 240, minWidth: 240, height: '100%', background: '#fff',
       borderRight: '1px solid #e0e0e0', fontFamily: 'sans-serif',
       display: 'flex', flexDirection: 'column',
     }}>
@@ -52,7 +52,7 @@ function ComponentPalette({ onComponentDragStart }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 10px 10px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 12px' }}>
         {COMPONENT_CATEGORIES.map((cat) => {
           const items = COMPONENT_LIBRARY.filter((c) => c.category === cat.id);
           if (!items.length) return null;
@@ -62,7 +62,7 @@ function ComponentPalette({ onComponentDragStart }) {
               <div
                 onClick={() => toggle(cat.id)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '12px 2px 8px',
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '12px 4px 8px',
                   cursor: 'pointer', userSelect: 'none',
                   fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, color: '#777',
                 }}
@@ -76,7 +76,12 @@ function ComponentPalette({ onComponentDragStart }) {
               </div>
 
               {!isClosed && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 10,
+                  justifyItems: 'center',
+                }}>
                   {items.map((comp) => (
                     <div
                       key={comp.type}
@@ -84,26 +89,35 @@ function ComponentPalette({ onComponentDragStart }) {
                       title={comp.label}
                       onDragStart={(e) => onDragStart(e, comp.type)}
                       style={{
-                        height: 66, display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center', gap: 6,
-                        border: '1px solid #e3e3e3', borderRadius: 8, background: '#f4f4f4',
+                        width: '100%',
+                        height: 72,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center', gap: 5,
+                        border: '1px solid #e3e3e3', borderRadius: 8, background: '#f8f8f8',
                         cursor: 'grab', userSelect: 'none',
-                        fontSize: 11, fontWeight: 700, color: '#333',
+                        fontSize: 11.5, fontWeight: 700, color: '#333',
                         transition: 'background .15s, border-color .15s, box-shadow .15s',
+                        boxSizing: 'border-box',
+                        padding: '6px 4px',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = '#eef5ff';
                         e.currentTarget.style.borderColor = '#1677ff';
-                        e.currentTarget.style.boxShadow = '0 1px 4px rgba(22,119,255,.25)';
+                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(22,119,255,.2)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = '#f4f4f4';
+                        e.currentTarget.style.background = '#f8f8f8';
                         e.currentTarget.style.borderColor = '#e3e3e3';
                         e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
-                      <MiniIcon type={comp.type} width={42} height={30} data={comp.defaultData} />
-                      <span>{comp.short || comp.label}</span>
+                      <MiniIcon type={comp.type} width={44} height={32} data={comp.defaultData} />
+                      <span style={{
+                        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap', textAlign: 'center', padding: '0 2px',
+                      }}>
+                        {comp.short || comp.label}
+                      </span>
                     </div>
                   ))}
                 </div>

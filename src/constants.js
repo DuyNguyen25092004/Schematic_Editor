@@ -140,15 +140,15 @@ export const COMPONENT_CATEGORIES = [
 
 // ============ THƯ VIỆN LINH KIỆN ============
 export const COMPONENT_LIBRARY = [
-  { type: 'nmos',    category: 'transistors', short: 'NMOS',    label: 'NMOS',      refPrefix: 'M',   defaultData: { w: '1u', l: '150n' } },
-  { type: 'pmos',    category: 'transistors', short: 'PMOS',    label: 'PMOS',      refPrefix: 'M',   defaultData: { w: '1u', l: '150n' } },
-  { type: 'npn',     category: 'transistors', short: 'NPN',     label: 'BJT NPN',   refPrefix: 'Q',   defaultData: {} },
-  { type: 'pnp',     category: 'transistors', short: 'PNP',     label: 'BJT PNP',   refPrefix: 'Q',   defaultData: {} },
-  { type: 'res',     category: 'passives',    short: 'Res',     label: 'Điện trở',  refPrefix: 'R',   defaultData: { value: '1k' } },
-  { type: 'cap',     category: 'passives',    short: 'Cap',     label: 'Tụ điện',   refPrefix: 'C',   defaultData: { value: '1p' } },
+  { type: 'nmos',    category: 'transistors', short: 'NMOS',    label: 'NMOS',      refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
+  { type: 'pmos',    category: 'transistors', short: 'PMOS',    label: 'PMOS',      refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
+  { type: 'npn',     category: 'transistors', short: 'NPN',     label: 'BJT NPN',   refPrefix: 'Q_',  defaultData: {} },
+  { type: 'pnp',     category: 'transistors', short: 'PNP',     label: 'BJT PNP',   refPrefix: 'Q_',  defaultData: {} },
+  { type: 'res',     category: 'passives',    short: 'Res',     label: 'Điện trở',  refPrefix: 'R_',  defaultData: { value: '1k' } },
+  { type: 'cap',     category: 'passives',    short: 'Cap',     label: 'Tụ điện',   refPrefix: 'C_',  defaultData: { value: '1p' } },
   { type: 'vdd',     category: 'power',       short: 'VDD',     label: 'VDD rail',  refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',     category: 'power',       short: 'Ground',  label: 'Ground',    refPrefix: 'GND', defaultData: {} },
-  { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U',   defaultData: {} },
-  { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U',   defaultData: {} },
+  { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U_',  defaultData: {} },
+  { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U_',  defaultData: {} },
   { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

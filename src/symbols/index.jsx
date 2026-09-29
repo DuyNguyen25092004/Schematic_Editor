@@ -33,7 +33,7 @@ export function PmosSymbol({ strokeWidth = 2 }) {
 export function NpnSymbol({ strokeWidth = 2 }) {
   const bar = strokeWidth * 2; // thanh base dày hơn
   return (
-    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">      
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">      
       <line x1="20" y1="50" x2="33.131113" y2="50" />
       <line x1="33.131113" y1="36.654393" x2="33.131113" y2="63.32954" strokeWidth={bar} />
       <polyline points="33.131113,43.598474 50,36.620268 50,30" />
@@ -47,7 +47,7 @@ export function NpnSymbol({ strokeWidth = 2 }) {
 export function PnpSymbol({ strokeWidth = 2 }) {
   const bar = strokeWidth * 2;
   return (
-    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
       {/* Base */}
       <line x1="20" y1="50" x2="33.131113" y2="50" />
       <line x1="33.131113" y1="36.666443" x2="33.131113" y2="63.34159" strokeWidth={bar} />
@@ -63,10 +63,8 @@ export function PnpSymbol({ strokeWidth = 2 }) {
 export function ResistorSymbol({ strokeWidth = 2 }) {
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={12} fill="none">
-      <g shapeRendering="crispEdges">
-        <line x1="50" y1="30" x2="50" y2="41.94" />
-        <line x1="50" y1="57.94" x2="50" y2="70" />
-      </g>
+      <line x1="50" y1="30" x2="50" y2="41.94" />
+      <line x1="50" y1="57.94" x2="50" y2="70" />
       <polyline points="50,41.27907 55.372093,43.604651 45.395349,45.930233 55.372093,48.837209 45.011628,51.744186 55.372093,54.651163 45.395349,57.55814 50,58.72093" />
     </g>
   );
@@ -75,7 +73,7 @@ export function ResistorSymbol({ strokeWidth = 2 }) {
 export function CapacitorSymbol({ strokeWidth = 2 }) {
   const plate = strokeWidth * 2;
   return (
-    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
       <line x1="50" y1="30" x2="50" y2="46.766395" />
       <line x1="50" y1="53.233605" x2="50" y2="70" />
       <line x1="41.94936" y1="46.766395" x2="58.05064" y2="46.766395" strokeWidth={plate} />
@@ -89,7 +87,7 @@ export function VddSymbol({ strokeWidth = 2, data }) {
   const { left, right } = getVddSpan(data);
   return (
     <rect x={VDD_BAR.x0 - left * GRID} y={VDD_BAR.y - bar / 2} width={(left + right) * GRID} height={bar}
-          fill="#000" stroke="none" shapeRendering="crispEdges" />
+          fill="#000" stroke="none" />
   );
 }
 
@@ -135,7 +133,7 @@ function Minus({ x, y, sw }) {
 export function OpampSymbol({ strokeWidth = 2 }) {
   return (
     <g fill="none">
-      <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" shapeRendering="crispEdges">
+      <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt">
         <line x1="10" y1="30" x2="20" y2="30" />
         <line x1="10" y1="70" x2="20" y2="70" />
         <line x1="71.961524" y1="50" x2="80" y2="50" />
@@ -151,7 +149,7 @@ export function OpampSymbol({ strokeWidth = 2 }) {
 export function FdOpampSymbol({ strokeWidth = 2 }) {
   return (
     <g fill="none">
-      <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" shapeRendering="crispEdges">
+      <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt">
         <line x1="10" y1="30" x2="20" y2="30" />
         <line x1="10" y1="70" x2="20" y2="70" />
         <line x1="37.320508" y1="30" x2="80" y2="30" />

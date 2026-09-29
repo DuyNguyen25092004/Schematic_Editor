@@ -38,20 +38,24 @@ import RectNode from './nodes/RectNode';
 
 import TextNode from './nodes/TextNode';
 import TextDialog from './components/TextDialog';
-import LatexText from './components/LatexText';
+import LatexText, { formatLatexRef } from './components/LatexText';
 
 // nodeTypes: thêm  text: TextNode
 
 const nodeTypes = { nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode, res: TwoTerminalNode, cap: TwoTerminalNode, vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode, rect: RectNode, text: TextNode };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
-  id: inst.id,
+  id: inst.id === 'M1' ? 'M_1' : inst.id === 'M2' ? 'M_2' : inst.id,
   type: 'nmos',
   position: {
     x: Math.round(inst.placement.position.x / 10) * 10,
-    y: Math.round((inst.id === 'M1' ? inst.placement.position.y + 60 : inst.placement.position.y) / 10) * 10,
+    y: Math.round(((inst.id === 'M1' || inst.id === 'M_1') ? inst.placement.position.y + 60 : inst.placement.position.y) / 10) * 10,
   },
-  data: { reference: inst.reference, w: inst.netlist.parameters.w, l: inst.netlist.parameters.l },
+  data: {
+    reference: formatLatexRef(inst.reference) || (inst.id === 'M1' ? 'M_1' : inst.id === 'M2' ? 'M_2' : inst.id),
+    w: inst.netlist.parameters.w,
+    l: inst.netlist.parameters.l,
+  },
   style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
 }));
 
@@ -229,8 +233,17 @@ function Flow() {
 
   const nextId = useCallback((prefix) => {
     let i = 1;
+    const cleanPrefix = prefix.replace(/_$/, '');
     const existing = new Set(nodes.map((n) => n.id));
-    while (existing.has(`${prefix}${i}`)) i++;
+    const existingRefs = new Set(nodes.map((n) => n.data?.reference).filter(Boolean));
+    while (
+      existing.has(`${prefix}${i}`) ||
+      existing.has(`${cleanPrefix}${i}`) ||
+      existingRefs.has(`${prefix}${i}`) ||
+      existingRefs.has(`${cleanPrefix}${i}`)
+    ) {
+      i++;
+    }
     return `${prefix}${i}`;
   }, [nodes]);
 
@@ -599,7 +612,10 @@ function Flow() {
                 items: [{ id: node.id, initialX: node.position.x, initialY: node.position.y }]
               });
             } else if (isCopyMode) {
-              const prefix = node.type === 'text' ? 'TXT' : (node.data.reference.replace(/[0-9]/g, '') || 'U');
+              const rawPrefix = node.type === 'text' ? 'TXT' : ((node.data?.reference || 'U').replace(/[0-9]/g, '') || 'U');
+              const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
+                ? `${rawPrefix.replace(/_$/, '')}_`
+                : rawPrefix;
               const newId = nextId(prefix);
               const newNode = { ...node, id: newId, data: node.type === 'text' ? { ...node.data } : { ...node.data, reference: newId }, position: { ...node.position }, selected: false };
               setNodes((ns) => [...ns, newNode]);
@@ -616,9 +632,11 @@ function Flow() {
           onDrop={onDrop}
           snapToGrid
           snapGrid={[GRID, GRID]}
+          minZoom={0.2}
+          maxZoom={5}
           fitView
         >
-          <Background gap={GRID} color="#ddd" size={2} />
+          <Background gap={GRID} color="#ccc" size={1} />
           <Controls />
         </ReactFlow>
 
