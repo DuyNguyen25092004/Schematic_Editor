@@ -297,6 +297,128 @@ export function XnorGateSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
+export function DffSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1;
+  return (
+    <g fill="none" stroke="#000">
+      <rect x="15" y="20" width="50" height="60" strokeWidth={bodySw} strokeLinejoin="miter" />
+      <line x1="10" y1="40" x2="15" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="10" y1="60" x2="15" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="40" y1="10" x2="40" y2="20" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="40" y1="80" x2="40" y2="90" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="65" y1="40" x2="70" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="65" y1="60" x2="70" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <polyline points="15,52 26,60 15,68" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" />
+      <text x="19" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">D</text>
+      <text x="40" y="29" fontSize="9.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">EN</text>
+      <text x="40" y="77" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">RST</text>
+      <text x="61" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+      <text x="61" y="63.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+      <line x1="53" y1="54" x2="61" y2="54" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+    </g>
+  );
+}
+
+export function MuxSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g fill="none" stroke="#000">
+      <polygon points="20,25 60,35 60,65 20,75" strokeWidth={bodySw} strokeLinejoin="miter" />
+      <line x1="10" y1="40" x2="20" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="10" y1="60" x2="20" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="40" y1="70" x2="40" y2="80" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="60" y1="50" x2="70" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
+      <text x="24" y="43" fontSize="8" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">0</text>
+      <text x="24" y="63" fontSize="8" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">1</text>
+      <text x="40" y="66" fontSize="7" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">S</text>
+    </g>
+  );
+}
+
+export function OpenSwitchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g transform="translate(40, 50)" fill="none" stroke="#000">
+      <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="-7.3" y1="-2.2" x2="7.5" y2="-12.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
+export function ClosedSwitchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g transform="translate(40, 50)" fill="none" stroke="#000">
+      <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="-7.2" y1="-1.8" x2="13" y2="-3.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
+export function SpdtSwitchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g transform="translate(40, 50)" fill="none" stroke="#000">
+      <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="-7.32" y1="-1.34" x2="7.32" y2="-8.66" strokeWidth={bodySw} strokeLinecap="butt" />
+      <circle cx="10" cy="-10" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="-10" x2="30" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="10" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="10" x2="30" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
+export function Sp3tSwitchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g transform="translate(40, 50)" fill="none" stroke="#000">
+      <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="-7.88" y1="-2.12" x2="7.88" y2="-17.88" strokeWidth={bodySw} strokeLinecap="butt" />
+      <circle cx="10" cy="-20" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="-20" x2="30" y2="-20" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="20" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="20" x2="30" y2="20" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
+export function Sp4tSwitchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g transform="translate(40, 50)" fill="none" stroke="#000">
+      <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
+      <line x1="-7.32" y1="-1.34" x2="7.32" y2="-8.66" strokeWidth={bodySw} strokeLinecap="butt" />
+      <circle cx="10" cy="-30" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="-30" x2="30" y2="-30" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="-10" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="-10" x2="30" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="10" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="10" x2="30" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx="10" cy="30" r="3" strokeWidth={bodySw} />
+      <line x1="13" y1="30" x2="30" y2="30" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
 // Đăng ký symbol theo type — muốn thêm linh kiện mới (điện trở, tụ, ...) chỉ cần thêm 1 dòng ở đây
 export const SYMBOLS = {
   nmos: NmosSymbol,
@@ -319,6 +441,13 @@ export const SYMBOLS = {
   nor: NorGateSymbol,
   xor: XorGateSymbol,
   xnor: XnorGateSymbol,
+  dff: DffSymbol,
+  mux: MuxSymbol,
+  sw_open: OpenSwitchSymbol,
+  sw_closed: ClosedSwitchSymbol,
+  sw_spdt: SpdtSwitchSymbol,
+  sw_sp3t: Sp3tSwitchSymbol,
+  sw_sp4t: Sp4tSwitchSymbol,
   rect: RectSymbol,
 };
 

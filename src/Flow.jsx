@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import ReactFlow, { Background, Controls, useNodesState, useEdgesState, useReactFlow, useStore } from 'reactflow';
+import ReactFlow, { Background, useNodesState, useEdgesState, useReactFlow, useStore } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 import mockData from './data/mockData.json';
@@ -48,6 +48,9 @@ const nodeTypes = {
   vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode,
   inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
   nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
+  dff: SymbolNode, mux: SymbolNode,
+  sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
+  sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
   rect: RectNode, text: TextNode,
 };
 
@@ -648,7 +651,6 @@ function Flow() {
           fitView
         >
           <Background gap={GRID} color="#ccc" size={1} />
-          <Controls />
         </ReactFlow>
 
         <div style={{ pointerEvents: isWiringMode ? 'auto' : 'none' }}>

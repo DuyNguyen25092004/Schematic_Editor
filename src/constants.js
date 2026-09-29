@@ -89,6 +89,48 @@ export const XNOR_PORTS = [
   { id: 'in2', x: 10, y: 60, dir: { x: -1, y: 0 } },
   { id: 'out', x: 80, y: 50, dir: { x: 1, y: 0 } },
 ];
+export const DFF_PORTS = [
+  { id: 'd',   x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'clk', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'en',  x: 40, y: 10, dir: { x: 0, y: -1 } },
+  { id: 'rst', x: 40, y: 90, dir: { x: 0, y: 1 } },
+  { id: 'q',   x: 70, y: 40, dir: { x: 1, y: 0 } },
+  { id: 'qn',  x: 70, y: 60, dir: { x: 1, y: 0 } },
+];
+
+export const MUX_PORTS = [
+  { id: 'in0', x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'in1', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'sel', x: 40, y: 80, dir: { x: 0, y: 1 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
+
+export const SW_OPEN_PORTS = [
+  { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
+export const SW_CLOSED_PORTS = [
+  { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
+export const SW_SPDT_PORTS = [
+  { id: 'in',   x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out1', x: 70, y: 40, dir: { x: 1, y: 0 } },
+  { id: 'out2', x: 70, y: 60, dir: { x: 1, y: 0 } },
+];
+export const SW_SP3T_PORTS = [
+  { id: 'in',   x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out1', x: 70, y: 30, dir: { x: 1, y: 0 } },
+  { id: 'out2', x: 70, y: 50, dir: { x: 1, y: 0 } },
+  { id: 'out3', x: 70, y: 70, dir: { x: 1, y: 0 } },
+];
+export const SW_SP4T_PORTS = [
+  { id: 'in',   x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out1', x: 70, y: 20, dir: { x: 1, y: 0 } },
+  { id: 'out2', x: 70, y: 40, dir: { x: 1, y: 0 } },
+  { id: 'out3', x: 70, y: 60, dir: { x: 1, y: 0 } },
+  { id: 'out4', x: 70, y: 80, dir: { x: 1, y: 0 } },
+];
 
 export const PORTS_BY_TYPE = {
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
@@ -97,6 +139,12 @@ export const PORTS_BY_TYPE = {
   inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
   xor: LOGIC_2_PORTS, xnor: XNOR_PORTS,
+  dff: DFF_PORTS, mux: MUX_PORTS,
+  sw_open: SW_OPEN_PORTS,
+  sw_closed: SW_CLOSED_PORTS,
+  sw_spdt: SW_SPDT_PORTS,
+  sw_sp3t: SW_SP3T_PORTS,
+  sw_sp4t: SW_SP4T_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
   text: [], // văn bản tự do không có chân nối dây
 };
@@ -136,6 +184,13 @@ export const SYMBOL_BOX_BY_TYPE = {
   nor:      { x: 10, y: 30, w: 60, h: 40 },
   xor:      { x: 10, y: 30, w: 60, h: 40 },
   xnor:     { x: 10, y: 30, w: 70, h: 40 },
+  dff:      { x: 10, y: 10, w: 60, h: 80 },
+  mux:      { x: 10, y: 24, w: 60, h: 58 },
+  sw_open:   { x: 10, y: 35, w: 60, h: 25 },
+  sw_closed: { x: 10, y: 44, w: 60, h: 16 },
+  sw_spdt:   { x: 10, y: 36, w: 60, h: 28 },
+  sw_sp3t:   { x: 10, y: 26, w: 60, h: 48 },
+  sw_sp4t:   { x: 10, y: 16, w: 60, h: 68 },
 };
 export const getSymbolBox = (type, data) => {
   if (type === 'vdd') {
@@ -162,6 +217,7 @@ export const OBSTACLE_MARGIN = GRID;    // khoảng hở giữa dây và thân l
 export const COMPONENT_CATEGORIES = [
   { id: 'transistors', label: 'Transistors' },
   { id: 'passives',    label: 'Passives' },
+  { id: 'switches',    label: 'Switches' },
   { id: 'power',       label: 'Power and Ports' },
   { id: 'analog',      label: 'Analog Blocks' },
   { id: 'logic',       label: 'Logic Gates' },
@@ -176,6 +232,11 @@ export const COMPONENT_LIBRARY = [
   { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: {} },
   { type: 'res',      category: 'passives',    short: 'Res',     label: 'Điện trở',      refPrefix: 'R_',  defaultData: { value: '1k' } },
   { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Tụ điện',       refPrefix: 'C_',  defaultData: { value: '1p' } },
+  { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Thường mở)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Thường đóng)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'Switch 2 đầu (SPDT)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_sp3t',   category: 'switches',    short: 'SP3T',    label: 'Switch 3 đầu (SP3T)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'Switch 4 đầu (SP4T)', refPrefix: 'SW_', defaultData: {} },
   { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
   { type: 'vsource',  category: 'power',       short: 'Vdc',     label: 'Nguồn áp (V)',  refPrefix: 'V_',  defaultData: { value: '1V' } },
@@ -190,5 +251,7 @@ export const COMPONENT_LIBRARY = [
   { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'Cổng NOR',       refPrefix: 'U_', defaultData: {} },
   { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'Cổng XOR',       refPrefix: 'U_', defaultData: {} },
   { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'Cổng XNOR',      refPrefix: 'U_', defaultData: {} },
+  { type: 'dff',      category: 'logic',       short: 'DFF',     label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: {} },
+  { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: {} },
   { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

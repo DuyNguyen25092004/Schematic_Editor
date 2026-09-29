@@ -60,6 +60,12 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
       inverter: 'Inverter', buffer: 'Buffer',
       and: 'Cổng AND', or: 'Cổng OR', nand: 'Cổng NAND', nor: 'Cổng NOR',
       xor: 'Cổng XOR', xnor: 'Cổng XNOR',
+      dff: 'D Flip-Flop', mux: 'MUX 2:1',
+      sw_open: 'Công tắc thường mở',
+      sw_closed: 'Công tắc thường đóng',
+      sw_spdt: 'Công tắc SPDT (2 đầu)',
+      sw_sp3t: 'Công tắc SP3T (3 đầu)',
+      sw_sp4t: 'Công tắc SP4T (4 đầu)',
       rect: 'Hình chữ nhật',
       text: 'Văn bản',
     }[node.type] || String(node.type).toUpperCase();

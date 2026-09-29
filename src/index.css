@@ -129,6 +129,10 @@ code {
 .react-flow__node-inverter, .react-flow__node-buffer,
 .react-flow__node-and, .react-flow__node-or,
 .react-flow__node-nand, .react-flow__node-nor,
-.react-flow__node-xor, .react-flow__node-xnor {
+.react-flow__node-xor, .react-flow__node-xnor,
+.react-flow__node-dff, .react-flow__node-mux,
+.react-flow__node-sw_open, .react-flow__node-sw_closed,
+.react-flow__node-sw_spdt, .react-flow__node-sw_sp3t,
+.react-flow__node-sw_sp4t {
   pointer-events: none !important;
 }

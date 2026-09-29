@@ -16,6 +16,13 @@ const LABELS = {
   nor:      GATE_LABEL,
   xor:      GATE_LABEL,
   xnor:     GATE_LABEL,
+  dff:      { x: 60, y: 20, side: 'top' },
+  mux:      { x: 40, y: 30, side: 'top' },
+  sw_open:   { x: 40, y: 34, side: 'top' },
+  sw_closed: { x: 40, y: 40, side: 'top' },
+  sw_spdt:   { x: 40, y: 34, side: 'top' },
+  sw_sp3t:   { x: 40, y: 24, side: 'top' },
+  sw_sp4t:   { x: 40, y: 14, side: 'top' },
 };
 const SIDE_VEC = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
 const vecToSide = ([x, y]) => (x > 0 ? 'right' : x < 0 ? 'left' : y > 0 ? 'bottom' : 'top');
