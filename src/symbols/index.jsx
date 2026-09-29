@@ -2,7 +2,7 @@ import React from 'react';
 import { GRID, VDD_BAR, getVddSpan, getSymbolBox } from '../constants';
 
 // ============ SYMBOL REGISTRY — thêm linh kiện mới chỉ cần đăng ký ở đây ============
-export function NmosSymbol({ strokeWidth = 2 }) {
+export function NmosSymbol({ strokeWidth = 1.5 }) {
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="square" strokeLinejoin="miter" fill="none">
       <line x1="20" y1="50" x2="28" y2="50" />
@@ -15,7 +15,7 @@ export function NmosSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function PmosSymbol({ strokeWidth = 2 }) {
+export function PmosSymbol({ strokeWidth = 1.5 }) {
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="square" strokeLinejoin="miter" fill="none">
       {/* Kéo dài đường gate và bỏ vòng tròn */}
@@ -30,7 +30,7 @@ export function PmosSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function NpnSymbol({ strokeWidth = 2 }) {
+export function NpnSymbol({ strokeWidth = 1.5 }) {
   const bar = strokeWidth * 2; // thanh base dày hơn
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">      
@@ -44,7 +44,7 @@ export function NpnSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function PnpSymbol({ strokeWidth = 2 }) {
+export function PnpSymbol({ strokeWidth = 1.5 }) {
   const bar = strokeWidth * 2;
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
@@ -60,7 +60,7 @@ export function PnpSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function ResistorSymbol({ strokeWidth = 2 }) {
+export function ResistorSymbol({ strokeWidth = 1.5 }) {
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={12} fill="none">
       <line x1="50" y1="30" x2="50" y2="41.94" />
@@ -70,7 +70,7 @@ export function ResistorSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function CapacitorSymbol({ strokeWidth = 2 }) {
+export function CapacitorSymbol({ strokeWidth = 1.5 }) {
   const plate = strokeWidth * 2;
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
@@ -82,7 +82,7 @@ export function CapacitorSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function VddSymbol({ strokeWidth = 2, data }) {
+export function VddSymbol({ strokeWidth = 1.5, data }) {
   const bar = strokeWidth * 2;
   const { left, right } = getVddSpan(data);
   return (
@@ -103,7 +103,7 @@ export function RectSymbol({ data }) {
   );
 }
 
-export function GroundSymbol({ strokeWidth = 2 }) {
+export function GroundSymbol({ strokeWidth = 1.5 }) {
   const plate = strokeWidth * 1.6;   // độ dày mỗi vạch (≈ 1.6 lần thân dây)
   const step = plate * 2;            // khoảng cách tâm 2 vạch = 2 × độ dày → khe hở = độ dày
   const y1 = 40, y2 = y1 + step, y3 = y1 + step * 2;
@@ -130,7 +130,7 @@ function Minus({ x, y, sw }) {
   return <line x1={x - 3} y1={y} x2={x + 3} y2={y} stroke="#000" strokeWidth={sw} strokeLinecap="round" />;
 }
 
-export function OpampSymbol({ strokeWidth = 2 }) {
+export function OpampSymbol({ strokeWidth = 1.5 }) {
   return (
     <g fill="none">
       <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt">
@@ -146,7 +146,7 @@ export function OpampSymbol({ strokeWidth = 2 }) {
   );
 }
 
-export function FdOpampSymbol({ strokeWidth = 2 }) {
+export function FdOpampSymbol({ strokeWidth = 1.5 }) {
   return (
     <g fill="none">
       <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt">

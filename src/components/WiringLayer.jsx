@@ -242,7 +242,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
           )}
           {preview && (
             <polyline points={pointsToPolyline(preview)} fill="none" stroke="#ff4d4f"
-                       strokeWidth={2 / strokeScale} strokeDasharray="4 3" />
+                       strokeWidth={1.5 / strokeScale} strokeDasharray="4 3" />
           )}
           
           {/* 3. Con trỏ chuột: Hiện chấm đỏ nếu vào chân, chấm ĐEN nếu vào dây, chấm xám nếu rảnh */}
