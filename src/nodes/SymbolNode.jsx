@@ -102,12 +102,12 @@ export default function SymbolNode({ data, selected, type }) {
           fontFamily: 'sans-serif', lineHeight: 1.15,
         }}>
           {isVddLabel ? (
-            <div style={{ fontWeight: 900, fontSize: '17px', lineHeight: 1 }}>
+            <div style={{ fontWeight: 900, fontSize: '17px', lineHeight: 1, color: '#000' }}>
               <span style={{ fontStyle: 'italic' }}>V</span>
               <span style={{ fontSize: '12px', position: 'relative', top: '4px' }}>{ref.slice(1)}</span>
             </div>
           ) : (
-            <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
+            <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
               {data.reference}
             </div>
           )}

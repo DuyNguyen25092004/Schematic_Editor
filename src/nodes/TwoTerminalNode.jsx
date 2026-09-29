@@ -70,7 +70,7 @@ export default function TwoTerminalNode({ data, selected, type }) {
         whiteSpace: 'nowrap', pointerEvents: 'none',
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
-        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
+        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
           {data.reference}
         </div>
         {data.value && <div style={{ fontSize: '10px', color: '#555' }}>{data.value}</div>}

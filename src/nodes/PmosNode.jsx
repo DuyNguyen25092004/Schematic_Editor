@@ -84,7 +84,7 @@ export default function PmosNode({ data, selected }) {
         whiteSpace: 'nowrap', pointerEvents: 'none',
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
-        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic' }}>
+        <div style={{ fontWeight: 900, fontSize: '13px', fontStyle: 'italic', color: '#000' }}>
           {data.reference}
         </div>
         {data.w && <div style={{ fontSize: '9px', color: '#555' }}>W={data.w}</div>}
