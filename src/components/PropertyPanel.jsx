@@ -55,12 +55,12 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
     const isText = node.type === 'text';
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
-      res: 'Res', cap: 'Cap', vdd: 'VDD rail', gnd: 'Ground',
+      res: 'Res', cap: 'Cap', vsource: 'Nguồn áp', isource: 'Nguồn dòng', vdd: 'VDD rail', gnd: 'Ground',
       opamp: 'Opamp', fdopamp: 'FD opamp',
       rect: 'Hình chữ nhật',
       text: 'Văn bản',
     }[node.type] || String(node.type).toUpperCase();
-    const hasValue = node.type === 'res' || node.type === 'cap';
+    const hasValue = node.type === 'res' || node.type === 'cap' || node.type === 'vsource' || node.type === 'isource';
     return (
       <div style={box}>
         <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

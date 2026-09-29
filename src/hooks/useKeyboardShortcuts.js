@@ -309,7 +309,7 @@ const {
           const genId = (prefix) => {
             let i = 1;
             const cleanPrefix = prefix.replace(/_$/, '');
-            const isDevicePrefix = ['M', 'Q', 'R', 'C', 'U'].includes(cleanPrefix) || prefix.endsWith('_');
+            const isDevicePrefix = ['M', 'Q', 'R', 'C', 'U', 'V', 'I'].includes(cleanPrefix) || prefix.endsWith('_');
             const checkExists = (num) => {
               const v1 = `${cleanPrefix}_{${num}}`;
               const v2 = `${cleanPrefix}_${num}`;
@@ -330,7 +330,7 @@ const {
           const idMap = new Map(); // old nodeId -> new nodeId
           const newNodes = targetNodes.map((n) => {
             const rawPrefix = n.type === 'text' ? 'TXT' : ((n.data?.reference || 'U').replace(/[0-9{}]/g, '') || 'U');
-            const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
+            const prefix = (['M', 'Q', 'R', 'C', 'U', 'V', 'I'].includes(rawPrefix.replace(/_$/, '')))
               ? `${rawPrefix.replace(/_$/, '')}_`
               : rawPrefix;
             const newId = genId(prefix);

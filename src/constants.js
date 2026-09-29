@@ -77,6 +77,7 @@ export const FD_OPAMP_PORTS = [
 
 export const PORTS_BY_TYPE = {
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
+  vsource: TWO_TERM_PORTS, isource: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
   text: [], // văn bản tự do không có chân nối dây
@@ -103,6 +104,8 @@ export const DEFAULT_SYMBOL_BOX = { x: 16, y: 27, w: 36, h: 46 };
 export const SYMBOL_BOX_BY_TYPE = {
   res: { x: 40, y: 27, w: 20, h: 46 },
   cap: { x: 40, y: 27, w: 20, h: 46 },
+  vsource: { x: 38, y: 28, w: 24, h: 44 },
+  isource: { x: 38, y: 28, w: 24, h: 44 },
   vdd: { x: 6, y: 42, w: 108, h: 16 },
   gnd: { x: 40, y: 27, w: 20, h: 28 },
   opamp: { x: 6, y: 16, w: 78, h: 68 },
@@ -148,6 +151,8 @@ export const COMPONENT_LIBRARY = [
   { type: 'cap',     category: 'passives',    short: 'Cap',     label: 'Tụ điện',   refPrefix: 'C_',  defaultData: { value: '1p' } },
   { type: 'vdd',     category: 'power',       short: 'VDD',     label: 'VDD rail',  refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',     category: 'power',       short: 'Ground',  label: 'Ground',    refPrefix: 'GND', defaultData: {} },
+  { type: 'vsource', category: 'power',       short: 'Vdc',     label: 'Nguồn áp (V)', refPrefix: 'V_', defaultData: { value: '1V' } },
+  { type: 'isource', category: 'power',       short: 'Idc',     label: 'Nguồn dòng (I)', refPrefix: 'I_', defaultData: { value: '1mA' } },
   { type: 'opamp',   category: 'analog',      short: 'Opamp',   label: 'Opamp',     refPrefix: 'U_',  defaultData: {} },
   { type: 'fdopamp', category: 'analog',      short: 'FD Opamp', label: 'FD opamp', refPrefix: 'U_',  defaultData: {} },
   { type: 'rect',     category: 'shapes',     short: 'Rect',      label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },

@@ -82,6 +82,43 @@ export function CapacitorSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
+// Dấu + / − nhỏ dùng chung cho opamp và nguồn áp
+function Plus({ x, y, sw, cap = 'round' }) {
+  return (
+    <g stroke="#000" strokeWidth={sw} strokeLinecap={cap} fill="none">
+      <line x1={x - 3} y1={y} x2={x + 3} y2={y} />
+      <line x1={x} y1={y - 3} x2={x} y2={y + 3} />
+    </g>
+  );
+}
+function Minus({ x, y, sw, cap = 'round' }) {
+  return <line x1={x - 3} y1={y} x2={x + 3} y2={y} stroke="#000" strokeWidth={sw} strokeLinecap={cap} />;
+}
+
+export function VoltageSourceSymbol({ strokeWidth = 1.5 }) {
+  return (
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
+      <circle cx="50" cy="50" r="10.76" />
+      <line x1="50" y1="30" x2="50" y2="39.24" />
+      <line x1="50" y1="60.76" x2="50" y2="70" />
+      <Plus x={50} y={44.5} sw={strokeWidth} cap="butt" />
+      <Minus x={50} y={55.5} sw={strokeWidth} cap="butt" />
+    </g>
+  );
+}
+
+export function CurrentSourceSymbol({ strokeWidth = 1.5 }) {
+  return (
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
+      <circle cx="50" cy="50" r="10.76" />
+      <line x1="50" y1="30" x2="50" y2="39.24" />
+      <line x1="50" y1="60.76" x2="50" y2="70" />
+      <line x1="50" y1="43.02" x2="50" y2="47.67" />
+      <polygon points="50,56.98 45.35,47.67 54.65,47.67" fill="#000" stroke="none" />
+    </g>
+  );
+}
+
 export function VddSymbol({ strokeWidth = 1.5, data }) {
   const bar = strokeWidth * 2;
   const { left, right } = getVddSpan(data);
@@ -115,19 +152,6 @@ export function GroundSymbol({ strokeWidth = 1.5 }) {
       <line x1="47.8" y1={y3} x2="52.2" y2={y3} strokeWidth={plate} />        {/* vạch 3: dài 4.4 */}
     </g>
   );
-}
-
-// Dấu + / − nhỏ dùng chung cho opamp
-function Plus({ x, y, sw }) {
-  return (
-    <g stroke="#000" strokeWidth={sw} strokeLinecap="round" fill="none">
-      <line x1={x - 3} y1={y} x2={x + 3} y2={y} />
-      <line x1={x} y1={y - 3} x2={x} y2={y + 3} />
-    </g>
-  );
-}
-function Minus({ x, y, sw }) {
-  return <line x1={x - 3} y1={y} x2={x + 3} y2={y} stroke="#000" strokeWidth={sw} strokeLinecap="round" />;
 }
 
 export function OpampSymbol({ strokeWidth = 1.5 }) {
@@ -173,6 +197,8 @@ export const SYMBOLS = {
   pnp: PnpSymbol,
   res: ResistorSymbol,
   cap: CapacitorSymbol,
+  vsource: VoltageSourceSymbol,
+  isource: CurrentSourceSymbol,
   vdd: VddSymbol,
   gnd: GroundSymbol,
   opamp: OpampSymbol,
