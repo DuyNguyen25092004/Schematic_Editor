@@ -87,7 +87,7 @@ export default function SymbolNode({ data, selected, type }) {
 
         <svg width={svgW} height="100" viewBox={`${svgX0} 0 ${svgW} 100`}
             style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none' }}>
-        <Symbol strokeWidth={2} data={data} />
+        <Symbol strokeWidth={1.5} data={data} />
         </svg>
       </div>
 

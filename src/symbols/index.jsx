@@ -10,7 +10,7 @@ export function NmosSymbol({ strokeWidth = 2 }) {
       <rect x="33" y="37" width="3" height="26" fill="#000" stroke="none" />
       <polyline points="50,30 50,43 36,43" />
       <polyline points="50,70 50,57 36,57" />
-      <polygon points="50,57 41,53 41,61" fill="#000" stroke="none" />
+      <polygon points="51.5,57 43,53 43,61" fill="#000" stroke="none" />
     </g>
   );
 }
@@ -25,13 +25,13 @@ export function PmosSymbol({ strokeWidth = 2 }) {
       <polyline points="50,30 50,43 36,43" />
       <polyline points="50,70 50,57 36,57" />
       {/* Mũi tên quay ngược chiều so với NMOS */}
-      <polygon points="36,43 45,39 45,47" fill="#000" stroke="none" />
+      <polygon points="34,43 43,39 43,47" fill="#000" stroke="none" />
     </g>
   );
 }
 
 export function NpnSymbol({ strokeWidth = 2 }) {
-  const bar = strokeWidth * 1.5; // thanh base dày hơn
+  const bar = strokeWidth * 2; // thanh base dày hơn
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">      
       <line x1="20" y1="50" x2="33.131113" y2="50" />
@@ -45,7 +45,7 @@ export function NpnSymbol({ strokeWidth = 2 }) {
 }
 
 export function PnpSymbol({ strokeWidth = 2 }) {
-  const bar = strokeWidth * 1.5;
+  const bar = strokeWidth * 2;
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
       {/* Base */}
@@ -73,7 +73,7 @@ export function ResistorSymbol({ strokeWidth = 2 }) {
 }
 
 export function CapacitorSymbol({ strokeWidth = 2 }) {
-  const plate = strokeWidth * 1.5;
+  const plate = strokeWidth * 2;
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
       <line x1="50" y1="30" x2="50" y2="46.766395" />
@@ -106,13 +106,15 @@ export function RectSymbol({ data }) {
 }
 
 export function GroundSymbol({ strokeWidth = 2 }) {
-  const plate = strokeWidth * 2;
+  const plate = strokeWidth * 1.6;   // độ dày mỗi vạch (≈ 1.6 lần thân dây)
+  const step = plate * 2;            // khoảng cách tâm 2 vạch = 2 × độ dày → khe hở = độ dày
+  const y1 = 40, y2 = y1 + step, y3 = y1 + step * 2;
   return (
-    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" fill="none" shapeRendering="crispEdges">
-      <line x1="50" y1="30" x2="50" y2="40" />
-      <line x1="43.604651" y1="40" x2="56.395349" y2="40" strokeWidth={plate} />
-      <line x1="45.930233" y1="45.813953" x2="54.069767" y2="45.813953" strokeWidth={plate} />
-      <line x1="47.674419" y1="51.046512" x2="52.325581" y2="51.046512" strokeWidth={plate} />
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" fill="none">
+      <line x1="50" y1="30" x2="50" y2={y1} />                                {/* dây nối */}
+      <line x1="44"   y1={y1} x2="56"   y2={y1} strokeWidth={plate} />        {/* vạch 1: dài 12 */}
+      <line x1="46.5" y1={y2} x2="53.5" y2={y2} strokeWidth={plate} />        {/* vạch 2: dài 7  */}
+      <line x1="47.8" y1={y3} x2="52.2" y2={y3} strokeWidth={plate} />        {/* vạch 3: dài 4.4 */}
     </g>
   );
 }
@@ -138,7 +140,7 @@ export function OpampSymbol({ strokeWidth = 2 }) {
         <line x1="10" y1="70" x2="20" y2="70" />
         <line x1="71.961524" y1="50" x2="80" y2="50" />
       </g>
-      <path d="M 20 20 L 20 80 L 71.961524 50 Z" stroke="#000" strokeWidth={strokeWidth * 1.5}
+      <path d="M 20 20 L 20 80 L 71.961524 50 Z" stroke="#000" strokeWidth={strokeWidth * 1.2}
             strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
       <Minus x={26.25} y={36} sw={strokeWidth} />
       <Plus x={26.25} y={64} sw={strokeWidth} />
@@ -155,7 +157,7 @@ export function FdOpampSymbol({ strokeWidth = 2 }) {
         <line x1="37.320508" y1="30" x2="80" y2="30" />
         <line x1="37.320508" y1="70" x2="80" y2="70" />
       </g>
-      <path d="M 20 20 L 20 80 L 71.961524 50 Z" stroke="#000" strokeWidth={strokeWidth * 1.5}
+      <path d="M 20 20 L 20 80 L 71.961524 50 Z" stroke="#000" strokeWidth={strokeWidth * 1.2}
             strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
       <Plus x={26.25} y={36} sw={strokeWidth} />
       <Minus x={26.25} y={64} sw={strokeWidth} />
@@ -208,7 +210,7 @@ export function GhostIcon({ type, data }) {
       viewBox="0 0 160 100"
       style={{ width: 160, height: 100, display: 'block' }}
     >
-      <Symbol strokeWidth={2} data={data} />
+      <Symbol strokeWidth={1.5} data={data} />
     </svg>
   );
 }

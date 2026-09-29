@@ -64,13 +64,13 @@ export default function PmosNode({ data, selected }) {
         )}
 
         <svg width="160" height="100" viewBox="0 0 160 100" style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
-          <g stroke="#000" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
+          <g stroke="#000" strokeWidth="1.5" strokeLinecap="square" strokeLinejoin="miter" fill="none" shapeRendering="crispEdges">
             <line x1="20" y1="50" x2="28" y2="50" />
             <rect x="28" y="40" width="3" height="20" fill="#000" stroke="none" />
             <rect x="33" y="37" width="3" height="26" fill="#000" stroke="none" />
             <polyline points="50,30 50,43 36,43" />
             <polyline points="50,70 50,57 36,57" />
-            <polygon points="36,43 45,39 45,47" fill="#000" stroke="none" />
+            <polygon points="34,43 43,39 43,47" fill="#000" stroke="none" />
           </g>
         </svg>
       </div>

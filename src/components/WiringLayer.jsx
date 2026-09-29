@@ -132,7 +132,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
                   <polyline
                     points={pts} fill="none" pointerEvents="none"
                     stroke={wireColor}
-                    strokeWidth={isSel ? 2.5 : 2}
+                    strokeWidth={isSel ? 2.5 : 1.5}
                     strokeLinecap="square" strokeLinejoin="miter"
                     shapeRendering="crispEdges"
                   />
@@ -183,7 +183,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
           {/* 2. Dây đang vẽ phác (Draft) */}
           {draft && (
             <polyline points={pointsToPolyline(draft)} fill="none" stroke="#000"
-                       strokeWidth={2} strokeLinecap="square" shapeRendering="crispEdges" />
+                       strokeWidth={1.5} strokeLinecap="square" shapeRendering="crispEdges" />
           )}
           {preview && (
             <polyline points={pointsToPolyline(preview)} fill="none" stroke="#ff4d4f"
