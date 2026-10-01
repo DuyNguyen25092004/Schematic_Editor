@@ -36,9 +36,10 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: 12,
     boxShadow: '0 4px 12px rgba(0,0,0,.12)', fontFamily: 'sans-serif', fontSize: 13,
   };
-  const label = { display: 'block', marginBottom: 4, color: '#555' };
+  const label = { display: 'block', marginBottom: 4, color: '#222', fontWeight: 500 };
   const input = {
     width: '100%', padding: '4px 6px', marginBottom: 10, boxSizing: 'border-box',
+    color: '#000',
     background: readOnly ? '#f5f5f5' : '#fff', cursor: readOnly ? 'not-allowed' : 'text',
   };
   const btn = {

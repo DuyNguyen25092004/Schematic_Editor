@@ -158,9 +158,10 @@ function LatexText({ text = '', latex, size = 14, color = '#000', style }) {
     return String(text).split('\n').map((l) => `<div>${l.trim() ? renderLine(l) : '&nbsp;'}</div>`).join('');
   }, [text, isLatex]);
 
+  const textColor = color || '#000';
   const base = {
     display: 'inline-block',
-    fontSize: size, color, lineHeight: 1.3, whiteSpace: 'nowrap',
+    fontSize: size, color: textColor, lineHeight: 1.3, whiteSpace: 'nowrap',
     fontFamily: isLatex ? undefined : 'sans-serif', fontWeight: isLatex ? 400 : 600,
     ...style,
   };

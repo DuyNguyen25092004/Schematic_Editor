@@ -42,7 +42,7 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
           else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ok(); }
         }}
         placeholder={latex ? 'VD: V_{out} = \\frac{g_m}{C_L}' : 'Nhập văn bản...  (Shift+Enter: xuống dòng)'}
-        style={{ width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 8, resize: 'vertical', fontFamily: latex ? 'monospace' : 'sans-serif' }}
+        style={{ width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 8, resize: 'vertical', fontFamily: latex ? 'monospace' : 'sans-serif', color: '#000', background: '#fff' }}
       />
       <label style={row}>
         <input type="checkbox" checked={latex} onChange={(e) => setLatex(e.target.checked)} />

@@ -84,7 +84,7 @@ function TwoTerminalNode({ data, selected, type }) {
             text={formatLatexPassiveValue(data.value, type)}
             latex={true}
             size={11}
-            color="#555"
+            color="#000"
           />
         )}
       </div>

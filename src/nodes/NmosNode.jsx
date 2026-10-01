@@ -102,7 +102,7 @@ function NmosNode({ data, selected }) {
             text={formatLatexMosParam('W', data.w)}
             latex={true}
             size={10}
-            color="#555"
+            color="#000"
           />
         )}
         {data.l && (
@@ -110,7 +110,7 @@ function NmosNode({ data, selected }) {
             text={formatLatexMosParam('L', data.l)}
             latex={true}
             size={10}
-            color="#555"
+            color="#000"
           />
         )}
       </div>
