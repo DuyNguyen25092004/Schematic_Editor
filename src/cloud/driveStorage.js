@@ -168,31 +168,65 @@ export async function driveListFolder(folderId) {
   return (await r.json()).files ?? [];
 }
 
-// Lấy danh sách thư mục con và các file .schem.json trong 1 thư mục
+// Lấy danh sách thư mục con và các file .schem.json trong 1 thư mục (hỗ trợ cả "sharedWithMe" và lối tắt Shortcut)
 export async function driveListFolderContents(folderId = 'root') {
-  const parentId = folderId || 'root';
-  const q = encodeURIComponent(
-    `'${parentId}' in parents and trashed=false and (mimeType='application/vnd.google-apps.folder' or name contains '${SUFFIX}')`
-  );
+  let q;
+  if (folderId === 'sharedWithMe') {
+    q = encodeURIComponent(
+      `sharedWithMe=true and trashed=false and (mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut' or name contains '${SUFFIX}')`
+    );
+  } else {
+    const parentId = folderId || 'root';
+    q = encodeURIComponent(
+      `'${parentId}' in parents and trashed=false and (mimeType='application/vnd.google-apps.folder' or mimeType='application/vnd.google-apps.shortcut' or name contains '${SUFFIX}')`
+    );
+  }
+
   const r = await call(
     `https://www.googleapis.com/drive/v3/files?q=${q}` +
-      `&fields=files(id,name,mimeType,modifiedTime,size,parents)&orderBy=folder,name&pageSize=100`
+      `&fields=files(id,name,mimeType,modifiedTime,size,parents,shortcutDetails)&orderBy=folder,name&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true`
   );
   const items = (await r.json()).files ?? [];
-  const folders = items.filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
-  const files = items.filter((f) => f.mimeType !== 'application/vnd.google-apps.folder');
+
+  const folders = [];
+  const files = [];
+
+  for (const item of items) {
+    if (item.mimeType === 'application/vnd.google-apps.folder') {
+      folders.push(item);
+    } else if (item.mimeType === 'application/vnd.google-apps.shortcut') {
+      const targetMime = item.shortcutDetails?.targetMimeType;
+      const targetId = item.shortcutDetails?.targetId;
+      if (targetMime === 'application/vnd.google-apps.folder') {
+        folders.push({
+          ...item,
+          id: targetId || item.id,
+          isShortcut: true,
+        });
+      } else if (item.name?.includes(SUFFIX)) {
+        files.push({
+          ...item,
+          id: targetId || item.id,
+          isShortcut: true,
+        });
+      }
+    } else {
+      files.push(item);
+    }
+  }
+
   return { folders, files };
 }
 
 // Tạo thư mục mới trên Drive
 export async function driveCreateFolder(name, parentId = 'root') {
-  const targetParent = parentId && parentId !== 'root' ? parentId : 'root';
+  const targetParent = parentId && parentId !== 'root' && parentId !== 'sharedWithMe' ? parentId : 'root';
   const body = {
     name: (name || 'Thư mục mới').trim(),
     mimeType: 'application/vnd.google-apps.folder',
     parents: [targetParent],
   };
-  const r = await call('https://www.googleapis.com/drive/v3/files?fields=id,name,parents', {
+  const r = await call('https://www.googleapis.com/drive/v3/files?fields=id,name,parents&supportsAllDrives=true', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -205,9 +239,13 @@ export async function driveGetFolderMeta(folderId) {
   if (!folderId || folderId === 'root') {
     return { id: 'root', name: 'Drive của tôi' };
   }
+  if (folderId === 'sharedWithMe') {
+    return { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' };
+  }
   try {
-    const r = await call(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,parents`);
-    return await r.json();
+    const r = await call(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,parents,shortcutDetails&supportsAllDrives=true`);
+    const d = await r.json();
+    return { id: d.id, name: d.name || 'Thư mục Drive' };
   } catch {
     return { id: folderId, name: 'Thư mục Drive' };
   }
@@ -215,8 +253,18 @@ export async function driveGetFolderMeta(folderId) {
 
 // Lấy metadata của 1 file
 export async function driveGetFileMeta(fileId) {
-  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,parents,modifiedTime`);
+  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,parents,modifiedTime&supportsAllDrives=true`);
   return r.json();
+}
+
+// Helper trích xuất Folder ID từ link Google Drive hoặc mã ID trực tiếp
+export function parseFolderIdFromUrl(input) {
+  if (!input) return null;
+  const trimmed = input.trim();
+  const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(trimmed)) return trimmed;
+  return null;
 }
 
 // fileId = null -> tạo file mới trong folderId; có fileId -> ghi đè trực tiếp vào file đó
@@ -224,27 +272,28 @@ export async function driveSave(name, data, fileId = null, folderId = null) {
   const rawName = (name || 'So do moi').trim();
   const cleanName = rawName.endsWith(SUFFIX) ? rawName : rawName + SUFFIX;
 
+  const targetFolder = (folderId && folderId !== 'root' && folderId !== 'sharedWithMe') ? folderId : 'root';
   const meta = fileId
     ? { name: cleanName }
     : {
         name: cleanName,
         mimeType: 'application/json',
-        parents: [folderId && folderId !== 'root' ? folderId : 'root'],
+        parents: [targetFolder],
       };
   const body = new FormData();
   body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
   body.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
   const url = fileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,name,parents,modifiedTime`
-    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,parents,modifiedTime`;
+    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&supportsAllDrives=true&fields=id,name,parents,modifiedTime`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,parents,modifiedTime`;
 
   const r = await call(url, { method: fileId ? 'PATCH' : 'POST', body });
   return r.json();
 }
 
 export async function driveLoad(fileId) {
-  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`);
   return r.json(); // { nodes, wires }
 }
 
@@ -255,5 +304,5 @@ export async function driveGetEmail() {
 }
 
 export async function driveDelete(fileId) {
-  await call(`https://www.googleapis.com/drive/v3/files/${fileId}`, { method: 'DELETE' });
+  await call(`https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`, { method: 'DELETE' });
 }

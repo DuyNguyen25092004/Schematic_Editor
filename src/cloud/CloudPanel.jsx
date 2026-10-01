@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   driveLogin, driveLogout, driveLoad, driveSave, driveDelete,
   driveListFolderContents, driveCreateFolder, driveGetFolderMeta,
-  driveGetEmail, isLoggedIn,
+  driveGetEmail, isLoggedIn, parseFolderIdFromUrl,
 } from './driveStorage';
 import { nodeBoxStyle } from '../constants';
 
@@ -72,6 +72,10 @@ export default function CloudPanel({
   // Tạo thư mục mới
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  // Mở thư mục bằng Link / ID
+  const [isOpeningUrl, setIsOpeningUrl] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
 
   // Trạng thái lưu & tự động lưu
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
@@ -179,6 +183,43 @@ export default function CloudPanel({
     }
   };
 
+  // Chuyển sang xem "Drive của tôi"
+  const switchToMyDrive = () => {
+    const root = { id: 'root', name: 'Drive của tôi' };
+    setCurrentFolder(root);
+    setBreadcrumbs([root]);
+  };
+
+  // Chuyển sang xem "Được chia sẻ với tôi"
+  const switchToSharedWithMe = () => {
+    const shared = { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' };
+    setCurrentFolder(shared);
+    setBreadcrumbs([shared]);
+  };
+
+  // Mở thư mục bằng link hoặc ID Google Drive
+  const handleOpenFolderByUrl = () => run(async () => {
+    const parsedId = parseFolderIdFromUrl(urlInput);
+    if (!parsedId) {
+      setMsg('Link hoặc ID thư mục không hợp lệ.');
+      return;
+    }
+    const meta = await driveGetFolderMeta(parsedId);
+    if (!meta || !meta.id) {
+      setMsg('Không thể truy cập thư mục này. Vui lòng kiểm tra quyền truy cập hoặc ID.');
+      return;
+    }
+    const folderObj = { id: meta.id, name: meta.name || 'Thư mục được chia sẻ' };
+    setCurrentFolder(folderObj);
+    setBreadcrumbs([
+      { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' },
+      folderObj,
+    ]);
+    setIsOpeningUrl(false);
+    setUrlInput('');
+    setMsg(`Đã mở thư mục "${folderObj.name}" ✔`);
+  });
+
   // Điều hướng vào 1 thư mục con
   const navigateToSubfolder = (folder) => {
     const nextCrumb = { id: folder.id, name: folder.name };
@@ -204,6 +245,10 @@ export default function CloudPanel({
 
   // Tạo thư mục mới trên Google Drive
   const handleCreateNewFolder = () => run(async () => {
+    if (currentFolder.id === 'sharedWithMe') {
+      setMsg('Không thể tạo thư mục trực tiếp tại "Được chia sẻ với tôi". Vui lòng chọn một thư mục con hoặc chuyển sang "Drive của tôi".');
+      return;
+    }
     const name = newFolderName.trim();
     if (!name) return;
     const res = await driveCreateFolder(name, currentFolder.id);
@@ -301,6 +346,10 @@ export default function CloudPanel({
 
   // Nút: "Lưu vào thư mục hiện tại" (nếu là file mới, hoặc lưu đè nếu đang mở file trong thư mục này)
   const handleSaveToCurrentFolder = () => run(async () => {
+    if (currentFolder.id === 'sharedWithMe') {
+      setMsg('Mục "Được chia sẻ với tôi" là danh sách chung. Hãy chọn vào một thư mục con bên trong để lưu file.');
+      return;
+    }
     const name = fileNameInput.trim() || 'So do moi';
     const isUpdatingSameFile = activeFile?.id && activeFile?.folderId === currentFolder.id && activeFile?.name === name;
 
@@ -331,6 +380,10 @@ export default function CloudPanel({
 
   // Nút: "Lưu thành bản mới vào thư mục này"
   const handleSaveAsNew = () => run(async () => {
+    if (currentFolder.id === 'sharedWithMe') {
+      setMsg('Mục "Được chia sẻ với tôi" là danh sách chung. Hãy chọn vào một thư mục con bên trong để lưu file.');
+      return;
+    }
     const name = fileNameInput.trim() || 'So do moi (ban sao)';
     const res = await doSaveToDrive({
       targetFileId: null,
@@ -791,7 +844,93 @@ export default function CloudPanel({
                   <div style={{
                     border: '1px solid #e0e0e0', borderRadius: 8,
                     display: 'flex', flexDirection: 'column', flex: 1, minHeight: 240,
+                    overflow: 'hidden',
                   }}>
+                    {/* Tabs chuyển đổi giữa Drive của tôi và Được chia sẻ với tôi */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0',
+                      background: '#f8fafc', padding: '0 8px', gap: 4, flexWrap: 'wrap',
+                    }}>
+                      <button
+                        onClick={switchToMyDrive}
+                        style={{
+                          padding: '8px 14px', border: 'none', background: 'transparent',
+                          borderBottom: breadcrumbs[0]?.id === 'root' ? '2px solid #1677ff' : '2px solid transparent',
+                          color: breadcrumbs[0]?.id === 'root' ? '#1677ff' : '#64748b',
+                          fontWeight: breadcrumbs[0]?.id === 'root' ? 700 : 500,
+                          fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        <span>🏠</span> Drive của tôi
+                      </button>
+                      <button
+                        onClick={switchToSharedWithMe}
+                        style={{
+                          padding: '8px 14px', border: 'none', background: 'transparent',
+                          borderBottom: breadcrumbs[0]?.id === 'sharedWithMe' ? '2px solid #1677ff' : '2px solid transparent',
+                          color: breadcrumbs[0]?.id === 'sharedWithMe' ? '#1677ff' : '#64748b',
+                          fontWeight: breadcrumbs[0]?.id === 'sharedWithMe' ? 700 : 500,
+                          fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        <span>👥</span> Được chia sẻ với tôi
+                      </button>
+                      <button
+                        onClick={() => setIsOpeningUrl((v) => !v)}
+                        style={{
+                          marginLeft: 'auto', padding: '4px 10px', fontSize: 11,
+                          border: '1px solid #cbd5e1', borderRadius: 4, background: '#fff',
+                          color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                        }}
+                        title="Nhập link Google Drive hoặc mã ID thư mục được chia sẻ"
+                      >
+                        <span>🔗</span> Mở link / ID thư mục
+                      </button>
+                    </div>
+
+                    {/* Hộp nhập link hoặc ID thư mục */}
+                    {isOpeningUrl && (
+                      <div style={{
+                        padding: '8px 12px', background: '#f0f7ff', borderBottom: '1px solid #bae0ff',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>Link hoặc ID thư mục:</span>
+                        <input
+                          autoFocus
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleOpenFolderByUrl();
+                            if (e.key === 'Escape') setIsOpeningUrl(false);
+                          }}
+                          placeholder="Dán link drive.google.com/drive/folders/... hoặc ID thư mục"
+                          style={{
+                            flex: 1, padding: '4px 8px', fontSize: 12,
+                            border: '1px solid #91caff', borderRadius: 4, outline: 'none',
+                          }}
+                        />
+                        <button
+                          onClick={handleOpenFolderByUrl}
+                          disabled={busy || !urlInput.trim()}
+                          style={{
+                            padding: '4px 10px', fontSize: 12, background: '#1677ff',
+                            color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer',
+                          }}
+                        >
+                          Mở
+                        </button>
+                        <button
+                          onClick={() => setIsOpeningUrl(false)}
+                          style={{
+                            padding: '4px 8px', fontSize: 12, background: '#fff',
+                            border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer',
+                          }}
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                    )}
+
                     {/* Thanh điều hướng Breadcrumbs */}
                     <div style={{
                       padding: '8px 12px', background: '#fafafa', borderBottom: '1px solid #e8e8e8',
@@ -812,7 +951,7 @@ export default function CloudPanel({
                                 textDecoration: idx < breadcrumbs.length - 1 ? 'underline' : 'none',
                               }}
                             >
-                              {idx === 0 ? '🏠 ' : '📁 '}
+                              {idx === 0 ? (crumb.id === 'sharedWithMe' ? '👥 ' : '🏠 ') : '📁 '}
                               {crumb.name}
                             </span>
                           </span>
@@ -836,13 +975,17 @@ export default function CloudPanel({
                         </button>
 
                         <button
+                          disabled={currentFolder.id === 'sharedWithMe'}
                           onClick={() => setIsCreatingFolder((v) => !v)}
                           style={{
                             padding: '4px 8px', fontSize: 11, borderRadius: 4,
-                            border: '1px solid #1677ff', background: '#e6f4ff',
-                            color: '#1677ff', cursor: 'pointer', fontWeight: 600,
+                            border: currentFolder.id === 'sharedWithMe' ? '1px solid #ddd' : '1px solid #1677ff',
+                            background: currentFolder.id === 'sharedWithMe' ? '#f5f5f5' : '#e6f4ff',
+                            color: currentFolder.id === 'sharedWithMe' ? '#aaa' : '#1677ff',
+                            cursor: currentFolder.id === 'sharedWithMe' ? 'not-allowed' : 'pointer',
+                            fontWeight: 600,
                           }}
-                          title="Tạo thư mục con trong thư mục này"
+                          title={currentFolder.id === 'sharedWithMe' ? 'Không thể tạo thư mục tại mục gốc chia sẻ' : 'Tạo thư mục con trong thư mục này'}
                         >
                           📁➕ Thư mục mới
                         </button>
@@ -932,8 +1075,13 @@ export default function CloudPanel({
                               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: '#333' }}>
-                                <span style={{ fontSize: 16 }}>📁</span>
+                                <span style={{ fontSize: 16 }}>{f.isShortcut ? '🔗📁' : '📁'}</span>
                                 <span>{f.name}</span>
+                                {f.isShortcut && (
+                                  <span style={{ fontSize: 10, background: '#e2e8f0', color: '#475569', padding: '1px 5px', borderRadius: 3 }}>
+                                    Lối tắt
+                                  </span>
+                                )}
                               </div>
                               <span style={{ fontSize: 11, color: '#888' }}>Thư mục ›</span>
                             </div>
@@ -961,7 +1109,7 @@ export default function CloudPanel({
                                   }}
                                   title={`Bấm để mở "${file.name}"`}
                                 >
-                                  <span style={{ fontSize: 16 }}>📄</span>
+                                  <span style={{ fontSize: 16 }}>{file.isShortcut ? '🔗📄' : '📄'}</span>
                                   <span style={{
                                     fontSize: 13, fontWeight: isCurrentOpen ? 700 : 500,
                                     color: isCurrentOpen ? '#1677ff' : '#222',
@@ -969,10 +1117,15 @@ export default function CloudPanel({
                                   }}>
                                     {cleanTitle}
                                   </span>
+                                  {file.isShortcut && (
+                                    <span style={{ fontSize: 10, background: '#e2e8f0', color: '#475569', padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>
+                                      Lối tắt
+                                    </span>
+                                  )}
                                   {isCurrentOpen && (
                                     <span style={{
                                       fontSize: 10, background: '#1677ff', color: '#fff',
-                                      padding: '1px 6px', borderRadius: 10, fontWeight: 600,
+                                      padding: '1px 6px', borderRadius: 10, fontWeight: 600, flexShrink: 0,
                                     }}>
                                       Đang mở
                                     </span>
