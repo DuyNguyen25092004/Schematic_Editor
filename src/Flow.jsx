@@ -30,9 +30,7 @@ import OnlineUsers from './components/OnlineUsers';
 import PropertyPanel from './components/PropertyPanel';
 import { useCopyImage } from './hooks/useCopyImage';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import GroupPanel from './cloud/GroupPanel';
-import GroupTabBar from './components/GroupTabBar';
-import { useGroups } from './cloud/useGroups';
+
 import { useUndo } from './hooks/useUndo';
 import RectNode from './nodes/RectNode';
 
@@ -69,8 +67,28 @@ const initialNodes = mockData.documents[0].instances.map((inst) => ({
   style: { width: 160, height: 100, background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' },
 }));
 
-
-
+function GhostPreviews({ textTool, textGhost, placingType, ghostScreenPos, dragGhostPos, dragType }) {
+  const zoom = useStore((s) => s.transform[2]);
+  return (
+    <>
+      {textTool?.phase === 'place' && textGhost && (
+        <div style={{ position: 'fixed', left: textGhost.x, top: textGhost.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6, padding: 2 }}>
+          <LatexText text={textTool.text} latex={textTool.latex} size={14} />
+        </div>
+      )}
+      {placingType && ghostScreenPos && (
+        <div style={{ position: 'fixed', left: ghostScreenPos.x, top: ghostScreenPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
+          <GhostIcon type={placingType.type} data={placingType.defaultData} />
+        </div>
+      )}
+      {dragGhostPos && (
+        <div style={{ position: 'fixed', left: dragGhostPos.x, top: dragGhostPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
+          <GhostIcon type={dragType || 'nmos'} />
+        </div>
+      )}
+    </>
+  );
+}
 
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -101,7 +119,6 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
-  const groupsState = useGroups();
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
@@ -233,9 +250,8 @@ function Flow() {
   const selectionStart = useRef(null); 
   // -----------------------------------------
 
-  const [tx, ty, zoom] = useStore((s) => s.transform);
   const handleCopyImage = useCopyImage({
-    nodes, wires, selected, tx, ty, zoom,
+    nodes, wires, selected,
     setNodes, setWires, setSelected, reactFlowWrapper,
   });
   // --- NÂNG CẤP COPY BAO GỒM CẢ DÂY NỐI ---
@@ -322,44 +338,64 @@ function Flow() {
     });
   }, [screenToFlowPosition, flowToScreenPosition]);
 
+  const rafMoveId = useRef(null);
+  const pendingMovePos = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafMoveId.current) cancelAnimationFrame(rafMoveId.current);
+    };
+  }, []);
+
   const handleGlobalMouseMove = useCallback((e) => {
     lastMouse.current = { x: e.clientX, y: e.clientY };
     const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     sendCursor(fp.x, fp.y);
 
-    const applyGroup = (group) => {
-      const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      const dx = Math.round(flowPos.x / GRID) * GRID - group.startX;
-      const dy = Math.round(flowPos.y / GRID) * GRID - group.startY;
+    if (moveGroup || copyGroup || cursorNodeId) {
+      pendingMovePos.current = { clientX: e.clientX, clientY: e.clientY };
+      if (!rafMoveId.current) {
+        rafMoveId.current = requestAnimationFrame(() => {
+          rafMoveId.current = null;
+          if (!pendingMovePos.current) return;
+          const { clientX, clientY } = pendingMovePos.current;
 
-      if (group.items.length > 0) {
-        setNodes((ns) => ns.map((n) => {
-          const item = group.items.find((i) => i.id === n.id);
-          return item ? { ...n, position: { x: item.initialX + dx, y: item.initialY + dy } } : n;
-        }));
-      }
-      if (group.wireItems && group.wireItems.length > 0) {
-        const groupIds = new Set(group.wireItems.map((i) => i.id));
-        setWiresRaw((ws) => ws.map((w) => {
-          const item = group.wireItems.find((i) => i.id === w.id);
-          if (!item) return w;
-          const newPoints = item.initialPoints.map((p) => {
-            if (p.nodeId) return p;
-            if (p.onWireId) return groupIds.has(p.onWireId) ? { ...p, x: p.x + dx, y: p.y + dy } : p;
-            return { x: p.x + dx, y: p.y + dy };
-          });
-          return { ...w, points: newPoints };
-        }));
-      }
-    };
+          const applyGroup = (group) => {
+            const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+            const dx = Math.round(flowPos.x / GRID) * GRID - group.startX;
+            const dy = Math.round(flowPos.y / GRID) * GRID - group.startY;
 
-    if (moveGroup) applyGroup(moveGroup);
-    else if (copyGroup) applyGroup(copyGroup);
-    else if (cursorNodeId) {
-      const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      const snappedX = Math.round((flowPos.x - 80) / GRID) * GRID;
-      const snappedY = Math.round((flowPos.y - 50) / GRID) * GRID;
-      setNodes((ns) => ns.map((n) => n.id === cursorNodeId ? { ...n, position: { x: snappedX, y: snappedY } } : n));
+            if (group.items.length > 0) {
+              setNodes((ns) => ns.map((n) => {
+                const item = group.items.find((i) => i.id === n.id);
+                return item ? { ...n, position: { x: item.initialX + dx, y: item.initialY + dy } } : n;
+              }));
+            }
+            if (group.wireItems && group.wireItems.length > 0) {
+              const groupIds = new Set(group.wireItems.map((i) => i.id));
+              setWiresRaw((ws) => ws.map((w) => {
+                const item = group.wireItems.find((i) => i.id === w.id);
+                if (!item) return w;
+                const newPoints = item.initialPoints.map((p) => {
+                  if (p.nodeId) return p;
+                  if (p.onWireId) return groupIds.has(p.onWireId) ? { ...p, x: p.x + dx, y: p.y + dy } : p;
+                  return { x: p.x + dx, y: p.y + dy };
+                });
+                return { ...w, points: newPoints };
+              }));
+            }
+          };
+
+          if (moveGroup) applyGroup(moveGroup);
+          else if (copyGroup) applyGroup(copyGroup);
+          else if (cursorNodeId) {
+            const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+            const snappedX = Math.round((flowPos.x - 80) / GRID) * GRID;
+            const snappedY = Math.round((flowPos.y - 50) / GRID) * GRID;
+            setNodes((ns) => ns.map((n) => n.id === cursorNodeId ? { ...n, position: { x: snappedX, y: snappedY } } : n));
+          }
+        });
+      }
     }
   }, [moveGroup, copyGroup, cursorNodeId, screenToFlowPosition, setNodes, setWiresRaw, sendCursor]);
   // --- BẮT ĐẦU VÀ KẾT THÚC QUÉT KHỐI DÂY ĐIỆN ---
@@ -398,7 +434,7 @@ function Flow() {
       }));
 
       // --- Chọn WIRE: TẤT CẢ các điểm của dây phải nằm trong vùng kéo ---
-      setWires((ws) => ws.map((w) => {
+      setWiresRaw((ws) => ws.map((w) => {
         const pts = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
         const fullyInside = pts.every(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
         return { ...w, selected: fullyInside };
@@ -406,13 +442,13 @@ function Flow() {
     } else {
       // Kéo quá nhỏ (gần như click) -> bỏ chọn hết, tránh chọn nhầm khi chỉ lỡ tay rê nhẹ
       setNodes((ns) => ns.map((n) => ({ ...n, selected: false })));
-      setWires((ws) => ws.map((w) => ({ ...w, selected: false })));
+      setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
     }
     selectionStart.current = null;
   }
     setIsBoxSelecting(false); // kết thúc kéo -> bật lại pointer-events của wire
 
-}, [screenToFlowPosition, nodes, setWires, setNodes]);
+}, [screenToFlowPosition, nodes, wires, setWiresRaw, setNodes]);
   // ----------------------------------------------
 
   const onDragOver = useCallback((e) => {
@@ -524,7 +560,7 @@ function Flow() {
     } else if (!isWiringMode && !placingType) {
       setSelected(null);
       setNodes((ns) => ns.map((n) => ({ ...n, selected: false })));
-      setWires((ws) => ws.map((w) => ({ ...w, selected: false })));
+      setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
     }
   };
 
@@ -541,8 +577,7 @@ function Flow() {
   }, []);
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex', flexDirection: 'column' }}>
-    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex' }}>
       <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
 
       <div 
@@ -593,6 +628,7 @@ function Flow() {
           nodesDraggable={false} 
           panOnDrag={[1, 2]} 
           selectionMode="partial" 
+          onlyRenderVisibleElements={true}
 
           elementsSelectable={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}
           selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}    
@@ -637,7 +673,7 @@ function Flow() {
             } else if (!isWiringMode && !placingType) {
               setSelected({ kind: 'node', id: node.id });
               setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === node.id })));
-              setWires(ws => ws.map(w => ({ ...w, selected: false })));
+              setWiresRaw(ws => ws.map(w => ({ ...w, selected: false })));
             }
           }}
           onPaneClick={handlePaneClick}
@@ -673,24 +709,7 @@ function Flow() {
         
 
         <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
-        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <GroupPanel
-            nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWiresRaw}
-            onOpenRoom={switchCircuitRoom}
-            onNewRoom={startNewCircuitRoom}
-            logged={groupsState.logged}
-            email={groupsState.email}
-            login={groupsState.login}
-            logout={groupsState.logout}
-            group={groupsState.group}
-            groupId={groupsState.groupId}
-            myRole={groupsState.myRole}
-            groupMsg={groupsState.msg}
-            onResizeRect={handleResizeRect}
-            onTextChangeRect={handleRectTextChange}
-          />
+        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21 }}>
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
             onOpenRoom={switchCircuitRoom}
@@ -699,7 +718,6 @@ function Flow() {
             onTextChangeRect={handleRectTextChange}
           />
         </div>
-      </div>
         {textDialog && (
           <div data-text-ui>
             <TextDialog
@@ -723,11 +741,15 @@ function Flow() {
           </div>
         )}
 
-        {textTool?.phase === 'place' && textGhost && (
-          <div style={{ position: 'fixed', left: textGhost.x, top: textGhost.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6, padding: 2 }}>
-            <LatexText text={textTool.text} latex={textTool.latex} size={14} />
-          </div>
-        )}
+        <GhostPreviews
+          textTool={textTool}
+          textGhost={textGhost}
+          placingType={placingType}
+          ghostScreenPos={ghostScreenPos}
+          dragGhostPos={dragGhostPos}
+          dragType={dragType}
+        />
+
         {quickAddOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.15)' }} onClick={() => setQuickAddOpen(false)}>
             <div onClick={(e) => e.stopPropagation()}>
@@ -735,30 +757,7 @@ function Flow() {
             </div>
           </div>
         )}
-
-        {placingType && ghostScreenPos && (
-          <div style={{ position: 'fixed', left: ghostScreenPos.x, top: ghostScreenPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
-            <GhostIcon type={placingType.type} data={placingType.defaultData} />
-          </div>
-        )}
-
-        {dragGhostPos && (
-          <div style={{ position: 'fixed', left: dragGhostPos.x, top: dragGhostPos.y, transform: `scale(${zoom})`, transformOrigin: '0 0', pointerEvents: 'none', zIndex: 48, opacity: 0.6 }}>
-            <GhostIcon type={dragType || 'nmos'} />
-          </div>
-        )}
       </div>
-    </div>
-
-      <GroupTabBar
-        logged={groupsState.logged}
-        email={groupsState.email}
-        myGroups={groupsState.myGroups}
-        groupId={groupsState.groupId}
-        onSelect={groupsState.openGroup}
-        onCreate={groupsState.handleCreateGroup}
-        onLogin={groupsState.login}
-      />
     </div>
   );
 }

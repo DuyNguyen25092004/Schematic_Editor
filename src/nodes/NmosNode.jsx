@@ -1,6 +1,6 @@
 import React from 'react';
 import { Handle, Position, useStore } from 'reactflow';
-import LatexText, { formatLatexRef } from '../components/LatexText';
+import LatexText, { formatLatexRef, formatLatexMosParam } from '../components/LatexText';
 
 // Tính vị trí neo của label — quay quanh cùng tâm (40,50) như PORTS,
 // trả về cả hướng (left/right/top/bottom) để biết canh chữ mọc ra phía nào.
@@ -28,9 +28,8 @@ function getLabelAnchor(rot, flip) {
   return { x: cx + rx, y: cy + ry, side };
 }
 
-export default function NmosNode({ data, selected }) {
-  const zoom = useStore((s) => s.transform[2]);
-  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+function NmosNode({ data, selected }) {
+  const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const rot = data.rot || 0;
   const flip = data.flip || false;
@@ -98,9 +97,25 @@ export default function NmosNode({ data, selected }) {
           size={14}
           color="#000"
         />
-        {data.w && <div style={{ fontSize: '9px', color: '#555' }}>W={data.w}</div>}
-        {data.l && <div style={{ fontSize: '9px', color: '#555' }}>L={data.l}</div>}
+        {data.w && (
+          <LatexText
+            text={formatLatexMosParam('W', data.w)}
+            latex={true}
+            size={10}
+            color="#555"
+          />
+        )}
+        {data.l && (
+          <LatexText
+            text={formatLatexMosParam('L', data.l)}
+            latex={true}
+            size={10}
+            color="#555"
+          />
+        )}
       </div>
     </div>
   );
 }
+
+export default React.memo(NmosNode);

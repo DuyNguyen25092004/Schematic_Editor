@@ -38,9 +38,8 @@ function transformVec(dx, dy, flip, rot) {
   return [dx, dy];
 }
 
-export default function SymbolNode({ data, selected, type }) {
-  const zoom = useStore((s) => s.transform[2]);
-  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+function SymbolNode({ data, selected, type }) {
+  const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
   const ports = getPorts(type, data);
@@ -129,3 +128,5 @@ export default function SymbolNode({ data, selected, type }) {
     </div>
   );
 }
+
+export default React.memo(SymbolNode);

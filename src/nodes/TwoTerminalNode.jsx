@@ -2,7 +2,7 @@ import React from 'react';
 import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS } from '../symbols';
 import { getSymbolBox } from '../constants';
-import LatexText, { formatLatexRef } from '../components/LatexText';
+import LatexText, { formatLatexRef, formatLatexPassiveValue } from '../components/LatexText';
 
 // Ký hiệu nằm dọc tại x=50, xoay quanh tâm (40,50).
 // Label cách tâm xoay OFFSET đơn vị về bên phải (chưa xoay), rồi xoay/lật theo node.
@@ -24,9 +24,8 @@ const handleStyle = (left, top) => ({
   width: 20, height: 20, zIndex: 100, border: 'none',
 });
 
-export default function TwoTerminalNode({ data, selected, type }) {
-  const zoom = useStore((s) => s.transform[2]);
-  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+function TwoTerminalNode({ data, selected, type }) {
+  const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
   const box = getSymbolBox(type);
@@ -80,8 +79,17 @@ export default function TwoTerminalNode({ data, selected, type }) {
           size={14}
           color="#000"
         />
-        {data.value && <div style={{ fontSize: '10px', color: '#555' }}>{data.value}</div>}
+        {data.value && (
+          <LatexText
+            text={formatLatexPassiveValue(data.value, type)}
+            latex={true}
+            size={11}
+            color="#555"
+          />
+        )}
       </div>
     </div>
   );
 }
+
+export default React.memo(TwoTerminalNode);

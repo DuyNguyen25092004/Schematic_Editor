@@ -6,7 +6,7 @@ import { edgeKey, dirIndex, getObstacles, routeOrtho } from './router';
 
 
 
-export function resolveWire(pts, nodes, allWires = [], depth = 0, selfId = null, avoidOverlap = true, forceRoute = false) {
+export function resolveWire(pts, nodes, allWires = [], depth = 0, selfId = null, avoidOverlap = true, forceRoute = false, pathCache = null) {
   if (!pts || pts.length < 2) return { skeleton: pts, path: pts };
 
   const snap = (v) => Math.round(v / GRID) * GRID;
@@ -28,10 +28,16 @@ export function resolveWire(pts, nodes, allWires = [], depth = 0, selfId = null,
 
   const atWireSeg = (p) => {
     if (!p.onWireId || depth > 5) return null;
+    if (pathCache && pathCache.has(p.onWireId)) {
+      const cachedPath = pathCache.get(p.onWireId);
+      const q = projectOnPath(cachedPath, { x: p.x, y: p.y });
+      return { x: snap(q.x), y: snap(q.y) };
+    }
     const host = allWires.find((w) => w.id === p.onWireId);
     if (!host) return null;
     // Phải dùng ĐÚNG cờ routed của host để chiếu lên đúng đường đang hiển thị
-    const h = resolveWire(host.points, nodes, allWires, depth + 1, host.id, false, host.routed);
+    const h = resolveWire(host.points, nodes, allWires, depth + 1, host.id, false, host.routed, pathCache);
+    if (pathCache) pathCache.set(host.id, h.path);
     const q = projectOnPath(h.path, { x: p.x, y: p.y });
     return { x: snap(q.x), y: snap(q.y) };
   };
@@ -126,7 +132,9 @@ export function resolveSkeleton(pts, nodes, allWires = [], wireId = null, forceR
   return resolveWire(pts, nodes, allWires, 0, wireId, true, forceRoute).skeleton;
 }
 
-// Giữ nguyên chữ ký cũ để các chỗ khác không phải sửa
-export function resolvePoints(pts, nodes, lockedVertical, allWires = [], wireId = null, forceRoute = false) {
-  return resolveWire(pts, nodes, allWires, 0, wireId, true, forceRoute).path;
+// Giữ nguyên chữ ký cũ để các chỗ khác không phải sửa, thêm tuỳ chọn pathCache
+export function resolvePoints(pts, nodes, lockedVertical, allWires = [], wireId = null, forceRoute = false, pathCache = null) {
+  const res = resolveWire(pts, nodes, allWires, 0, wireId, true, forceRoute, pathCache).path;
+  if (pathCache && wireId) pathCache.set(wireId, res);
+  return res;
 }

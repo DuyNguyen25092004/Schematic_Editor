@@ -187,8 +187,7 @@ export function useCircuitSync({
   // ---------- GỬI ----------
   useEffect(() => {
     if (!ready || isEditingLocally) return;
-    const batch = writeBatch(db);
-    let dirty = false;
+    const ops = [];
 
     const push = (list, store, strip, col) => {
       const seen = new Set();
@@ -197,22 +196,32 @@ export function useCircuitSync({
         const data = strip(item);
         const json = JSON.stringify(data);
         if (store.current.get(item.id) !== json) {
-          batch.set(doc(db, 'circuits', circuitId, col, item.id), data);
+          ops.push({ type: 'set', ref: doc(db, 'circuits', circuitId, col, item.id), data });
           store.current.set(item.id, json);
-          dirty = true;
         }
       });
       for (const id of [...store.current.keys()]) {
         if (!seen.has(id)) {
-          batch.delete(doc(db, 'circuits', circuitId, col, id));
+          ops.push({ type: 'delete', ref: doc(db, 'circuits', circuitId, col, id) });
           store.current.delete(id);
-          dirty = true;
         }
       }
     };
 
     push(nodes, syncedNodes, stripNode, 'nodes');
     push(wires, syncedWires, stripWire, 'wires');
-    if (dirty) batch.commit().catch(console.error);
+
+    if (ops.length > 0) {
+      (async () => {
+        for (let i = 0; i < ops.length; i += 400) {
+          const b = writeBatch(db);
+          ops.slice(i, i + 400).forEach((op) => {
+            if (op.type === 'set') b.set(op.ref, op.data);
+            else if (op.type === 'delete') b.delete(op.ref);
+          });
+          await b.commit().catch(console.error);
+        }
+      })();
+    }
   }, [nodes, wires, ready, isEditingLocally, circuitId]);
 }

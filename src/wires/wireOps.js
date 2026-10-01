@@ -3,18 +3,20 @@ import { toGridUnit, sameGridPoint } from '../geometry/grid';
 import { resolvePoints } from '../routing/resolveWire';
 import { pointAtRatio, projectOnPath } from '../geometry/pathUtils';
 
-export function getJunctionDots(wires, nodes) {
+export function getJunctionDots(wires, nodes, resolvedMap = null) {
   const dots = [];
   const seen = new Set();
   const portCount = new Map();
+  const wireIdSet = new Set(wires.map((w) => w.id));
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   wires.forEach((w) => {
     const raw = w.points;
     if (!raw || raw.length < 2) return;
-    const res = resolvePoints(raw, nodes, w.lockedVertical, wires, w.id, w.routed);
+    const res = resolvedMap?.get(w.id) || resolvePoints(raw, nodes, w.lockedVertical, wires, w.id, w.routed);
     [[raw[0], res[0]], [raw[raw.length - 1], res[res.length - 1]]].forEach(([r, p]) => {
       if (r.nodeId) {
-        const hostNode = nodes.find((n) => n.id === r.nodeId);
+        const hostNode = nodeMap.get(r.nodeId);
         if (hostNode && NO_JUNCTION_DOT_TYPES.has(hostNode.type)) return;
         const k = `${r.nodeId}.${r.portId}`;
         const c = portCount.get(k) || { n: 0, x: p.x, y: p.y };
@@ -23,7 +25,7 @@ export function getJunctionDots(wires, nodes) {
         return;
       }
       if (!r.onWireId) return;
-      if (!wires.some((x) => x.id === r.onWireId)) return;
+      if (!wireIdSet.has(r.onWireId)) return;
       const key = `${toGridUnit(p.x)},${toGridUnit(p.y)}`;
       if (seen.has(key)) return;
       seen.add(key);
@@ -42,6 +44,35 @@ export function getJunctionDots(wires, nodes) {
 // trạng thái wires luôn "sạch" trước khi vẽ junction dot.
 // Trong mergeTouchingWires: thay isNear(...) bằng sameGridPoint(...)
 export function mergeTouchingWires(wires, nodes) {
+  if (!wires || wires.length < 2) return wires;
+
+  // Fast pre-check O(N): kiểm tra xem có 2 đầu mút tự do nào trùng toạ độ lưới không
+  const freeGridCounts = new Map();
+  let hasPotentialMerge = false;
+
+  for (let i = 0; i < wires.length; i++) {
+    const w = wires[i];
+    if (!w.points || w.points.length < 2) continue;
+    const pFirst = w.points[0];
+    const pLast = w.points[w.points.length - 1];
+
+    if (!pFirst.nodeId && !pFirst.onWireId) {
+      const k = `${toGridUnit(pFirst.x)},${toGridUnit(pFirst.y)}`;
+      const c = (freeGridCounts.get(k) || 0) + 1;
+      if (c >= 2) { hasPotentialMerge = true; break; }
+      freeGridCounts.set(k, c);
+    }
+    if (!pLast.nodeId && !pLast.onWireId) {
+      const k = `${toGridUnit(pLast.x)},${toGridUnit(pLast.y)}`;
+      const c = (freeGridCounts.get(k) || 0) + 1;
+      if (c >= 2) { hasPotentialMerge = true; break; }
+      freeGridCounts.set(k, c);
+    }
+  }
+
+  // Nếu không có bất kỳ đầu mút tự do nào trùng toạ độ lưới, trả về nguyên bản trong O(N)
+  if (!hasPotentialMerge) return wires;
+
   let list = wires.map((w) => ({ ...w }));
   let mergedAny = true;
 
@@ -50,21 +81,26 @@ export function mergeTouchingWires(wires, nodes) {
 
     outer:
     for (let i = 0; i < list.length; i++) {
+      const A = list[i];
+      if (!A.points || A.points.length < 2) continue;
+      const freeA1 = !A.points[0].nodeId && !A.points[0].onWireId;
+      const freeALast = !A.points[A.points.length - 1].nodeId && !A.points[A.points.length - 1].onWireId;
+      if (!freeA1 && !freeALast) continue;
+
+      const aFirst = A.points[0];
+      const aLast = A.points[A.points.length - 1];
+
       for (let j = 0; j < list.length; j++) {
         if (i === j) continue;
-        const A = list[i];
         const B = list[j];
+        if (!B.points || B.points.length < 2) continue;
 
-        const ptsA = resolvePoints(A.points, nodes, A.lockedVertical, wires, A.id, A.routed);
-        const ptsB = resolvePoints(B.points, nodes, B.lockedVertical, wires, B.id, B.routed);
-        const aFirst = ptsA[0], aLast = ptsA[ptsA.length - 1];
-        const bFirst = ptsB[0], bLast = ptsB[ptsB.length - 1];
-
-        // Chỉ coi là "tự do, có thể gộp" khi KHÔNG bind port VÀ KHÔNG bind dây khác
-        const freeA1 = !A.points[0].nodeId && !A.points[0].onWireId;
-        const freeALast = !A.points[A.points.length - 1].nodeId && !A.points[A.points.length - 1].onWireId;
         const freeB1 = !B.points[0].nodeId && !B.points[0].onWireId;
         const freeBLast = !B.points[B.points.length - 1].nodeId && !B.points[B.points.length - 1].onWireId;
+        if (!freeB1 && !freeBLast) continue;
+
+        const bFirst = B.points[0];
+        const bLast = B.points[B.points.length - 1];
 
         let mergedPoints = null;
 
@@ -79,11 +115,16 @@ export function mergeTouchingWires(wires, nodes) {
         }
 
         if (mergedPoints) {
-          const remap = (labels, pts) => (labels || []).map((l) => {
-            const pt = pointAtRatio(pts, l.ratio);
-            return { ...l, ratio: projectOnPath(mergedPoints, pt).ratio };
-          });
-          const labels = [...remap(A.labels, ptsA), ...remap(B.labels, ptsB)];
+          let labels = [];
+          if ((A.labels && A.labels.length) || (B.labels && B.labels.length)) {
+            const ptsA = resolvePoints(A.points, nodes, A.lockedVertical, wires, A.id, A.routed);
+            const ptsB = resolvePoints(B.points, nodes, B.lockedVertical, wires, B.id, B.routed);
+            const remap = (lbls, pts) => (lbls || []).map((l) => {
+              const pt = pointAtRatio(pts, l.ratio);
+              return { ...l, ratio: projectOnPath(mergedPoints, pt).ratio };
+            });
+            labels = [...remap(A.labels, ptsA), ...remap(B.labels, ptsB)];
+          }
           const merged = {
             ...A, points: mergedPoints, lockedVertical: undefined,
             net: A.net || B.net, name: A.name || B.name, color: A.color || B.color,

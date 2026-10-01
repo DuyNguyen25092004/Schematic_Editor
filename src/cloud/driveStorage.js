@@ -9,7 +9,7 @@ export function getClientId() {
   return DEFAULT_CLIENT_ID;
 }
 
-// ĐỔI: scope rộng hơn để thấy được file/thư mục người khác share (Editor/Viewer)
+// Scope rộng hơn để thấy được file/thư mục người khác share (Editor/Viewer)
 const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
 const SUFFIX = '.schem.json';
 
@@ -39,7 +39,6 @@ export function driveLogin(providedClientId) {
         callback: (res) => {
           if (res.error) return reject(new Error(res.error_description || res.error));
 
-          // Kiểm tra xem người dùng có tích chọn quyền Google Drive trong popup không
           const hasDriveScope = window.google?.accounts?.oauth2?.hasGrantedAllScopes
             ? window.google.accounts.oauth2.hasGrantedAllScopes(res, 'https://www.googleapis.com/auth/drive')
             : (res.scope && res.scope.includes('https://www.googleapis.com/auth/drive'));
@@ -76,7 +75,6 @@ export function driveLogin(providedClientId) {
           reject(new Error(msg));
         },
       });
-      // prompt: 'consent' bắt buộc Google hiển thị màn hình cấp quyền kèm các ô checkbox
       client.requestAccessToken({ prompt: 'consent' });
     } catch (err) {
       reject(err);
@@ -147,41 +145,99 @@ export async function call(url, options = {}) {
   return r;
 }
 
-// Danh sách file của riêng người đang đăng nhập (giữ để tương thích tính năng cũ, không dùng cho group)
+// Danh sách file của riêng người đang đăng nhập (tương thích ngược)
 export async function driveList() {
   const q = encodeURIComponent(`name contains '${SUFFIX}' and trashed=false`);
   const r = await call(
     `https://www.googleapis.com/drive/v3/files?q=${q}` +
-      `&fields=files(id,name,modifiedTime)&orderBy=modifiedTime%20desc&pageSize=50`
+      `&fields=files(id,name,modifiedTime,parents)&orderBy=modifiedTime%20desc&pageSize=50`
   );
   return (await r.json()).files ?? [];
 }
 
-// MỚI: danh sách file .schem.json trong 1 thư mục cụ thể (thư mục group đã được share)
+// Danh sách file .schem.json trong 1 thư mục cụ thể (cho Group)
 export async function driveListFolder(folderId) {
+  const parentId = folderId || 'root';
   const q = encodeURIComponent(
-    `'${folderId}' in parents and name contains '${SUFFIX}' and trashed=false`
+    `'${parentId}' in parents and name contains '${SUFFIX}' and trashed=false`
   );
   const r = await call(
     `https://www.googleapis.com/drive/v3/files?q=${q}` +
-      `&fields=files(id,name,modifiedTime)&orderBy=modifiedTime%20desc&pageSize=100`
+      `&fields=files(id,name,modifiedTime,parents,size)&orderBy=modifiedTime%20desc&pageSize=100`
   );
   return (await r.json()).files ?? [];
 }
 
-// fileId = null -> tạo file mới; có fileId -> ghi đè nội dung
-// folderId (tùy chọn) -> khi tạo file mới, đặt vào đúng thư mục group
+// Lấy danh sách thư mục con và các file .schem.json trong 1 thư mục
+export async function driveListFolderContents(folderId = 'root') {
+  const parentId = folderId || 'root';
+  const q = encodeURIComponent(
+    `'${parentId}' in parents and trashed=false and (mimeType='application/vnd.google-apps.folder' or name contains '${SUFFIX}')`
+  );
+  const r = await call(
+    `https://www.googleapis.com/drive/v3/files?q=${q}` +
+      `&fields=files(id,name,mimeType,modifiedTime,size,parents)&orderBy=folder,name&pageSize=100`
+  );
+  const items = (await r.json()).files ?? [];
+  const folders = items.filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
+  const files = items.filter((f) => f.mimeType !== 'application/vnd.google-apps.folder');
+  return { folders, files };
+}
+
+// Tạo thư mục mới trên Drive
+export async function driveCreateFolder(name, parentId = 'root') {
+  const targetParent = parentId && parentId !== 'root' ? parentId : 'root';
+  const body = {
+    name: (name || 'Thư mục mới').trim(),
+    mimeType: 'application/vnd.google-apps.folder',
+    parents: [targetParent],
+  };
+  const r = await call('https://www.googleapis.com/drive/v3/files?fields=id,name,parents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+// Lấy thông tin thư mục
+export async function driveGetFolderMeta(folderId) {
+  if (!folderId || folderId === 'root') {
+    return { id: 'root', name: 'Drive của tôi' };
+  }
+  try {
+    const r = await call(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,parents`);
+    return await r.json();
+  } catch {
+    return { id: folderId, name: 'Thư mục Drive' };
+  }
+}
+
+// Lấy metadata của 1 file
+export async function driveGetFileMeta(fileId) {
+  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,parents,modifiedTime`);
+  return r.json();
+}
+
+// fileId = null -> tạo file mới trong folderId; có fileId -> ghi đè trực tiếp vào file đó
 export async function driveSave(name, data, fileId = null, folderId = null) {
+  const rawName = (name || 'So do moi').trim();
+  const cleanName = rawName.endsWith(SUFFIX) ? rawName : rawName + SUFFIX;
+
   const meta = fileId
-    ? {}
-    : { name: name + SUFFIX, mimeType: 'application/json', ...(folderId ? { parents: [folderId] } : {}) };
+    ? { name: cleanName }
+    : {
+        name: cleanName,
+        mimeType: 'application/json',
+        parents: [folderId && folderId !== 'root' ? folderId : 'root'],
+      };
   const body = new FormData();
   body.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
   body.append('file', new Blob([JSON.stringify(data)], { type: 'application/json' }));
 
   const url = fileId
-    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,name`
-    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name`;
+    ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,name,parents,modifiedTime`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,parents,modifiedTime`;
 
   const r = await call(url, { method: fileId ? 'PATCH' : 'POST', body });
   return r.json();

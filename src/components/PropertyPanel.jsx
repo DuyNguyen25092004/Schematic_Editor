@@ -1,4 +1,4 @@
-import LatexText, { formatLatexRef } from './LatexText';
+import LatexText, { formatLatexRef, formatLatexMosParam, formatLatexPassiveValue } from './LatexText';
 
 const WIRE_COLORS = [
   { name: 'Mặc định', value: undefined },
@@ -159,17 +159,32 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete })
 
         {hasValue && (
           <>
-            <label style={label}>Giá trị</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={label}>Giá trị</label>
+              {node.data?.value && (
+                <LatexText text={formatLatexPassiveValue(node.data.value, node.type)} latex={true} size={13} color="#1677ff" />
+              )}
+            </div>
             <input style={input} value={node.data.value || ''}
                   onChange={(e) => patch('value', e.target.value)} />
           </>
         )}
         {isMos && (
           <>
-            <label style={label}>W</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={label}>W</label>
+              {node.data?.w && (
+                <LatexText text={formatLatexMosParam('W', node.data.w)} latex={true} size={12} color="#1677ff" />
+              )}
+            </div>
             <input style={input} value={node.data.w || ''}
                   onChange={(e) => patch('w', e.target.value)} />
-            <label style={label}>L</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={label}>L</label>
+              {node.data?.l && (
+                <LatexText text={formatLatexMosParam('L', node.data.l)} latex={true} size={12} color="#1677ff" />
+              )}
+            </div>
             <input style={input} value={node.data.l || ''}
                   onChange={(e) => patch('l', e.target.value)} />
           </>

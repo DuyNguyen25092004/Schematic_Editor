@@ -31,9 +31,8 @@ const handleStyle = (left, top) => ({
   width: 20, height: 20, zIndex: 100, border: 'none',
 });
 
-export default function NpnNode({ data, selected, type }) {
-  const zoom = useStore((s) => s.transform[2]);
-  const strokeScale = Math.max(0.2, Math.min(1, zoom || 1));
+function NpnNode({ data, selected, type }) {
+  const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type] || NpnSymbol;
   const rot = data.rot || 0;
@@ -92,3 +91,5 @@ export default function NpnNode({ data, selected, type }) {
     </div>
   );
 }
+
+export default React.memo(NpnNode);

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { GRID } from '../constants';
+import { getSymbolBBox } from '../geometry/ports';
 import { resolvePoints } from '../routing/resolveWire';
 import { attachFreeEndpointsToPorts } from '../wires/snap';
 
@@ -48,6 +49,14 @@ const {
       
       if (e.key === 'r' || e.key === 'R') {
         if (e.repeat) return;
+
+        const isMirrorH = (e.ctrlKey || e.metaKey) && !e.shiftKey;
+        const isMirrorV = e.shiftKey && !e.ctrlKey && !e.metaKey;
+        const isRotate = !e.ctrlKey && !e.metaKey && !e.shiftKey;
+
+        // Chỉ xử lý nếu là R, Ctrl+R hoặc Shift+R
+        if (!isMirrorH && !isMirrorV && !isRotate) return;
+
         const targetIds = moveGroup ? moveGroup.items.map((i) => i.id)
           : copyGroup ? copyGroup.items.map((i) => i.id)
           : activeNodes.map((n) => n.id);
@@ -57,17 +66,18 @@ const {
           : copyGroup ? (copyGroup.wireItems || []).map((i) => i.id)
           : activeWires.map((w) => w.id);
         if (targetWireIds.length === 0 && selected?.kind === 'wire') targetWireIds.push(selected.id);
-        if (targetIds.length > 0 || targetWireIds.length > 0) {
-          const isFlip = e.ctrlKey;
-          if (isFlip) e.preventDefault();
 
-          setIsRotatingFlag(true); // <-- BẬT trước khi setNodes/setWires
+        if (targetIds.length > 0 || targetWireIds.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          setIsRotatingFlag(true);
 
           const targetSet = new Set(targetIds);
-          nodesRef.current.forEach((n) => { if (n.type === 'text') targetSet.delete(n.id); });
           const targetNodesArr = nodesRef.current.filter((n) => targetSet.has(n.id));
           const wireSet = new Set(targetWireIds);
 
+          // Tự động gom các dây nằm trọn giữa các linh kiện trong nhóm được chọn
           wiresRef.current?.forEach((w) => {
             const allEndsInside = w.points.every((p) => !p.nodeId || targetSet.has(p.nodeId));
             const touchesAny = w.points.some((p) => p.nodeId && targetSet.has(p.nodeId));
@@ -79,67 +89,173 @@ const {
             return;
           }
 
-          // Tâm cả khối — GIỮ NGUYÊN dạng số thực (KHÔNG làm tròn về lưới ở bước này),
-          // tránh cộng dồn sai số qua nhiều lượt rotate/flip liên tiếp.
-          let sumX = 0, sumY = 0, cnt = 0;
-          targetNodesArr.forEach((n) => { sumX += n.position.x + 40; sumY += n.position.y + 50; cnt++; });
-          wiresRef.current?.forEach((w) => {
-            if (!wireSet.has(w.id)) return;
-            w.points.forEach((p) => { sumX += p.x; sumY += p.y; cnt++; });
+          // XÁC ĐỊNH TÂM XOAY / LẬT:
+          // Nếu chỉ chọn đúng 1 linh kiện và không có dây -> xoay quanh tâm (40, 50) của chính nó
+          // Nếu bôi đen cả cụm (nhiều linh kiện hoặc có dây) -> xoay quanh tâm bounding box của toàn bộ cụm!
+          let cx, cy;
+          const isSingleNode = targetNodesArr.length === 1 && wireSet.size === 0;
+
+          if (isSingleNode) {
+            const n = targetNodesArr[0];
+            cx = n.position.x + 40;
+            cy = n.position.y + 50;
+          } else {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            targetNodesArr.forEach((n) => {
+              if (n.type === 'text') {
+                minX = Math.min(minX, n.position.x);
+                maxX = Math.max(maxX, n.position.x + 60);
+                minY = Math.min(minY, n.position.y);
+                maxY = Math.max(maxY, n.position.y + 30);
+              } else {
+                const box = getSymbolBBox(n);
+                minX = Math.min(minX, box.x1);
+                maxX = Math.max(maxX, box.x2);
+                minY = Math.min(minY, box.y1);
+                maxY = Math.max(maxY, box.y2);
+              }
+            });
+
+            wireSet.forEach((wId) => {
+              const w = wiresRef.current?.find((x) => x.id === wId);
+              if (w) {
+                w.points.forEach((p) => {
+                  minX = Math.min(minX, p.x);
+                  maxX = Math.max(maxX, p.x);
+                  minY = Math.min(minY, p.y);
+                  maxY = Math.max(maxY, p.y);
+                });
+              }
+            });
+
+            if (!Number.isFinite(minX)) {
+              setIsRotatingFlag(false);
+              return;
+            }
+
+            // Làm tròn tâm theo ô lưới GRID để mọi điểm và linh kiện sau biến đổi luôn nằm đúng lưới
+            cx = Math.round(((minX + maxX) / 2) / GRID) * GRID;
+            cy = Math.round(((minY + maxY) / 2) / GRID) * GRID;
+          }
+
+          // Phép biến đổi toạ độ quanh tâm (cx, cy):
+          const rotatePt = (x, y) => ({
+            x: cx - (y - cy),
+            y: cy + (x - cx),
           });
-          if (cnt === 0) { setIsRotatingFlag(false); return; }
-          const cx = sumX / cnt;
-          const cy = sumY / cnt;
 
-          const rotatePt = (x, y) => ({ x: cx - (y - cy), y: cy + (x - cx) });
-          const flipPt = (x, y) => ({ x: 2 * cx - x, y });
-          const transformPt = (x, y) => (isFlip ? flipPt(x, y) : rotatePt(x, y));
-          const snapPt = (p) => ({ x: Math.round(p.x / GRID) * GRID, y: Math.round(p.y / GRID) * GRID });
+          const flipHPt = (x, y) => ({
+            x: 2 * cx - x,
+            y,
+          });
 
-          // Tính TRƯỚC danh sách node/wire mới ra biến cục bộ — dùng chung cho cả
-          // setNodes/setWires lẫn việc rebase moveGroup ngay dưới đây (setState là
-          // async nên không thể đọc lại giá trị mới qua closure ngay lập tức).
+          const flipVPt = (x, y) => ({
+            x,
+            y: 2 * cy - y,
+          });
+
+          const transformPt = (x, y) => {
+            if (isMirrorH) return flipHPt(x, y);
+            if (isMirrorV) return flipVPt(x, y);
+            return rotatePt(x, y);
+          };
+
+          const snapPt = (p) => ({
+            x: Math.round(p.x / GRID) * GRID,
+            y: Math.round(p.y / GRID) * GRID,
+          });
+
+          // 1. Biến đổi các linh kiện trong nhóm:
           const newNodesFull = nodesRef.current.map((n) => {
             if (!targetSet.has(n.id)) return n;
+
+            // Văn bản tự do: chỉ biến đổi vị trí theo cụm
+            if (n.type === 'text') {
+              const np = snapPt(transformPt(n.position.x, n.position.y));
+              return { ...n, position: { x: np.x, y: np.y } };
+            }
+
+            // Hình chữ nhật: biến đổi vị trí và hoán đổi kích thước khi xoay
+            if (n.type === 'rect') {
+              const rw = n.data?.width || 160;
+              const rh = n.data?.height || 100;
+              const rcx = n.position.x + rw / 2;
+              const rcy = n.position.y + rh / 2;
+              const nrc = snapPt(transformPt(rcx, rcy));
+              if (isMirrorH || isMirrorV) {
+                return {
+                  ...n,
+                  position: { x: Math.round((nrc.x - rw / 2) / GRID) * GRID, y: Math.round((nrc.y - rh / 2) / GRID) * GRID },
+                };
+              }
+              return {
+                ...n,
+                position: { x: Math.round((nrc.x - rh / 2) / GRID) * GRID, y: Math.round((nrc.y - rw / 2) / GRID) * GRID },
+                data: { ...n.data, width: rh, height: rw },
+              };
+            }
+
+            // Linh kiện thông thường:
             const worldCx = n.position.x + 40;
             const worldCy = n.position.y + 50;
             const np = snapPt(transformPt(worldCx, worldCy));
+
+            const curRot = n.data?.rot || 0;
+            const curFlip = n.data?.flip || false;
+
+            let nextRot = curRot;
+            let nextFlip = curFlip;
+
+            if (isMirrorH) {
+              // Lật ngang (Ctrl+R): (360 - rot) % 360, đảo cờ flip
+              nextRot = (360 - curRot) % 360;
+              nextFlip = !curFlip;
+            } else if (isMirrorV) {
+              // Lật dọc (Shift+R): (180 - rot + 360) % 360, đảo cờ flip
+              nextRot = (180 - curRot + 360) % 360;
+              nextFlip = !curFlip;
+            } else {
+              // Xoay 90 độ CW (R): cộng 90 độ, giữ nguyên flip
+              nextRot = (curRot + 90) % 360;
+            }
+
             return {
               ...n,
               position: { x: np.x - 40, y: np.y - 50 },
               data: {
                 ...n.data,
-                ...(isFlip ? { flip: !n.data.flip } : { rot: ((n.data.rot || 0) + 90) % 360 }),
+                rot: nextRot,
+                flip: nextFlip,
               },
             };
           });
 
+          // 2. Biến đổi toàn bộ các dây điện trong cụm:
+          // GIỮ NGUYÊN TOÀN BỘ CÁC ĐIỂM (WAYPOINTS) VÀ XOAY / LẬT CẢ DÂY NGUYÊN VẸN!
           const newWiresFull = wiresRef.current.map((w) => {
             if (!wireSet.has(w.id)) return w;
 
-            const transform = (p) => {
+            const newPoints = w.points.map((p) => {
               const np = snapPt(transformPt(p.x, p.y));
-              return { ...p, x: np.x, y: np.y };
+              return {
+                ...p,
+                x: np.x,
+                y: np.y,
+              };
+            });
+
+            return {
+              ...w,
+              points: newPoints,
+              routed: false,
             };
-
-            // Bỏ các waypoint giữa CŨ (là kết quả route/kéo tay từ trước) — chỉ giữ 2 đầu mút,
-            // để Dijkstra tính lại đường đi sạch từ đầu theo vị trí MỚI, tránh bị ép đi qua
-            // điểm gấp khúc cũ không còn hợp lý sau khi xoay/lật.
-            const first = w.points[0];
-            const last = w.points[w.points.length - 1];
-            const newPoints = w.points.length > 2
-              ? [transform(first), transform(last)]
-              : w.points.map(transform);
-
-            return { ...w, points: newPoints, routed: false };
           });
 
           setNodes(newNodesFull);
           setWires(newWiresFull);
 
-          // Rebase moveGroup theo vị trí VỪA rotate/flip — nếu không, lần mousemove
-          // tiếp theo sẽ dùng initialX/initialY/initialPoints CŨ (trước rotate) cộng
-          // dx/dy mới, làm node/dây "nhảy" bật ngược lại theo hướng khác.
+          // Rebase moveGroup và copyGroup
           if (moveGroup) {
             const flowPos = screenToFlowPosition(lastMouse.current);
             setMoveGroup((mg) => {

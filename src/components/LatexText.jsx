@@ -2,10 +2,19 @@ import React, { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
+const katexCache = new Map();
+
 function renderLine(line) {
   let l = String(line || '').trim();
   if (l.endsWith('_')) l = `${l}{}`;
-  return katex.renderToString(l, { throwOnError: false, displayMode: false, output: 'html' });
+  if (katexCache.has(l)) return katexCache.get(l);
+  const result = katex.renderToString(l, { throwOnError: false, displayMode: false, output: 'html' });
+  if (katexCache.size > 2000) {
+    const firstKey = katexCache.keys().next().value;
+    katexCache.delete(firstKey);
+  }
+  katexCache.set(l, result);
+  return result;
 }
 
 export function formatLatexRef(ref, isVdd = false) {
@@ -34,7 +43,115 @@ export function formatLatexRef(ref, isVdd = false) {
   return str;
 }
 
-export default function LatexText({ text = '', latex, size = 14, color = '#000', style }) {
+// Định dạng thông số W, L của MOSFET sang dạng LaTeX
+export function formatLatexMosParam(param, val) {
+  if (!val) return '';
+  let str = String(val).trim();
+  // Bỏ tiền tố W= hoặc L= nếu người dùng đã gõ sẵn
+  str = str.replace(new RegExp(`^${param}\\s*=\\s*`, 'i'), '').trim();
+  if (!str) return '';
+
+  // Nếu người dùng đã gõ biểu thức LaTeX chuẩn
+  if (/[\\{}^_]/.test(str)) {
+    return `${param} = ${str}`;
+  }
+
+  const formattedVal = str
+    .replace(/([0-9.]+)\s*(um|u|µm|µ)\b/gi, '$1\\,\\mu\\text{m}')
+    .replace(/([0-9.]+)\s*(nm|n)\b/gi, '$1\\,\\text{nm}')
+    .replace(/([0-9.]+)\s*(pm|p)\b/gi, '$1\\,\\text{pm}')
+    .replace(/([0-9.]+)\s*(mm)\b/gi, '$1\\,\\text{mm}');
+
+  return `${param} = ${formattedVal}`;
+}
+
+// Định dạng giá trị linh kiện thụ động / nguồn (res, cap, vsource, isource) sang dạng LaTeX
+export function formatLatexPassiveValue(val, type = 'res') {
+  if (!val) return '';
+  let str = String(val).trim();
+  if (!str) return '';
+
+  // Nếu đã có cú pháp LaTeX tùy biến
+  if (/[\\{}^_]/.test(str)) {
+    return str;
+  }
+
+  // Điện trở (res)
+  if (type === 'res') {
+    str = str.replace(/\s*(ohm|ohms|Ω)\b/gi, '');
+    if (/^[0-9.]+\s*k$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*k$/i, '$1\\,\\text{k}\\Omega');
+    }
+    if (/^[0-9.]+\s*(m|meg)$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*(m|meg)$/i, '$1\\,\\text{M}\\Omega');
+    }
+    if (/^[0-9.]+\s*g$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*g$/i, '$1\\,\\text{G}\\Omega');
+    }
+    if (/^[0-9.]+\s*m\b/.test(str)) {
+      return str.replace(/^([0-9.]+)\s*m\b/, '$1\\,\\text{m}\\Omega');
+    }
+    if (/^[0-9.]+$/.test(str)) {
+      return `${str}\\,\\Omega`;
+    }
+    return `${str}\\,\\Omega`;
+  }
+
+  // Tụ điện (cap)
+  if (type === 'cap') {
+    str = str.replace(/\s*(f|farad|farads)\b/gi, '');
+    if (/^[0-9.]+\s*p$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*p$/i, '$1\\,\\text{pF}');
+    }
+    if (/^[0-9.]+\s*n$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*n$/i, '$1\\,\\text{nF}');
+    }
+    if (/^[0-9.]+\s*(u|µ)$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*(u|µ)$/i, '$1\\,\\mu\\text{F}');
+    }
+    if (/^[0-9.]+\s*m$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*m$/i, '$1\\,\\text{mF}');
+    }
+    if (/^[0-9.]+$/.test(str)) {
+      return `${str}\\,\\text{pF}`;
+    }
+    return `${str}\\,\\text{F}`;
+  }
+
+  // Nguồn áp (vsource)
+  if (type === 'vsource') {
+    str = str.replace(/\s*v$/i, '');
+    if (/^[0-9.]+\s*m$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*m$/i, '$1\\,\\text{mV}');
+    }
+    if (/^[0-9.]+\s*(u|µ)$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*(u|µ)$/i, '$1\\,\\mu\\text{V}');
+    }
+    return `${str}\\,\\text{V}`;
+  }
+
+  // Nguồn dòng (isource)
+  if (type === 'isource') {
+    str = str.replace(/\s*a$/i, '');
+    if (/^[0-9.]+\s*m$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*m$/i, '$1\\,\\text{mA}');
+    }
+    if (/^[0-9.]+\s*(u|µ)$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*(u|µ)$/i, '$1\\,\\mu\\text{A}');
+    }
+    if (/^[0-9.]+\s*n$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*n$/i, '$1\\,\\text{nA}');
+    }
+    if (/^[0-9.]+\s*p$/i.test(str)) {
+      return str.replace(/^([0-9.]+)\s*p$/i, '$1\\,\\text{pA}');
+    }
+    return `${str}\\,\\text{A}`;
+  }
+
+  return str;
+}
+
+function LatexText({ text = '', latex, size = 14, color = '#000', style }) {
   const isLatex = latex ?? /[_\^\\{}]/.test(String(text || ''));
   const html = useMemo(() => {
     if (!isLatex) return null;
@@ -50,3 +167,5 @@ export default function LatexText({ text = '', latex, size = 14, color = '#000',
   if (isLatex) return <div style={base} dangerouslySetInnerHTML={{ __html: html }} />;
   return <div style={{ ...base, whiteSpace: 'pre' }}>{text}</div>;
 }
+
+export default React.memo(LatexText);

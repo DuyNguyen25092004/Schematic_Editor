@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useReactFlow } from 'reactflow';
 import { toBlob } from 'html-to-image';
 import { resolvePoints } from '../routing/resolveWire';
 import { getSymbolBBox } from '../geometry/ports';
@@ -6,9 +7,10 @@ import { pointAtRatio } from '../geometry/pathUtils';
 
 
 export function useCopyImage({
-  nodes, wires, selected, tx, ty, zoom,
+  nodes, wires, selected,
   setNodes, setWires, setSelected, reactFlowWrapper,
 }) {
+  const { getViewport } = useReactFlow();
 
 const handleCopyImage = useCallback(() => {
     const selectedNodes = nodes.filter((n) => n.selected);
@@ -66,6 +68,7 @@ const handleCopyImage = useCallback(() => {
     const width = maxX - minX;
     const height = maxY - minY;
 
+    const { x: tx, y: ty, zoom } = getViewport();
     const screenX = minX * zoom + tx;
     const screenY = minY * zoom + ty;
     const screenWidth = width * zoom;
@@ -158,7 +161,7 @@ const handleCopyImage = useCallback(() => {
             });
         });
     });
-    }, [nodes, wires, selected, tx, ty, zoom, setNodes, setWires, setSelected]);
+    }, [nodes, wires, selected, setNodes, setWires, setSelected, getViewport]);
     
     
     return handleCopyImage;
