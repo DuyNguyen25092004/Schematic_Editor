@@ -15,6 +15,7 @@ const {
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
     textTool, openTextDialog, cancelTextTool,
+    canEdit = true,
 } = ctx;
  useEffect(() => {
     const handleKeyDown = (e) => {
@@ -25,6 +26,9 @@ const {
         fitView({ padding: 0.2, duration: 300 });
         return;
       }
+      
+      // Nếu không có quyền chỉnh sửa, vô hiệu hóa mọi phím tắt thay đổi mạch
+      if (!canEdit) return;
       
       // Phím U (hoặc Ctrl+Z): hoàn tác. Không chạy khi đang di chuyển/sao chép dở.
       if (((e.key === 'u' || e.key === 'U') && !e.ctrlKey && !e.metaKey && !e.altKey) ||
@@ -522,5 +526,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool, canEdit]);
 }

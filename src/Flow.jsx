@@ -4,6 +4,7 @@ import 'reactflow/dist/style.css';
 
 import mockData from './data/mockData.json';
 import CloudPanel from './cloud/CloudPanel';
+import { isLoggedIn, driveGetEmail, verifyDriveAccess } from './cloud/driveStorage';
 import NmosNode from './nodes/NmosNode';
 import PmosNode from './nodes/PmosNode';
 import NpnNode from './nodes/NpnNode';
@@ -140,15 +141,6 @@ function Flow() {
     setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)));
   }, [setNodes]);
 
-  useCircuitSync({
-    circuitId: circuitId,
-    nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
-    isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
-    seedNodes: initialNodes,
-    onResizeRect: handleResizeRect,
-    onTextChangeRect: handleRectTextChange,
-  });
-
   const { screenToFlowPosition, flowToScreenPosition, fitView } = useReactFlow();
 
   const [contextMenu, setContextMenu] = useState(null);
@@ -160,9 +152,59 @@ function Flow() {
   ];
   if (selected && !selectedIds.includes(selected.id)) selectedIds.push(selected.id);
 
-  const { others, me, sendCursor, rename } = usePresence({
+  const [hasDriveAccess, setHasDriveAccess] = useState(false);
+  const [driveEmail, setDriveEmail] = useState('');
+  const [openCloudTrigger, setOpenCloudTrigger] = useState(0);
+
+  const checkAuthAndAccess = useCallback(async () => {
+    if (!isLoggedIn()) {
+      setHasDriveAccess(false);
+      setDriveEmail('');
+      return;
+    }
+    try {
+      const em = await driveGetEmail();
+      setDriveEmail(em || '');
+    } catch {}
+
+    const ok = await verifyDriveAccess(circuitId);
+    setHasDriveAccess(ok);
+  }, [circuitId]);
+
+  useEffect(() => {
+    checkAuthAndAccess();
+  }, [checkAuthAndAccess]);
+
+  const {
+    others,
+    me,
+    sendCursor,
+    rename,
+    isHost,
+    hostUid,
+    hostUser,
+    canEdit,
+    requestEditAccess,
+    approveUser,
+    rejectUser,
+    pendingRequests,
+    isPendingApproval,
+    isRejected,
+  } = usePresence({
     circuitId: circuitId,
     selectedIds,
+    hasDriveAccess,
+    driveEmail,
+  });
+
+  useCircuitSync({
+    circuitId: circuitId,
+    nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
+    isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
+    seedNodes: initialNodes,
+    onResizeRect: handleResizeRect,
+    onTextChangeRect: handleRectTextChange,
+    canEdit,
   });
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -278,6 +320,7 @@ function Flow() {
   }, [nodes]);
 
   const addNodeAt = useCallback((comp, flowPos) => {
+    if (!canEdit) return;
     const id = nextId(comp.refPrefix);
     const snappedX = Math.round(flowPos.x / GRID) * GRID;
     const snappedY = Math.round(flowPos.y / GRID) * GRID;
@@ -291,7 +334,7 @@ function Flow() {
         background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
       },
     }]);
-  }, [nextId, setNodes, handleResizeRect, handleRectTextChange]);
+  }, [nextId, setNodes, handleResizeRect, handleRectTextChange, canEdit]);
 
   useEffect(() => {
     if (textTool?.phase !== 'place') return;
@@ -460,13 +503,14 @@ function Flow() {
   const onDrop = useCallback((e) => {
     e.preventDefault();
     setDragGhostPos(null);
-    const type = e.dataTransfer.getData('application/reactflow');
     setDragType(null);
+    if (!canEdit) return;
+    const type = e.dataTransfer.getData('application/reactflow');
     const comp = COMPONENT_LIBRARY.find((c) => c.type === type);
     if (!comp) return;
     const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     addNodeAt(comp, { x: flowPos.x - 80, y: flowPos.y - 50 });
-  }, [screenToFlowPosition, addNodeAt]);
+  }, [screenToFlowPosition, addNodeAt, canEdit]);
 
   const onDragLeave = useCallback(() => setDragGhostPos(null), []);
 
@@ -496,6 +540,7 @@ function Flow() {
 
   // --- NÂNG CẤP XÓA: HỖ TRỢ XÓA NHIỀU DÂY ĐIỆN CÙNG LÚC ---
   const deleteSelected = useCallback(() => {
+    if (!canEdit) return;
     const activeNodes = nodes.filter((n) => n.selected).map((n) => n.id);
     const activeWires = wires.filter((w) => w.selected).map((w) => w.id); // Lấy các dây đang bôi đen
 
@@ -509,7 +554,7 @@ function Flow() {
     }));
     
     setSelected(null);
-  }, [nodes, wires, selected, setNodes, setWires]);
+  }, [nodes, wires, selected, setNodes, setWires, canEdit]);
   // -------------------------------------------------------
 
   useKeyboardShortcuts({
@@ -522,6 +567,7 @@ function Flow() {
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
     textTool, openTextDialog, cancelTextTool,
+    canEdit,
   });
  
  useEffect(() => {
@@ -655,6 +701,7 @@ function Flow() {
             }
 
             if (isMoveMode) {
+              if (!canEdit) return;
               const flowPos = screenToFlowPosition(lastMouse.current);
               setMoveGroup({
                 startX: Math.round(flowPos.x / GRID) * GRID,
@@ -662,6 +709,7 @@ function Flow() {
                 items: [{ id: node.id, initialX: node.position.x, initialY: node.position.y }]
               });
             } else if (isCopyMode) {
+              if (!canEdit) return;
               const rawPrefix = node.type === 'text' ? 'TXT' : ((node.data?.reference || 'U').replace(/[0-9{}]/g, '') || 'U');
               const prefix = (['M', 'Q', 'R', 'C', 'U'].includes(rawPrefix.replace(/_$/, '')))
                 ? `${rawPrefix.replace(/_$/, '')}_`
@@ -689,9 +737,9 @@ function Flow() {
           <Background gap={GRID} color="#ccc" size={1} />
         </ReactFlow>
 
-        <div style={{ pointerEvents: isWiringMode ? 'auto' : 'none' }}>
+        <div style={{ pointerEvents: (canEdit && isWiringMode) ? 'auto' : 'none' }}>
             <WiringLayer
-                isWiringMode={isWiringMode}
+                isWiringMode={canEdit && isWiringMode}
                 isBoxSelecting={isBoxSelecting}
                 nodes={nodes}
                 wires={wires}
@@ -699,16 +747,31 @@ function Flow() {
                 setNodes={setNodes}
                 selected={selected}
                 setSelected={setSelected}
-                attachTool={textTool?.phase === 'attach' ? textTool : null}
+                attachTool={canEdit && textTool?.phase === 'attach' ? textTool : null}
                 onAttachLabel={handleAttachLabel}
                 onEditLabel={handleEditLabel}
             />
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} />
-        <OnlineUsers me={me} others={others} onRename={rename} />
-        
+        <OnlineUsers
+          me={me}
+          others={others}
+          onRename={rename}
+          isHost={isHost}
+          canEdit={canEdit}
+          hostUid={hostUid}
+          hostUser={hostUser}
+        />
 
-        <PropertyPanel selected={selected} nodes={nodes} setNodes={setNodes} wires={wires} setWires={setWires} onDelete={deleteSelected} />
+        <PropertyPanel
+          selected={selected}
+          nodes={nodes}
+          setNodes={setNodes}
+          wires={wires}
+          setWires={setWires}
+          onDelete={deleteSelected}
+          readOnly={!canEdit}
+        />
         <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21 }}>
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
@@ -716,8 +779,116 @@ function Flow() {
             onNewRoom={startNewCircuitRoom}
             onResizeRect={handleResizeRect}
             onTextChangeRect={handleRectTextChange}
+            onAuthChange={checkAuthAndAccess}
+            openTrigger={openCloudTrigger}
           />
         </div>
+
+        {/* Banner hiển thị khi người dùng ở chế độ Chỉ xem */}
+        {!canEdit && (
+          <div style={{
+            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+            background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)',
+            border: '1px solid #ffccc7', borderRadius: 30, padding: '7px 20px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', display: 'flex', alignItems: 'center', gap: 14,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: 13,
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#cf1322', fontWeight: 700 }}>
+              <span style={{ fontSize: 16 }}>👁️</span> Chế độ Chỉ xem
+            </span>
+            <span style={{ color: '#555', borderLeft: '1px solid #e8e8e8', paddingLeft: 12 }}>
+              {isPendingApproval
+                ? '⏳ Đang chờ chủ phòng xét duyệt...'
+                : isRejected
+                ? '❌ Yêu cầu cấp quyền đã bị từ chối'
+                : 'Bạn chưa có quyền chỉnh sửa mạch này.'}
+            </span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {!isPendingApproval && !isRejected && (
+                <button
+                  type="button"
+                  onClick={requestEditAccess}
+                  style={{
+                    padding: '5px 14px', background: '#1677ff', color: '#fff', border: 'none',
+                    borderRadius: 16, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                    boxShadow: '0 2px 4px rgba(22,119,255,0.25)', transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#4096ff'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#1677ff'}
+                >
+                  ✋ Xin quyền chỉnh sửa
+                </button>
+              )}
+              {isRejected && (
+                <button
+                  type="button"
+                  onClick={requestEditAccess}
+                  style={{
+                    padding: '4px 12px', background: '#f5f5f5', color: '#333', border: '1px solid #d9d9d9',
+                    borderRadius: 14, cursor: 'pointer', fontSize: 12,
+                  }}
+                >
+                  Thử xin lại
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpenCloudTrigger((c) => c + 1)}
+                style={{
+                  padding: '4px 12px', background: '#fafafa', color: '#1677ff', border: '1px solid #91caff',
+                  borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                }}
+              >
+                📁 Đăng nhập Drive
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Thông báo duyệt quyền cho Chủ phòng hoặc người có quyền Drive */}
+        {(isHost || hasDriveAccess) && pendingRequests.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 58, right: 16, zIndex: 110,
+            background: '#fff', border: '1px solid #91caff', borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.16)', padding: '12px 16px', minWidth: 280, maxWidth: 360,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#0958d9', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🔔</span> Có {pendingRequests.length} người đang xin quyền chỉnh sửa
+            </div>
+            {pendingRequests.map((req) => (
+              <div key={req.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={req.name}>
+                  {req.name}
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => approveUser(req.uid)}
+                    style={{
+                      padding: '4px 10px', background: '#52c41a', color: '#fff', border: 'none',
+                      borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                      boxShadow: '0 2px 4px rgba(82,196,26,0.25)',
+                    }}
+                  >
+                    ✓ Duyệt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => rejectUser(req.uid)}
+                    style={{
+                      padding: '4px 10px', background: '#ff4d4f', color: '#fff', border: 'none',
+                      borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                      boxShadow: '0 2px 4px rgba(255,77,79,0.25)',
+                    }}
+                  >
+                    ✕ Từ chối
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {textDialog && (
           <div data-text-ui>
             <TextDialog

@@ -253,8 +253,23 @@ export async function driveGetFolderMeta(folderId) {
 
 // Lấy metadata của 1 file
 export async function driveGetFileMeta(fileId) {
-  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,parents,modifiedTime&supportsAllDrives=true`);
+  const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,parents,modifiedTime,capabilities(canEdit)&supportsAllDrives=true`);
   return r.json();
+}
+
+// Kiểm tra xem người dùng hiện tại có quyền truy cập / chỉnh sửa file Drive này hay không
+export async function verifyDriveAccess(fileId) {
+  if (!isLoggedIn() || !fileId || fileId.length < 15) return false;
+  try {
+    const meta = await driveGetFileMeta(fileId);
+    if (!meta || !meta.id) return false;
+    if (meta.capabilities && meta.capabilities.canEdit === false) {
+      return false; // Chỉ có quyền xem trên Drive
+    }
+    return true; // Có quyền chỉnh sửa trên Drive
+  } catch {
+    return false;
+  }
 }
 
 // Helper trích xuất Folder ID từ link Google Drive hoặc mã ID trực tiếp

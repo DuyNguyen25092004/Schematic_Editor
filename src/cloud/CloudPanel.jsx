@@ -43,8 +43,13 @@ function formatDateTime(isoString) {
 
 export default function CloudPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
+  onAuthChange, openTrigger,
 }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (openTrigger) setOpen(true);
+  }, [openTrigger]);
   const [logged, setLogged] = useState(isLoggedIn());
   const [email, setEmail] = useState('');
 
@@ -165,6 +170,7 @@ export default function CloudPanel({
     const em = await driveGetEmail();
     setEmail(em || '');
     await loadFolderContents(currentFolder.id);
+    onAuthChange?.();
   });
 
   // Đăng xuất Google
@@ -181,6 +187,7 @@ export default function CloudPanel({
     } catch {
       // ignore
     }
+    onAuthChange?.();
   };
 
   // Chuyển sang xem "Drive của tôi"

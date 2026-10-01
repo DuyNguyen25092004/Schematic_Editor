@@ -37,6 +37,7 @@ export function useCircuitSync({
   circuitId, nodes, wires, setNodes, setWiresRaw,
   isEditingLocally, seedNodes = [],
   onResizeRect, onTextChangeRect,
+  canEdit = true,
 }) {
   const [ready, setReady] = useState(false);
   const myUidRef = useRef(null);
@@ -195,14 +196,14 @@ export function useCircuitSync({
 
   // ---------- GỬI CẬP NHẬT CỦA MÌNH LÊN PHÒNG KHI CÓ THAY ĐỔI ----------
   useEffect(() => {
-    if (!ready || isEditingLocally || !myUidRef.current) return;
+    if (!ready || isEditingLocally || !myUidRef.current || !canEdit) return;
 
     const currentSig = computeSignature(nodes, wires);
     if (currentSig === lastSentSignature.current) return; // Không có thay đổi thực tế
 
     clearTimeout(sendTimer.current);
     sendTimer.current = setTimeout(() => {
-      if (isEditingLocally || !myUidRef.current) return;
+      if (isEditingLocally || !myUidRef.current || !canEdit) return;
 
       const latestNodes = nodesRef.current;
       const latestWires = wiresRef.current;
@@ -226,5 +227,5 @@ export function useCircuitSync({
     }, 60);
 
     return () => clearTimeout(sendTimer.current);
-  }, [nodes, wires, ready, isEditingLocally, circuitId]);
+  }, [nodes, wires, ready, isEditingLocally, circuitId, canEdit]);
 }
