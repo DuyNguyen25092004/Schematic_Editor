@@ -5,15 +5,17 @@ import { pointsToPolyline } from '../geometry/pathUtils';
 import { resolvePoints } from '../routing/resolveWire';
 
 // ============ CON TRỎ + VIỀN CHỌN CỦA NGƯỜI KHÁC ============
-function PresenceLayer({ others, nodes, wires }) {
+function PresenceLayer({ others, nodes, wires, activeSheetId }) {
   const [tx, ty, zoom] = useStore((s) => s.transform);
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const wireMap = useMemo(() => new Map(wires.map((w) => [w.id, w])), [wires]);
 
-  // Chỉ tính lại hình dáng đối tượng được chọn khi others, nodes hoặc wires thay đổi
+  // Chỉ hiển thị con trỏ và vùng chọn của người đang cùng ở trên sheet này
   const userSelections = useMemo(() => {
-    return Object.entries(others).map(([uid, u]) => {
+    return Object.entries(others)
+      .filter(([, u]) => !u.activeSheetId || !activeSheetId || u.activeSheetId === activeSheetId)
+      .map(([uid, u]) => {
       const color = u.color || '#888';
       const ids = (u.sel || '').split(',').filter(Boolean);
       const label = u.name || '?';

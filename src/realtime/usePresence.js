@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { ref, onValue, set, update, remove, onDisconnect } from 'firebase/database';
+import { ref, onValue, set, update, remove, onDisconnect, get } from 'firebase/database';
 import { rtdb, ensureSignedIn } from './firebase';
+import { cleanStaleRtdbRooms, cleanDeadPeersInRoom } from './rtdbCleanup';
 
 const COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#008080', '#f032e6', '#9a6324'];
 const colorFor = (uid) => {
@@ -20,7 +21,7 @@ function loadName() {
   } catch { return 'Khách ' + Math.floor(100 + Math.random() * 900); }
 }
 
-export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, driveEmail = null }) {
+export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, driveEmail = null, activeSheetId = 'sheet_1' }) {
   const [others, setOthers] = useState({});
   const [me, setMe] = useState(null);
   const [allRoomUsers, setAllRoomUsers] = useState({});
@@ -45,16 +46,23 @@ export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, dr
 
     ensureSignedIn().then((user) => {
       if (cancelled) return;
+
+      // Kích hoạt quét dọn các phòng cũ / rác trên RTDB định kỳ
+      cleanStaleRtdbRooms();
+
       const color = colorFor(user.uid);
       const meRef = ref(rtdb, `presence/${circuitId}/${user.uid}`);
       myRef.current = meRef;
 
+      const now = Date.now();
       const myInitialData = {
         name: nameRef.current,
         color,
         hasDriveAccess: !!hasDriveAccess,
         driveEmail: driveEmail || null,
         joinedAt: joinedAtRef.current,
+        lastSeen: now,
+        activeSheetId,
         requestEdit: false,
         approvedEditors: myApprovedEditors,
         rejectedEditors: {},
@@ -73,6 +81,8 @@ export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, dr
           hasDriveAccess: !!hasDriveAccess,
           driveEmail: driveEmail || null,
           joinedAt: joinedAtRef.current,
+          lastSeen: Date.now(),
+          activeSheetId,
           requestEdit: myRequestEdit,
           approvedEditors: myApprovedEditors,
           rejectedEditors: myRejectedEditors,
@@ -80,15 +90,37 @@ export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, dr
         });
       });
 
+      // Heartbeat 30s để báo hiệu user vẫn đang online
+      const heartbeatTimer = setInterval(() => {
+        if (myRef.current) {
+          update(myRef.current, { lastSeen: Date.now() }).catch(() => {});
+        }
+      }, 30000);
+
       const offAll = onValue(ref(rtdb, `presence/${circuitId}`), (snap) => {
         const v = snap.val() || {};
+        // Tự động dọn dẹp các peer mồ côi (đã offline quá 3 phút mà chưa bị xóa)
+        cleanDeadPeersInRoom(circuitId, v, user.uid);
+
         setAllRoomUsers(v);
         const peers = { ...v };
         delete peers[user.uid];
         setOthers(peers);
       });
 
-      cleanup = () => { offConn(); offAll(); remove(meRef).catch(() => {}); };
+      cleanup = () => {
+        clearInterval(heartbeatTimer);
+        offConn();
+        offAll();
+        remove(meRef).then(() => {
+          // Nếu sau khi mình rời phòng mà phòng không còn ai, dọn dẹp luôn node phòng
+          get(ref(rtdb, `presence/${circuitId}`)).then((roomSnap) => {
+            if (!roomSnap.exists() || Object.keys(roomSnap.val() || {}).length === 0) {
+              remove(ref(rtdb, `presence/${circuitId}`)).catch(() => {});
+            }
+          }).catch(() => {});
+        }).catch(() => {});
+      };
     });
 
     return () => { cancelled = true; cleanup(); };
@@ -102,6 +134,12 @@ export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, dr
       driveEmail: driveEmail || null,
     }).catch(() => {});
   }, [hasDriveAccess, driveEmail]);
+
+  // Cập nhật sheet đang xem để đồng bộ con trỏ đúng trang
+  useEffect(() => {
+    if (!myRef.current) return;
+    update(myRef.current, { activeSheetId }).catch(() => {});
+  }, [activeSheetId]);
 
   // Xác định Chủ phòng (Host) trong danh sách người dùng hiện tại
   const hostInfo = useMemo(() => {

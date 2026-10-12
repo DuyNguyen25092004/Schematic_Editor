@@ -5,11 +5,39 @@ import {
   driveGetEmail, isLoggedIn, parseFolderIdFromUrl,
 } from './driveStorage';
 import { nodeBoxStyle } from '../constants';
+import { db } from '../realtime/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const SUFFIX = '.schem.json';
 
 // Helper tạo snapshot cấu trúc mạch để so sánh thay đổi chính xác
-function makeCircuitSnapshot(nodes, wires) {
+function makeCircuitSnapshot(nodes, wires, sheets) {
+  if (sheets && Array.isArray(sheets) && sheets.length > 0) {
+    return JSON.stringify(sheets.map((s) => ({
+      id: s.id,
+      name: s.name,
+      nodes: (s.nodes || []).map((n) => ({
+        id: n.id,
+        type: n.type,
+        position: { x: Math.round(n.position?.x ?? 0), y: Math.round(n.position?.y ?? 0) },
+        data: n.data ?? {},
+      })),
+      wires: (s.wires || []).map((w) => ({
+        id: w.id,
+        points: w.points?.map((p) => ({
+          x: Math.round(p.x),
+          y: Math.round(p.y),
+          nodeId: p.nodeId ?? null,
+          portId: p.portId ?? null,
+          onWireId: p.onWireId ?? null,
+        })),
+        net: w.net ?? null,
+        name: w.name ?? null,
+        color: w.color ?? null,
+        labels: w.labels ?? null,
+      })),
+    })));
+  }
   return JSON.stringify({
     nodes: (nodes || []).map((n) => ({
       id: n.id,
@@ -43,6 +71,7 @@ function formatDateTime(isoString) {
 
 export default function CloudPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
+  sheets, setSheets, activeSheetId, setActiveSheetId,
   onAuthChange, openTrigger,
 }) {
   const [open, setOpen] = useState(false);
@@ -104,8 +133,13 @@ export default function CloudPanel({
   const wiresRef = useRef(wires);
   const activeFileRef = useRef(activeFile);
 
+  const sheetsRef = useRef(sheets);
+  const activeSheetIdRef = useRef(activeSheetId);
+
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { wiresRef.current = wires; }, [wires]);
+  useEffect(() => { sheetsRef.current = sheets; }, [sheets]);
+  useEffect(() => { activeSheetIdRef.current = activeSheetId; }, [activeSheetId]);
   useEffect(() => { activeFileRef.current = activeFile; }, [activeFile]);
 
   // Cập nhật email khi đăng nhập
@@ -270,11 +304,34 @@ export default function CloudPanel({
   // Mở 1 file từ Google Drive
   const handleOpenFile = (f) => run(async () => {
     const data = await driveLoad(f.id);
-    const loadedNodes = (data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) }));
-    const loadedWires = data.wires || [];
+    let loadedSheets = [];
+    let activeSheet = null;
 
-    setNodes(loadedNodes);
-    setWires(loadedWires);
+    if (data.sheets && Array.isArray(data.sheets) && data.sheets.length > 0) {
+      loadedSheets = data.sheets.map((s) => ({
+        id: s.id,
+        name: s.name || 'Trang',
+        nodes: (s.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
+        wires: s.wires || [],
+      }));
+      const targetActiveId = data.activeSheetId && loadedSheets.some((s) => s.id === data.activeSheetId)
+        ? data.activeSheetId
+        : loadedSheets[0].id;
+      activeSheet = loadedSheets.find((s) => s.id === targetActiveId) || loadedSheets[0];
+      if (setSheets) setSheets(loadedSheets);
+      if (setActiveSheetId) setActiveSheetId(targetActiveId);
+    } else {
+      const loadedNodes = (data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) }));
+      const loadedWires = data.wires || [];
+      const singleSheet = [{ id: 'sheet_1', name: f.name.replace(SUFFIX, '') || 'Trang 1', nodes: loadedNodes, wires: loadedWires }];
+      loadedSheets = singleSheet;
+      activeSheet = singleSheet[0];
+      if (setSheets) setSheets(singleSheet);
+      if (setActiveSheetId) setActiveSheetId('sheet_1');
+    }
+
+    setNodes(activeSheet.nodes || []);
+    setWires(activeSheet.wires || []);
 
     const cleanName = f.name.replace(SUFFIX, '');
     const fileMeta = {
@@ -295,20 +352,55 @@ export default function CloudPanel({
     }
 
     // Đánh dấu snapshot đã lưu tại thời điểm vừa mở
-    lastSavedSnapshotRef.current = makeCircuitSnapshot(loadedNodes, loadedWires);
+    lastSavedSnapshotRef.current = makeCircuitSnapshot(activeSheet.nodes, activeSheet.wires, loadedSheets);
     setSaveStatus('saved');
     setLastSavedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-    onOpenRoom?.(f.id); // chuyển phòng realtime
+    const openTs = Date.now();
+    try {
+      const strippedSheets = loadedSheets.map((s) => ({
+        id: s.id,
+        name: s.name,
+        nodes: (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
+        wires: (s.wires || []).map(({ selected, ...w }) => w),
+      }));
+      localStorage.setItem(`schem_backup_${f.id}`, JSON.stringify({
+        sheets: strippedSheets,
+        activeSheetId: activeSheet?.id || 'sheet_1',
+        ts: openTs,
+      }));
+      setDoc(doc(db, 'circuits', f.id), {
+        sheets: strippedSheets,
+        activeSheetId: activeSheet?.id || 'sheet_1',
+        ts: openTs,
+        updatedAt: serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    } catch {}
+
+    onOpenRoom?.(f.id, fileMeta); // chuyển phòng realtime
     setMsg(`Đã mở: ${f.name} ✔`);
     setOpen(false); // Đóng modal để người dùng vẽ
   });
 
   // Hàm cốt lõi thực hiện lưu file vào Drive
   const doSaveToDrive = async ({ targetFileId, targetFolderId, targetName }) => {
+    const curNodes = nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data }));
+    const curWires = wiresRef.current.map(({ selected, ...w }) => w);
+    const curActiveId = activeSheetIdRef.current;
+
+    // Lưu toàn bộ các sheet của project vào file Drive
+    const fullSheets = (sheetsRef.current || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
+      wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
+    }));
+
     const payload = {
-      nodes: nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data })),
-      wires: wiresRef.current.map(({ selected, ...w }) => w),
+      sheets: fullSheets,
+      activeSheetId: curActiveId,
+      nodes: curNodes,
+      wires: curWires,
     };
 
     const res = await driveSave(targetName, payload, targetFileId, targetFolderId);
@@ -339,13 +431,28 @@ export default function CloudPanel({
       // ignore
     }
 
-    lastSavedSnapshotRef.current = makeCircuitSnapshot(nodesRef.current, wiresRef.current);
+    lastSavedSnapshotRef.current = makeCircuitSnapshot(curNodes, curWires, fullSheets);
     setSaveStatus('saved');
     const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLastSavedTime(timeStr);
 
+    const saveTs = Date.now();
+    try {
+      localStorage.setItem(`schem_backup_${res.id}`, JSON.stringify({
+        sheets: fullSheets,
+        activeSheetId: curActiveId,
+        ts: saveTs,
+      }));
+      setDoc(doc(db, 'circuits', res.id), {
+        sheets: fullSheets,
+        activeSheetId: curActiveId,
+        ts: saveTs,
+        updatedAt: serverTimestamp(),
+      }, { merge: true }).catch(() => {});
+    } catch {}
+
     if (!targetFileId) {
-      onOpenRoom?.(res.id);
+      onOpenRoom?.(res.id, updatedFile);
     }
 
     return updatedFile;
@@ -425,6 +532,9 @@ export default function CloudPanel({
     if (saveStatus === 'dirty') {
       if (!window.confirm('Bạn có thay đổi chưa lưu. Bạn có chắc muốn tạo sơ đồ mới không?')) return;
     }
+    const initialSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+    if (setSheets) setSheets(initialSheet);
+    if (setActiveSheetId) setActiveSheetId('sheet_1');
     setNodes([]);
     setWires([]);
     setActiveFile(null);
@@ -447,7 +557,12 @@ export default function CloudPanel({
     if (!curFile?.id) return; // Chưa mở hay lưu file nào -> không auto-save
     if (!logged) return;
 
-    const currentSnapshot = makeCircuitSnapshot(nodes, wires);
+    const fullSheets = (sheetsRef.current || []).map((s) => ({
+      ...s,
+      nodes: s.id === activeSheetIdRef.current ? nodes : s.nodes,
+      wires: s.id === activeSheetIdRef.current ? wires : s.wires,
+    }));
+    const currentSnapshot = makeCircuitSnapshot(nodes, wires, fullSheets);
 
     // Lần đầu gán snapshot sau khi mở/lưu
     if (lastSavedSnapshotRef.current === null) {
@@ -475,9 +590,21 @@ export default function CloudPanel({
       if (!activeFileRef.current?.id) return;
       setSaveStatus('saving');
       try {
+        const curNodes = nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data }));
+        const curWires = wiresRef.current.map(({ selected, ...w }) => w);
+        const curActiveId = activeSheetIdRef.current;
+        const currentFullSheets = (sheetsRef.current || []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
+          wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
+        }));
+
         const payload = {
-          nodes: nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data })),
-          wires: wiresRef.current.map(({ selected, ...w }) => w),
+          sheets: currentFullSheets,
+          activeSheetId: curActiveId,
+          nodes: curNodes,
+          wires: curWires,
         };
         await driveSave(
           activeFileRef.current.name,
@@ -485,6 +612,22 @@ export default function CloudPanel({
           activeFileRef.current.id,
           activeFileRef.current.folderId
         );
+
+        const autoSaveTs = Date.now();
+        try {
+          localStorage.setItem(`schem_backup_${activeFileRef.current.id}`, JSON.stringify({
+            sheets: currentFullSheets,
+            activeSheetId: curActiveId,
+            ts: autoSaveTs,
+          }));
+          setDoc(doc(db, 'circuits', activeFileRef.current.id), {
+            sheets: currentFullSheets,
+            activeSheetId: curActiveId,
+            ts: autoSaveTs,
+            updatedAt: serverTimestamp(),
+          }, { merge: true }).catch(() => {});
+        } catch {}
+
         lastSavedSnapshotRef.current = currentSnapshot;
         setSaveStatus('saved');
         const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -510,13 +653,42 @@ export default function CloudPanel({
           // File đã có -> lưu đè ngay lập tức
           if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
           setSaveStatus('saving');
+
+          const curNodes = nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data }));
+          const curWires = wiresRef.current.map(({ selected, ...w }) => w);
+          const curActiveId = activeSheetIdRef.current;
+          const currentFullSheets = (sheetsRef.current || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
+            wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
+          }));
+
           const payload = {
-            nodes: nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data })),
-            wires: wiresRef.current.map(({ selected, ...w }) => w),
+            sheets: currentFullSheets,
+            activeSheetId: curActiveId,
+            nodes: curNodes,
+            wires: curWires,
           };
+
           driveSave(activeFileRef.current.name, payload, activeFileRef.current.id, activeFileRef.current.folderId)
             .then(() => {
-              lastSavedSnapshotRef.current = makeCircuitSnapshot(nodesRef.current, wiresRef.current);
+              const saveTs = Date.now();
+              try {
+                localStorage.setItem(`schem_backup_${activeFileRef.current.id}`, JSON.stringify({
+                  sheets: currentFullSheets,
+                  activeSheetId: curActiveId,
+                  ts: saveTs,
+                }));
+                setDoc(doc(db, 'circuits', activeFileRef.current.id), {
+                  sheets: currentFullSheets,
+                  activeSheetId: curActiveId,
+                  ts: saveTs,
+                  updatedAt: serverTimestamp(),
+                }, { merge: true }).catch(() => {});
+              } catch {}
+
+              lastSavedSnapshotRef.current = makeCircuitSnapshot(curNodes, curWires, currentFullSheets);
               setSaveStatus('saved');
               setLastSavedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
               setMsg('Đã lưu (Ctrl+S) ✔');

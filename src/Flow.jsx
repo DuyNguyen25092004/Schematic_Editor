@@ -38,6 +38,7 @@ import RectNode from './nodes/RectNode';
 import TextNode from './nodes/TextNode';
 import TextDialog from './components/TextDialog';
 import LatexText, { formatLatexRef } from './components/LatexText';
+import CircuitTabBar from './components/CircuitTabBar';
 
 // nodeTypes: thêm  text: TextNode
 
@@ -92,7 +93,7 @@ function GhostPreviews({ textTool, textGhost, placingType, ghostScreenPos, dragG
 }
 
 function Flow() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   
   const [edges, , onEdgesChange] = useEdgesState([]);
 
@@ -120,13 +121,105 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
+  const [sheets, setSheets] = useState(() => [
+    { id: 'sheet_1', name: 'Trang 1', nodes: initialNodes, wires: [] },
+  ]);
+  const [activeSheetId, setActiveSheetId] = useState('sheet_1');
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
+
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
     setCircuitIdState(id);
   }, []);
+
   const startNewCircuitRoom = useCallback(() => {
-    setCircuitIdState(newCircuitId());
+    const newId = newCircuitId();
+    setCircuitIdState(newId);
+    const resetSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+    setSheets(resetSheet);
+    setActiveSheetId('sheet_1');
+    setNodes([]);
+    setWiresRaw([]);
+    setSelected(null);
+  }, [setNodes, setWiresRaw]);
+
+  // Chuyển đổi giữa các trang (sheet) trong cùng một project
+  const handleSelectSheet = useCallback((targetSheetId) => {
+    if (targetSheetId === activeSheetId) return;
+
+    // 1. Lưu nodes/wires của sheet hiện tại
+    const curNodes = nodesRef.current;
+    const curWires = wiresRef.current;
+    setSheets((prev) =>
+      prev.map((s) =>
+        s.id === activeSheetId ? { ...s, nodes: curNodes, wires: curWires } : s
+      )
+    );
+
+    // 2. Chuyển sang sheet mới
+    const targetSheet = sheets.find((s) => s.id === targetSheetId);
+    setActiveSheetId(targetSheetId);
+    setNodes(targetSheet?.nodes || []);
+    setWiresRaw(targetSheet?.wires || []);
+    setSelected(null);
+  }, [activeSheetId, sheets, setNodes, setWiresRaw]);
+
+  // Tạo thêm sheet mới trong cùng project
+  const handleNewSheet = useCallback(() => {
+    const curNodes = nodesRef.current;
+    const curWires = wiresRef.current;
+    const newId = 'sheet_' + Math.random().toString(36).slice(2, 9);
+    const newName = `Trang ${sheets.length + 1}`;
+    const newSheet = { id: newId, name: newName, nodes: [], wires: [] };
+
+    setSheets((prev) => {
+      const updated = prev.map((s) =>
+        s.id === activeSheetId
+          ? { ...s, nodes: curNodes, wires: curWires }
+          : s
+      );
+      return [...updated, newSheet];
+    });
+
+    setActiveSheetId(newId);
+    setNodes([]);
+    setWiresRaw([]);
+    setSelected(null);
+  }, [sheets.length, activeSheetId, setNodes, setWiresRaw]);
+
+  // Xóa một sheet khỏi project
+  const handleCloseSheet = useCallback((sheetIdToClose) => {
+    if (sheets.length <= 1) {
+      // Chỉ còn 1 sheet -> reset trắng trang đó
+      const resetSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+      setSheets(resetSheet);
+      setActiveSheetId('sheet_1');
+      setNodes([]);
+      setWiresRaw([]);
+      setSelected(null);
+      return;
+    }
+
+    const idx = sheets.findIndex((s) => s.id === sheetIdToClose);
+    const remaining = sheets.filter((s) => s.id !== sheetIdToClose);
+    setSheets(remaining);
+
+    // Nếu đóng sheet đang xem, chuyển sang sheet bên cạnh
+    if (activeSheetId === sheetIdToClose) {
+      const nextIdx = idx >= remaining.length ? remaining.length - 1 : idx;
+      const nextSheet = remaining[nextIdx];
+      setActiveSheetId(nextSheet.id);
+      setNodes(nextSheet.nodes || []);
+      setWiresRaw(nextSheet.wires || []);
+      setSelected(null);
+    }
+  }, [sheets, activeSheetId, setNodes, setWiresRaw]);
+
+  // Đổi tên sheet
+  const handleRenameSheet = useCallback((sheetId, newName) => {
+    const trimmed = (newName || '').trim();
+    if (!trimmed) return;
+    setSheets((prev) => prev.map((s) => (s.id === sheetId ? { ...s, name: trimmed } : s)));
   }, []);
     // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
     // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
@@ -195,10 +288,13 @@ function Flow() {
     selectedIds,
     hasDriveAccess,
     driveEmail,
+    activeSheetId,
   });
 
   useCircuitSync({
     circuitId: circuitId,
+    sheets, setSheets,
+    activeSheetId, setActiveSheetId,
     nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
     isEditingLocally: !!(moveGroup || cursorNodeId || isRotatingFlag),
     seedNodes: initialNodes,
@@ -670,6 +766,7 @@ function Flow() {
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
+          deleteKeyCode={null}
           
           nodesDraggable={false} 
           panOnDrag={[1, 2]} 
@@ -752,7 +849,7 @@ function Flow() {
                 onEditLabel={handleEditLabel}
             />
         </div>
-        <PresenceLayer others={others} nodes={nodes} wires={wires} />
+        <PresenceLayer others={others} nodes={nodes} wires={wires} activeSheetId={activeSheetId} />
         <OnlineUsers
           me={me}
           others={others}
@@ -775,6 +872,8 @@ function Flow() {
         <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21 }}>
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
+            sheets={sheets} setSheets={setSheets}
+            activeSheetId={activeSheetId} setActiveSheetId={setActiveSheetId}
             onOpenRoom={switchCircuitRoom}
             onNewRoom={startNewCircuitRoom}
             onResizeRect={handleResizeRect}
@@ -928,6 +1027,15 @@ function Flow() {
             </div>
           </div>
         )}
+
+        <CircuitTabBar
+          tabs={sheets.map((s) => ({ id: s.id, title: s.name }))}
+          activeTabId={activeSheetId}
+          onSelectTab={handleSelectSheet}
+          onNewTab={handleNewSheet}
+          onCloseTab={handleCloseSheet}
+          onRenameTab={handleRenameSheet}
+        />
       </div>
     </div>
   );
