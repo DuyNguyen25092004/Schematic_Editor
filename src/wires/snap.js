@@ -6,17 +6,17 @@ import { resolvePoints, resolveWire } from '../routing/resolveWire';
 
 // Thêm tham số resolvedMap vào hàm snapPoint để tái sử dụng kết quả đã tính
 export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
-  let best = null;
-  let bestDist = SNAP_RADIUS;
+  // 1. Tìm Port gần nhất trong bán kính SNAP_RADIUS
+  let bestPort = null;
+  let bestPortDist = SNAP_RADIUS;
 
-  // 1. Ưu tiên 1: Snap vào chân linh kiện (Ports)
   for (const n of nodes) {
-    // Lọc nhanh bằng bounding box: ký hiệu có kích thước ~160x100
+    const extraH = Math.max(0, ((n.data?.inputs || 2) - 2) * 20);
     if (
       p.x < n.position.x - SNAP_RADIUS ||
       p.x > n.position.x + 160 + SNAP_RADIUS ||
-      p.y < n.position.y - SNAP_RADIUS ||
-      p.y > n.position.y + 100 + SNAP_RADIUS
+      p.y < n.position.y - SNAP_RADIUS - extraH / 2 ||
+      p.y > n.position.y + 100 + SNAP_RADIUS + extraH / 2
     ) {
       continue;
     }
@@ -26,63 +26,19 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
       const px = Math.round(n.position.x) + tPort.x;
       const py = Math.round(n.position.y) + tPort.y;
       const d = Math.hypot(px - p.x, py - p.y);
-      if (d < bestDist) {
-        bestDist = d;
-        best = { x: px, y: py, nodeId: n.id, portId: port.id };
+      if (d < bestPortDist) {
+        bestPortDist = d;
+        bestPort = { x: px, y: py, nodeId: n.id, portId: port.id, d };
       }
     }
   }
-  if (best) return best;
 
-  // 1.5. Snap vào đầu mút của wire có sẵn — CHỈ khi đầu mút đó gắn thật vào
-  // port (nodeId) thì mới dùng bán kính rộng (SNAP_RADIUS); còn đầu mút chỉ
-  // là điểm giao/tự do (onWireId hoặc không gắn gì) thì dùng bán kính hẹp,
-  // để tránh việc vẽ dây gần một điểm giao bị hút dính vào dây đó.
-  let bestEndDist = SNAP_RADIUS;
-  for (const w of wires) {
-    if (!w.points || w.points.length < 2) continue;
+  // 2. Tìm điểm chiếu lên thân các đoạn dây (Mid-wire candidates)
+  let bestMid = null;
+  let bestMidPerpDist = MID_WIRE_SNAP_RADIUS;
+  let closestWirePerpDist = Infinity;
 
-    // Lọc nhanh wire ở xa toạ độ p
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (let i = 0; i < w.points.length; i++) {
-      const pt = w.points[i];
-      if (pt.x < minX) minX = pt.x;
-      if (pt.x > maxX) maxX = pt.x;
-      if (pt.y < minY) minY = pt.y;
-      if (pt.y > maxY) maxY = pt.y;
-    }
-    if (
-      p.x < minX - SNAP_RADIUS - 160 ||
-      p.x > maxX + SNAP_RADIUS + 160 ||
-      p.y < minY - SNAP_RADIUS - 100 ||
-      p.y > maxY + SNAP_RADIUS + 100
-    ) {
-      continue;
-    }
-
-    const pts = resolvedMap?.get(w.id) || resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
-    if (!pts || pts.length < 2) continue;
-    const ends = [pts[0], pts[pts.length - 1]];
-    for (const end of ends) {
-      const radius = end.nodeId ? SNAP_RADIUS : MID_WIRE_SNAP_RADIUS;
-      const d = Math.hypot(end.x - p.x, end.y - p.y);
-      if (d < radius && d < bestEndDist) {
-        bestEndDist = d;
-        best = {
-          x: end.x, y: end.y,
-          ...(end.nodeId ? { nodeId: end.nodeId, portId: end.portId }
-            : end.onWireId ? { onWireId: end.onWireId } : {}),
-        };
-      }
-    }
-  }
-  if (best) return best;
-
-  // 2. Ưu tiên cuối: Snap vào giữa các đường dây
-  // Dùng lại pts từ resolvedMap thay vì gọi lặp lại resolveWire
   if (wires && wires.length) {
-    let bestMidDist = MID_WIRE_SNAP_RADIUS;
-    let midBest = null;
     for (const w of wires) {
       if (!w.points || w.points.length < 2) continue;
 
@@ -93,16 +49,14 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
         const a = pts[i];
         const b = pts[i + 1];
 
-        // Lọc nhanh từng đoạn thẳng với bán kính snap
-        const segMinX = Math.min(a.x, b.x) - MID_WIRE_SNAP_RADIUS;
-        const segMaxX = Math.max(a.x, b.x) + MID_WIRE_SNAP_RADIUS;
-        const segMinY = Math.min(a.y, b.y) - MID_WIRE_SNAP_RADIUS;
-        const segMaxY = Math.max(a.y, b.y) + MID_WIRE_SNAP_RADIUS;
+        const segMinX = Math.min(a.x, b.x) - SNAP_RADIUS;
+        const segMaxX = Math.max(a.x, b.x) + SNAP_RADIUS;
+        const segMinY = Math.min(a.y, b.y) - SNAP_RADIUS;
+        const segMaxY = Math.max(a.y, b.y) + SNAP_RADIUS;
         if (p.x < segMinX || p.x > segMaxX || p.y < segMinY || p.y > segMaxY) continue;
 
         let projX = p.x;
         let projY = p.y;
-
         if (Math.abs(a.x - b.x) < 1) {
           projX = a.x;
           projY = Math.max(Math.min(a.y, b.y), Math.min(p.y, Math.max(a.y, b.y)));
@@ -111,18 +65,90 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
           projX = Math.max(Math.min(a.x, b.x), Math.min(p.x, Math.max(a.x, b.x)));
         }
 
-        const d = Math.hypot(projX - p.x, projY - p.y);
-        if (d < bestMidDist) {
-          bestMidDist = d;
+        const perpDist = Math.hypot(projX - p.x, projY - p.y);
+        if (perpDist < closestWirePerpDist) {
+          closestWirePerpDist = perpDist;
+        }
+
+        if (perpDist < bestMidPerpDist) {
+          bestMidPerpDist = perpDist;
           const sx = Math.round(projX / GRID) * GRID;
           const sy = Math.round(projY / GRID) * GRID;
-          midBest = { x: sx, y: sy, onWireId: w.id };
+          const snapDist = Math.hypot(sx - p.x, sy - p.y);
+          const isPortMatch = bestPort && bestPort.x === sx && bestPort.y === sy;
+
+          bestMid = {
+            x: sx,
+            y: sy,
+            onWireId: w.id,
+            snapDist,
+            isPortMatch: isPortMatch ? { nodeId: bestPort.nodeId, portId: bestPort.portId } : null,
+          };
         }
       }
     }
-
-    return midBest || { x: Math.round(p.x / GRID) * GRID, y: Math.round(p.y / GRID) * GRID };
   }
+
+  // 3. Tìm đầu mút wire có sẵn (Wire Endpoints)
+  let bestEnd = null;
+  let bestEndDist = SNAP_RADIUS;
+  for (const w of wires) {
+    if (!w.points || w.points.length < 2) continue;
+
+    const pts = resolvedMap?.get(w.id) || resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
+    if (!pts || pts.length < 2) continue;
+    const ends = [pts[0], pts[pts.length - 1]];
+    for (const end of ends) {
+      const radius = end.nodeId ? SNAP_RADIUS : MID_WIRE_SNAP_RADIUS;
+      const d = Math.hypot(end.x - p.x, end.y - p.y);
+      if (d < radius && d < bestEndDist) {
+        bestEndDist = d;
+        bestEnd = {
+          x: end.x, y: end.y,
+          d,
+          ...(end.nodeId ? { nodeId: end.nodeId, portId: end.portId }
+            : end.onWireId ? { onWireId: end.onWireId } : {}),
+        };
+      }
+    }
+  }
+
+  // 4. PHÂN XỬ (Arbitration):
+  // 4a. Chuột nằm sát thân dây (trong bán kính MID_WIRE_SNAP_RADIUS)
+  if (bestMid) {
+    if (bestMid.isPortMatch) {
+      return { x: bestMid.x, y: bestMid.y, nodeId: bestMid.isPortMatch.nodeId, portId: bestMid.isPortMatch.portId };
+    }
+    if (!bestPort || bestMid.snapDist <= bestPort.d) {
+      return { x: bestMid.x, y: bestMid.y, onWireId: bestMid.onWireId };
+    }
+  }
+
+  // 4b. Ưu tiên Wire Endpoint nếu gần hơn
+  if (bestEnd && (!bestPort || bestEnd.d < bestPort.d)) {
+    return {
+      x: bestEnd.x, y: bestEnd.y,
+      ...(bestEnd.nodeId ? { nodeId: bestEnd.nodeId, portId: bestEnd.portId }
+        : bestEnd.onWireId ? { onWireId: bestEnd.onWireId } : {}),
+    };
+  }
+
+  // 4c. Ưu tiên Port nếu chuột gần Port hơn thân dây lướt qua
+  if (bestPort) {
+    if (closestWirePerpDist === Infinity || bestPort.d <= closestWirePerpDist) {
+      return { x: bestPort.x, y: bestPort.y, nodeId: bestPort.nodeId, portId: bestPort.portId };
+    }
+  }
+
+  // 4d. Fallback wire endpoint nếu có
+  if (bestEnd) {
+    return {
+      x: bestEnd.x, y: bestEnd.y,
+      ...(bestEnd.nodeId ? { nodeId: bestEnd.nodeId, portId: bestEnd.portId }
+        : bestEnd.onWireId ? { onWireId: bestEnd.onWireId } : {}),
+    };
+  }
+
   return { x: Math.round(p.x / GRID) * GRID, y: Math.round(p.y / GRID) * GRID };
 }
 

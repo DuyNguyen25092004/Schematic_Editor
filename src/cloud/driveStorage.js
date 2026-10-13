@@ -24,12 +24,12 @@ export function driveLogin(providedClientId) {
 
     if (!clientId) {
       return reject(
-        new Error('Thiếu Google Client ID: Vui lòng kiểm tra lại cấu hình.')
+        new Error('Missing Google Client ID: Please check configuration.')
       );
     }
 
     if (!window.google?.accounts?.oauth2) {
-      return reject(new Error('Chưa nạp được thư viện Google Identity Services. Hãy tải lại trang hoặc kiểm tra kết nối mạng.'));
+      return reject(new Error('Google Identity Services library not loaded. Please reload the page or check network connection.'));
     }
 
     try {
@@ -48,7 +48,7 @@ export function driveLogin(providedClientId) {
             try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
             return reject(
               new Error(
-                'Bạn chưa cấp quyền Google Drive! Khi cửa sổ đăng nhập hiện ra, vui lòng TÍCH CHỌN vào ô: "Xem, chỉnh sửa, tạo và xóa tất cả các tệp trên Google Drive của bạn" rồi mới bấm Tiếp tục.'
+                'Google Drive permission not granted! When the sign-in popup appears, please CHECK the box: "See, edit, create, and delete all of your Google Drive files" and click Continue.'
               )
             );
           }
@@ -62,11 +62,11 @@ export function driveLogin(providedClientId) {
           resolve(token);
         },
         error_callback: (err) => {
-          let msg = 'Đăng nhập bị hủy';
+          let msg = 'Sign-in cancelled';
           if (err?.type === 'popup_closed') {
-            msg = 'Cửa sổ đăng nhập đã bị đóng.';
+            msg = 'Sign-in popup was closed.';
           } else if (err?.type === 'popup_blocked') {
-            msg = 'Trình duyệt đang chặn popup. Vui lòng cho phép popup để đăng nhập Google.';
+            msg = 'Popup blocked by browser. Please allow popups to sign in with Google.';
           } else if (err?.message) {
             msg = err.message;
           } else if (err?.type) {
@@ -100,7 +100,7 @@ export function driveLogout() {
 
 export async function call(url, options = {}) {
   if (!token) {
-    throw new Error('Chưa đăng nhập Google. Hãy đăng nhập trước.');
+    throw new Error('Not signed in to Google. Please sign in first.');
   }
   const r = await fetch(url, {
     ...options,
@@ -114,7 +114,7 @@ export async function call(url, options = {}) {
     } catch {
       // ignore
     }
-    throw new Error('Phiên đăng nhập đã hết hạn, hãy đăng nhập lại.');
+    throw new Error('Session expired, please sign in again.');
   }
 
   if (!r.ok) {
@@ -136,11 +136,11 @@ export async function call(url, options = {}) {
         // ignore
       }
       throw new Error(
-        'Chưa đủ quyền truy cập Drive (Insufficient scopes). Hãy bấm đăng nhập lại và tích chọn ô cấp quyền Google Drive.'
+        'Insufficient Drive permissions. Please sign in again and grant Google Drive permissions.'
       );
     }
 
-    throw new Error(`Lỗi Drive ${r.status}${errDetail}`);
+    throw new Error(`Drive error ${r.status}${errDetail}`);
   }
   return r;
 }
@@ -222,7 +222,7 @@ export async function driveListFolderContents(folderId = 'root') {
 export async function driveCreateFolder(name, parentId = 'root') {
   const targetParent = parentId && parentId !== 'root' && parentId !== 'sharedWithMe' ? parentId : 'root';
   const body = {
-    name: (name || 'Thư mục mới').trim(),
+    name: (name || 'New Folder').trim(),
     mimeType: 'application/vnd.google-apps.folder',
     parents: [targetParent],
   };
@@ -237,17 +237,17 @@ export async function driveCreateFolder(name, parentId = 'root') {
 // Lấy thông tin thư mục
 export async function driveGetFolderMeta(folderId) {
   if (!folderId || folderId === 'root') {
-    return { id: 'root', name: 'Drive của tôi' };
+    return { id: 'root', name: 'My Drive' };
   }
   if (folderId === 'sharedWithMe') {
-    return { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' };
+    return { id: 'sharedWithMe', name: 'Shared with me' };
   }
   try {
     const r = await call(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,parents,shortcutDetails&supportsAllDrives=true`);
     const d = await r.json();
-    return { id: d.id, name: d.name || 'Thư mục Drive' };
+    return { id: d.id, name: d.name || 'Drive Folder' };
   } catch {
-    return { id: folderId, name: 'Thư mục Drive' };
+    return { id: folderId, name: 'Drive Folder' };
   }
 }
 

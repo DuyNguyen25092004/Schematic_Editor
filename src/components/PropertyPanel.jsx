@@ -1,31 +1,32 @@
 import LatexText, { formatLatexRef, formatLatexMosParam, formatLatexPassiveValue } from './LatexText';
+import { MULTI_INPUT_LOGIC_TYPES } from '../constants';
 
 const WIRE_COLORS = [
-  { name: 'Mặc định', value: undefined },
-  { name: 'Đỏ', value: '#e53935' },
-  { name: 'Cam', value: '#fb8c00' },
-  { name: 'Vàng', value: '#fdd835' },
-  { name: 'Xanh lá', value: '#43a047' },
-  { name: 'Xanh ngọc', value: '#00acc1' },
-  { name: 'Xanh dương', value: '#1e63e9' },
-  { name: 'Tím', value: '#8e24aa' },
-  { name: 'Hồng', value: '#ec407a' },
-  { name: 'Nâu', value: '#6d4c41' },
-  { name: 'Xám', value: '#757575' },
+  { name: 'Default', value: undefined },
+  { name: 'Red', value: '#e53935' },
+  { name: 'Orange', value: '#fb8c00' },
+  { name: 'Yellow', value: '#fdd835' },
+  { name: 'Green', value: '#43a047' },
+  { name: 'Teal', value: '#00acc1' },
+  { name: 'Blue', value: '#1e63e9' },
+  { name: 'Purple', value: '#8e24aa' },
+  { name: 'Pink', value: '#ec407a' },
+  { name: 'Brown', value: '#6d4c41' },
+  { name: 'Gray', value: '#757575' },
 ];
 
 const RECT_COLORS = [
-  { name: 'Không màu', value: 'transparent' },
-  { name: 'Xanh dương', value: '#1677ff' },
-  { name: 'Đỏ', value: '#e53935' },
-  { name: 'Cam', value: '#fb8c00' },
-  { name: 'Vàng', value: '#fdd835' },
-  { name: 'Xanh lá', value: '#43a047' },
-  { name: 'Xanh ngọc', value: '#00acc1' },
-  { name: 'Tím', value: '#8e24aa' },
-  { name: 'Hồng', value: '#ec407a' },
-  { name: 'Nâu', value: '#6d4c41' },
-  { name: 'Xám', value: '#757575' },
+  { name: 'None', value: 'transparent' },
+  { name: 'Blue', value: '#1677ff' },
+  { name: 'Red', value: '#e53935' },
+  { name: 'Orange', value: '#fb8c00' },
+  { name: 'Yellow', value: '#fdd835' },
+  { name: 'Green', value: '#43a047' },
+  { name: 'Teal', value: '#00acc1' },
+  { name: 'Purple', value: '#8e24aa' },
+  { name: 'Pink', value: '#ec407a' },
+  { name: 'Brown', value: '#6d4c41' },
+  { name: 'Gray', value: '#757575' },
 ];
 
 function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, readOnly = false }) {
@@ -59,21 +60,24 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     const isMos = node.type === 'nmos' || node.type === 'pmos';
     const isRect = node.type === 'rect';
     const isText = node.type === 'text';
+    const isLogicGate = MULTI_INPUT_LOGIC_TYPES.has(node.type);
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
-      res: 'Res', cap: 'Cap', vsource: 'Nguồn áp', isource: 'Nguồn dòng', vdd: 'VDD rail', gnd: 'Ground',
-      opamp: 'Opamp', fdopamp: 'FD opamp',
+      res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
+      opamp: 'Opamp', fdopamp: 'FD Opamp',
       inverter: 'Inverter', buffer: 'Buffer',
-      and: 'Cổng AND', or: 'Cổng OR', nand: 'Cổng NAND', nor: 'Cổng NOR',
-      xor: 'Cổng XOR', xnor: 'Cổng XNOR',
-      dff: 'D Flip-Flop', mux: 'MUX 2:1',
-      sw_open: 'Công tắc thường mở',
-      sw_closed: 'Công tắc thường đóng',
-      sw_spdt: 'Công tắc SPDT (2 đầu)',
-      sw_sp3t: 'Công tắc SP3T (3 đầu)',
-      sw_sp4t: 'Công tắc SP4T (4 đầu)',
-      rect: 'Hình chữ nhật',
-      text: 'Văn bản',
+      and: 'AND Gate', or: 'OR Gate', nand: 'NAND Gate', nor: 'NOR Gate',
+      xor: 'XOR Gate', xnor: 'XNOR Gate',
+      dff: 'D Flip-Flop (EN, RST)',
+      dff_sr: 'D Flip-Flop (SET, RST)',
+      mux: 'MUX 2:1',
+      sw_open: 'Open Switch',
+      sw_closed: 'Closed Switch',
+      sw_spdt: 'SPDT Switch',
+      sw_sp3t: 'SP3T Switch',
+      sw_sp4t: 'SP4T Switch',
+      rect: 'Rectangle',
+      text: 'Text',
     }[node.type] || String(node.type).toUpperCase();
     const hasValue = node.type === 'res' || node.type === 'cap' || node.type === 'vsource' || node.type === 'isource';
     return (
@@ -88,7 +92,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           )}
           {readOnly && (
             <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
-              Chỉ xem
+              Read-only
             </span>
           )}
         </div>
@@ -109,9 +113,52 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           </>
         )}
 
+        {isLogicGate && (
+          <>
+            <label style={label}>Inputs ({node.data?.inputs || 2})</label>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 10, alignItems: 'center' }}>
+              <button
+                type="button"
+                disabled={readOnly || (node.data?.inputs || 2) <= 2}
+                onClick={() => patch('inputs', Math.max(2, (node.data?.inputs || 2) - 1))}
+                style={{ padding: '3px 8px', border: '1px solid #ccc', borderRadius: 4, background: '#f5f5f5', cursor: readOnly ? 'default' : 'pointer', fontWeight: 'bold' }}
+              >
+                -
+              </button>
+              {[2, 3, 4, 5, 8].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => patch('inputs', n)}
+                  style={{
+                    flex: 1, padding: '3px 0',
+                    border: (node.data?.inputs || 2) === n ? '1px solid #1677ff' : '1px solid #ddd',
+                    borderRadius: 4,
+                    background: (node.data?.inputs || 2) === n ? '#e6f4ff' : '#fff',
+                    color: (node.data?.inputs || 2) === n ? '#1677ff' : '#333',
+                    fontWeight: (node.data?.inputs || 2) === n ? 700 : 400,
+                    cursor: readOnly ? 'default' : 'pointer',
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={readOnly || (node.data?.inputs || 2) >= 16}
+                onClick={() => patch('inputs', Math.min(16, (node.data?.inputs || 2) + 1))}
+                style={{ padding: '3px 8px', border: '1px solid #ccc', borderRadius: 4, background: '#f5f5f5', cursor: readOnly ? 'default' : 'pointer', fontWeight: 'bold' }}
+              >
+                +
+              </button>
+            </div>
+          </>
+        )}
+
         {isRect && (
           <>
-            <label style={label}>Màu</label>
+            <label style={label}>Color</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {RECT_COLORS.map((c) => {
                 const active = (node.data.color || '#1677ff') === c.value;
@@ -137,16 +184,16 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
               })}
             </div>
 
-            <label style={label}>Độ trong suốt ({Math.round((node.data.opacity ?? 1) * 100)}%)</label>
+            <label style={label}>Opacity ({Math.round((node.data.opacity ?? 1) * 100)}%)</label>
             <input type="range" min={0} max={1} step={0.01} style={{ ...input, padding: 0 }}
                   disabled={readOnly}
                   value={node.data.opacity ?? 1}
                   onChange={(e) => patch('opacity', Number(e.target.value))} />
-            <label style={label}>Chữ trong hình</label>
+            <label style={label}>Shape Text</label>
             <textarea
               rows={3}
               style={{ ...input, resize: 'vertical', fontFamily: 'sans-serif' }}
-              placeholder="Nhập chữ hiển thị trong hình..."
+              placeholder="Enter text inside rectangle..."
               disabled={readOnly}
               readOnly={readOnly}
               value={node.data.text || ''}
@@ -157,7 +204,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
 
         {isText && (
           <>
-            <label style={label}>Nội dung</label>
+            <label style={label}>Content</label>
             <textarea
               rows={3}
               style={{ ...input, resize: 'vertical', fontFamily: node.data.latex ? 'monospace' : 'sans-serif' }}
@@ -170,7 +217,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
               <input type="checkbox" disabled={readOnly} checked={!!node.data.latex} onChange={(e) => patch('latex', e.target.checked)} />
               LaTeX
             </label>
-            <label style={label}>Cỡ chữ ({node.data.size || 14}px)</label>
+            <label style={label}>Font Size ({node.data.size || 14}px)</label>
             <input type="range" min={8} max={48} step={1} style={{ ...input, padding: 0 }}
                   disabled={readOnly}
                   value={node.data.size || 14}
@@ -181,7 +228,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
         {hasValue && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={label}>Giá trị</label>
+              <label style={label}>Value</label>
               {node.data?.value && (
                 <LatexText text={formatLatexPassiveValue(node.data.value, node.type)} latex={true} size={13} color="#1677ff" />
               )}
@@ -218,11 +265,11 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
         )}
         {readOnly ? (
           <div style={{ textAlign: 'center', color: '#888', fontStyle: 'italic', fontSize: 11, padding: '6px 0', background: '#fafafa', borderRadius: 4, border: '1px dashed #d9d9d9' }}>
-            Chỉ xem (Không có quyền chỉnh sửa)
+            Read-only (No edit permission)
           </div>
         ) : (
           <button style={btn} onClick={onDelete}>
-            {isText ? 'Xóa văn bản' : 'Xóa linh kiện'}
+            {isText ? 'Delete Text' : 'Delete Component'}
           </button>
         )}
       </div>
@@ -231,27 +278,27 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
 
   const wire = wires.find((w) => w.id === selected.id);
   if (!wire) return null;
-  const fmt = (p) => (p.nodeId ? `${p.nodeId}.${p.portId}` : 'tự do');
+  const fmt = (p) => (p.nodeId ? `${p.nodeId}.${p.portId}` : 'floating');
   const ends = [wire.points[0], wire.points[wire.points.length - 1]];
 
   return (
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>Dây nối</span>
+        <span>Wire</span>
         {readOnly && (
           <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
-            Chỉ xem
+            Read-only
           </span>
         )}
       </div>
       
-      <label style={label}>Tên dây (Wire Name / LaTeX)</label>
+      <label style={label}>Wire Name (LaTeX supported)</label>
       <input
         style={input}
         disabled={readOnly}
         readOnly={readOnly}
         value={wire.name || ''}
-        placeholder="VD: V_{in}, V_{out}..."
+        placeholder="e.g. V_{in}, V_{out}..."
         onChange={(e) => {
           if (readOnly) return;
           const val = e.target.value;
@@ -273,11 +320,11 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       )}
       {(wire.labels || []).length > 0 && (
         <div style={{ color: '#888', fontSize: 12, marginBottom: 10 }}>
-          {readOnly ? 'Nhãn hiển thị trên dây.' : 'Nhấp đúp vào nhãn trên dây để sửa / xóa.'}
+          {readOnly ? 'Label displayed on wire.' : 'Double-click wire label to edit or delete.'}
         </div>
       )}
 
-      <label style={label}>Màu dây</label>
+      <label style={label}>Wire Color</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
         {WIRE_COLORS.map((c) => {
           const active = (wire.color || undefined) === c.value;
@@ -311,13 +358,13 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       </div>
       {readOnly ? (
         <div style={{ textAlign: 'center', color: '#888', fontStyle: 'italic', fontSize: 11, padding: '6px 0', background: '#fafafa', borderRadius: 4, border: '1px dashed #d9d9d9' }}>
-          Chỉ xem (Không có quyền chỉnh sửa)
+          Read-only (No edit permission)
         </div>
       ) : (
-        <button style={btn} onClick={onDelete}>Xóa dây</button>
+        <button style={btn} onClick={onDelete}>Delete Wire</button>
       )}
     </div>
   );
 }
 
-export default PropertyPanel
+export default PropertyPanel;

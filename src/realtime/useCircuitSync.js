@@ -211,7 +211,7 @@ export function useCircuitSync({
               const rootWires = (chosenCircuit.wires || []).map((w) => ({ ...w, selected: false }));
               loadedSheets = [{
                 id: 'sheet_1',
-                name: 'Trang 1',
+                name: 'Sheet 1',
                 nodes: rootNodes,
                 wires: rootWires,
               }];
@@ -282,7 +282,7 @@ export function useCircuitSync({
             const seededWires = [];
             const initialSheet = [{
               id: 'sheet_1',
-              name: 'Trang 1',
+              name: 'Sheet 1',
               nodes: seededNodes,
               wires: seededWires,
             }];

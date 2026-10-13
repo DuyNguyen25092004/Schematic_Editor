@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS } from '../symbols';
-import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan } from '../constants';
+import { GRID, VDD_BAR, getPorts, getSymbolBox, getVddSpan, MULTI_INPUT_LOGIC_TYPES } from '../constants';
 import LatexText, { formatLatexRef } from '../components/LatexText';
 
 const GATE_LABEL = { x: 40, y: 35, side: 'top' };
@@ -17,6 +17,7 @@ const LABELS = {
   xor:      GATE_LABEL,
   xnor:     GATE_LABEL,
   dff:      { x: 60, y: 20, side: 'top' },
+  dff_sr:   { x: 60, y: 20, side: 'top' },
   mux:      { x: 40, y: 30, side: 'top' },
   sw_open:   { x: 40, y: 34, side: 'top' },
   sw_closed: { x: 40, y: 40, side: 'top' },
@@ -51,6 +52,7 @@ function SymbolNode({ data, selected, type }) {
   // VDD rail: thanh có thể kéo dài -> vùng vẽ và vị trí nhãn phụ thuộc data.len
     // VDD rail: thanh có thể kéo dài -> vùng vẽ và vị trí nhãn phụ thuộc data.left / data.len
   const isVdd = type === 'vdd';
+  const isLogicGate = MULTI_INPUT_LOGIC_TYPES.has(type);
   const span = isVdd ? getVddSpan(data) : null;
   const vddEnd = isVdd ? VDD_BAR.x0 + span.right * GRID : 0;
   // Vùng vẽ SVG: mở rộng cả sang trái (x âm) lẫn phải khi thanh được kéo dài
@@ -58,7 +60,11 @@ function SymbolNode({ data, selected, type }) {
   const svgW = (isVdd ? Math.max(160, vddEnd + 20) : 160) - svgX0;
 
   let label = null;
-  const cfg = isVdd ? { x: vddEnd + 8, y: VDD_BAR.y, side: 'right' } : LABELS[type];
+  const cfg = isVdd
+    ? { x: vddEnd + 8, y: VDD_BAR.y, side: 'right' }
+    : isLogicGate
+    ? { x: 40, y: Math.min(35, box.y - 2), side: 'top' }
+    : LABELS[type];
   if (cfg) {
     const [rx, ry] = transformVec(cfg.x - 40, cfg.y - 50, flip, rot);
     const side = vecToSide(transformVec(...SIDE_VEC[cfg.side], flip, rot));
@@ -102,8 +108,8 @@ function SymbolNode({ data, selected, type }) {
         )}
         <div style={{ position: 'absolute', left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`, pointerEvents: 'all' }} />
         <svg width={svgW} height="100" viewBox={`${svgX0} 0 ${svgW} 100`}
-            style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none' }}>
-        <Symbol strokeWidth={sw} data={data} />
+            style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none', overflow: 'visible' }}>
+          <Symbol strokeWidth={sw} data={data} />
         </svg>
       </div>
 

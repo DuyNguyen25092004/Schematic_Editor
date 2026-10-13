@@ -32,7 +32,7 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
         else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>{mode === 'edit' ? 'Sửa văn bản' : 'Thêm văn bản'}</div>
+      <div style={{ fontWeight: 700, marginBottom: 8 }}>{mode === 'edit' ? 'Edit Text' : 'Add Text'}</div>
       <textarea
         ref={ref} rows={3} value={text}
         onChange={(e) => setText(e.target.value)}
@@ -41,7 +41,7 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
           if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
           else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ok(); }
         }}
-        placeholder={latex ? 'VD: V_{out} = \\frac{g_m}{C_L}' : 'Nhập văn bản...  (Shift+Enter: xuống dòng)'}
+        placeholder={latex ? 'e.g. V_{out} = \\frac{g_m}{C_L}' : 'Enter text... (Shift+Enter for newline)'}
         style={{ width: '100%', boxSizing: 'border-box', padding: 6, marginBottom: 8, resize: 'vertical', fontFamily: latex ? 'monospace' : 'sans-serif', color: '#000', background: '#fff' }}
       />
       <label style={row}>
@@ -60,10 +60,10 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        {mode === 'edit' && <button style={{ ...btn('#ff4d4f'), marginRight: 'auto' }} onClick={onDelete}>Xóa</button>}
-        <button style={btn('#eee', '#333')} onClick={onCancel}>Hủy</button>
+        {mode === 'edit' && <button style={{ ...btn('#ff4d4f'), marginRight: 'auto' }} onClick={onDelete}>Delete</button>}
+        <button style={btn('#eee', '#333')} onClick={onCancel}>Cancel</button>
         <button style={{ ...btn('#1677ff'), opacity: text.trim() ? 1 : 0.5 }} onClick={ok}>
-          {mode === 'edit' ? 'Lưu' : 'OK'}
+          {mode === 'edit' ? 'Save' : 'OK'}
         </button>
       </div>
     </div>

@@ -14,11 +14,11 @@ function loadName() {
   try {
     let n = localStorage.getItem('presenceName');
     if (!n) {
-      n = 'Khách ' + Math.floor(100 + Math.random() * 900);
+      n = 'Guest ' + Math.floor(100 + Math.random() * 900);
       localStorage.setItem('presenceName', n);
     }
     return n;
-  } catch { return 'Khách ' + Math.floor(100 + Math.random() * 900); }
+  } catch { return 'Guest ' + Math.floor(100 + Math.random() * 900); }
 }
 
 export function usePresence({ circuitId, selectedIds, hasDriveAccess = false, driveEmail = null, activeSheetId = 'sheet_1' }) {

@@ -78,7 +78,7 @@ export default function RectNode({ id, data, selected }) {
               if (e.key === 'Escape') { setDraft(data.text || ''); setEditing(false); }
               else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
             }}
-            placeholder="Nhập chữ..."
+            placeholder="Enter text..."
             style={{
               position: 'absolute', inset: 4, resize: 'none', border: 'none', outline: 'none',
               background: 'transparent', color: textColor, fontFamily: 'sans-serif', fontSize: 13,

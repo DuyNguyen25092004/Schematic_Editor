@@ -48,7 +48,7 @@ const nodeTypes = {
   vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode,
   inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
   nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
-  dff: SymbolNode, mux: SymbolNode,
+  dff: SymbolNode, dff_sr: SymbolNode, mux: SymbolNode,
   sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
   sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
   rect: RectNode, text: TextNode,
@@ -122,7 +122,7 @@ function Flow() {
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
   const [sheets, setSheets] = useState(() => [
-    { id: 'sheet_1', name: 'Trang 1', nodes: initialNodes, wires: [] },
+    { id: 'sheet_1', name: 'Sheet 1', nodes: initialNodes, wires: [] },
   ]);
   const [activeSheetId, setActiveSheetId] = useState('sheet_1');
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
@@ -135,7 +135,7 @@ function Flow() {
   const startNewCircuitRoom = useCallback(() => {
     const newId = newCircuitId();
     setCircuitIdState(newId);
-    const resetSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+    const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', nodes: [], wires: [] }];
     setSheets(resetSheet);
     setActiveSheetId('sheet_1');
     setNodes([]);
@@ -169,7 +169,7 @@ function Flow() {
     const curNodes = nodesRef.current;
     const curWires = wiresRef.current;
     const newId = 'sheet_' + Math.random().toString(36).slice(2, 9);
-    const newName = `Trang ${sheets.length + 1}`;
+    const newName = `Sheet ${sheets.length + 1}`;
     const newSheet = { id: newId, name: newName, nodes: [], wires: [] };
 
     setSheets((prev) => {
@@ -191,7 +191,7 @@ function Flow() {
   const handleCloseSheet = useCallback((sheetIdToClose) => {
     if (sheets.length <= 1) {
       // Chỉ còn 1 sheet -> reset trắng trang đó
-      const resetSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+      const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', nodes: [], wires: [] }];
       setSheets(resetSheet);
       setActiveSheetId('sheet_1');
       setNodes([]);
@@ -292,7 +292,7 @@ function Flow() {
   });
 
   useCircuitSync({
-    circuitId: circuitId,
+    circuitId: (typeof window !== 'undefined' && window.__disableSync) ? null : circuitId,
     sheets, setSheets,
     activeSheetId, setActiveSheetId,
     nodes, wires, setNodes: remoteSetNodes, setWiresRaw: remoteSetWiresRaw,
@@ -304,6 +304,16 @@ function Flow() {
   });
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      window.__devHooks = {
+        setWires,
+        setSelected,
+        getWires: () => wiresRef.current || wires,
+        getNodes: () => nodesRef.current || nodes,
+      };
+    }
+  }, [setWires, setSelected, wires, nodes]);
   const [placingType, setPlacingType] = useState(null);
   const [ghostScreenPos, setGhostScreenPos] = useState(null);
   const [dragType, setDragType] = useState(null);
@@ -772,6 +782,7 @@ function Flow() {
           panOnDrag={[1, 2]} 
           selectionMode="partial" 
           onlyRenderVisibleElements={true}
+          zoomOnDoubleClick={false}
 
           elementsSelectable={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}
           selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}    
@@ -893,14 +904,14 @@ function Flow() {
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', fontSize: 13,
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#cf1322', fontWeight: 700 }}>
-              <span style={{ fontSize: 16 }}>👁️</span> Chế độ Chỉ xem
+              <span style={{ fontSize: 16 }}>👁️</span> View-only Mode
             </span>
             <span style={{ color: '#555', borderLeft: '1px solid #e8e8e8', paddingLeft: 12 }}>
               {isPendingApproval
-                ? '⏳ Đang chờ chủ phòng xét duyệt...'
+                ? '⏳ Waiting for host approval...'
                 : isRejected
-                ? '❌ Yêu cầu cấp quyền đã bị từ chối'
-                : 'Bạn chưa có quyền chỉnh sửa mạch này.'}
+                ? '❌ Edit access request was rejected'
+                : 'You do not have permission to edit this schematic.'}
             </span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {!isPendingApproval && !isRejected && (
@@ -915,7 +926,7 @@ function Flow() {
                   onMouseEnter={(e) => e.currentTarget.style.background = '#4096ff'}
                   onMouseLeave={(e) => e.currentTarget.style.background = '#1677ff'}
                 >
-                  ✋ Xin quyền chỉnh sửa
+                  ✋ Request Edit Access
                 </button>
               )}
               {isRejected && (
@@ -927,7 +938,7 @@ function Flow() {
                     borderRadius: 14, cursor: 'pointer', fontSize: 12,
                   }}
                 >
-                  Thử xin lại
+                  Request Again
                 </button>
               )}
               <button
@@ -938,7 +949,7 @@ function Flow() {
                   borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 500,
                 }}
               >
-                📁 Đăng nhập Drive
+                📁 Sign in to Drive
               </button>
             </div>
           </div>
@@ -953,7 +964,7 @@ function Flow() {
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#0958d9', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>🔔</span> Có {pendingRequests.length} người đang xin quyền chỉnh sửa
+              <span>🔔</span> {pendingRequests.length} user{pendingRequests.length > 1 ? 's' : ''} requesting edit access
             </div>
             {pendingRequests.map((req) => (
               <div key={req.uid} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
@@ -970,7 +981,7 @@ function Flow() {
                       boxShadow: '0 2px 4px rgba(82,196,26,0.25)',
                     }}
                   >
-                    ✓ Duyệt
+                    ✓ Approve
                   </button>
                   <button
                     type="button"
@@ -981,7 +992,7 @@ function Flow() {
                       boxShadow: '0 2px 4px rgba(255,77,79,0.25)',
                     }}
                   >
-                    ✕ Từ chối
+                    ✕ Reject
                   </button>
                 </div>
               </div>
@@ -1022,9 +1033,10 @@ function Flow() {
 
         {quickAddOpen && (
           <div style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.15)' }} onClick={() => setQuickAddOpen(false)}>
-            <div onClick={(e) => e.stopPropagation()}>
-              <QuickAddMenu onPick={(comp) => { setQuickAddOpen(false); setPlacingType(comp); setGhostScreenPos(null); }} />
-            </div>
+              <QuickAddMenu
+                onPick={(comp) => { setQuickAddOpen(false); setPlacingType(comp); setGhostScreenPos(null); }}
+                onClose={() => setQuickAddOpen(false)}
+              />
           </div>
         )}
 

@@ -214,85 +214,164 @@ export function BufferSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
-export function AndGateSymbol({ strokeWidth = 1.5 }) {
+function getGateParams(data) {
+  const n = Math.max(2, Math.min(16, Math.round(Number(data?.inputs) || 2)));
+  const y0 = -(n - 1) * 10;
+  const ys = [];
+  for (let i = 0; i < n; i++) {
+    ys.push(y0 + i * 20);
+  }
+  const H = (n - 1) * 10 + 5;
+  return { n, ys, H };
+}
+
+export function AndGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-20" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-20" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M -0.938181 -15.077165 C -0.938181 -15.077165 -0.938181 -15.077165 -0.781236 -15.077165 C -0.626035 -15.077165 -0.312146 -15.077165 -0.156945 -15.0388 C 0 -14.998692 0 -14.998692 0.676607 -14.895806 C 1.353213 -14.791176 2.70817 -14.58366 3.918389 -14.231406 C 5.130352 -13.879152 6.197576 -13.385648 7.357224 -12.590461 C 8.515128 -11.797018 9.765455 -10.701892 10.72805 -9.556195 C 11.692388 -8.410498 12.368995 -7.21423 12.8904 -5.988316 C 13.411806 -4.764147 13.776267 -3.515564 13.971576 -2.212922 C 14.166885 -0.912024 14.193042 0.442933 14.062255 1.707211 C 13.931468 2.969745 13.645479 4.141599 13.111867 5.43029 C 12.578255 6.718982 11.797018 8.126253 10.898945 9.284157 C 10.000872 10.443805 8.984218 11.354085 8.150667 12.030691 C 7.317116 12.709042 6.666667 13.153719 5.97611 13.502485 C 5.285553 13.854739 4.556631 14.116314 3.906182 14.323829 C 3.253989 14.533089 2.682013 14.690034 2.174558 14.777226 C 1.665359 14.869649 1.22417 14.89755 0.767286 14.909757 C 0.312146 14.921964 -0.156945 14.921964 -0.650449 14.921964 C -1.145697 14.921964 -1.667102 14.921964 -1.926933 14.921964 C -2.110036 14.921964 -2.110036 14.921964 -2.110036 14.921964 L -20 14.921964 L -20 -15.077165 Z" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="14.68829" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => (
+        <line key={idx} x1="-30" y1={y} x2="-20" y2={y} strokeWidth={leadSw} strokeLinecap="butt" />
+      ))}
+      <path
+        d={`M -20,${-H} L 0,${-H} C ${15 * 0.8},${-H} 15,${-H * 0.5} 15,0 C 15,${H * 0.5} ${15 * 0.8},${H} 0,${H} L -20,${H} Z`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <line x1="15" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function OrGateSymbol({ strokeWidth = 1.5 }) {
+export function OrGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-15.436394" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-15.748539" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="15.757259" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => {
+        const clampedRatio = Math.min(1, Math.abs(y) / H);
+        const x2 = -20 + 4.5 * (1 - clampedRatio ** 2);
+        return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
+      })}
+      <path
+        d={`M -20,${-H} Q 0,${-H * 0.65} 16,0 Q 0,${H * 0.65} -20,${H} Q -11,0 -20,${-H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <line x1="16" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function NandGateSymbol({ strokeWidth = 1.5 }) {
+export function NandGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-20" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-20" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M -1.405528 15.07978 C -1.405528 15.07978 -1.405528 15.07978 -1.236377 15.06583 C -0.988753 15.051879 -0.493505 15.025722 -0.245881 15.013515 C 0.001743 15.001308 0.001743 15.001308 0.67835 14.894934 C 1.354956 14.792048 2.708169 14.582788 3.918388 14.234022 C 5.130351 13.880024 6.199319 13.38652 7.358967 12.591333 C 8.516871 11.79789 9.767198 10.704508 10.729793 9.558811 C 11.692388 8.413114 12.370738 7.213358 12.892144 5.990932 C 13.411805 4.766763 13.77801 3.516436 13.973319 2.213794 C 14.166884 0.911152 14.194786 -0.442061 14.062254 -1.706339 C 13.933211 -2.968873 13.648966 -4.140727 13.111866 -5.429418 C 12.578254 -6.71811 11.797018 -8.125381 10.898945 -9.283285 C 10.000871 -10.442933 8.985962 -11.354957 8.15241 -12.031563 C 7.318859 -12.70817 6.66841 -13.151103 5.979597 -13.503357 C 5.285552 -13.853867 4.560118 -14.115442 3.906181 -14.322958 C 3.257476 -14.530473 2.683756 -14.687418 2.176301 -14.778097 C 1.667102 -14.870521 1.224169 -14.894934 0.769029 -14.908885 C 0.313889 -14.921092 -0.155201 -14.921092 -0.650449 -14.921092 C -1.143954 -14.921092 -1.665359 -14.921092 -1.926934 -14.921092 C -2.108292 -14.921092 -2.108292 -14.921092 -2.108292 -14.921092 L -20 -14.921092 L -20 15.07978 Z" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <circle cx="19.652977" cy="0.010463" r="3.375185" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="23.028162" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => (
+        <line key={idx} x1="-30" y1={y} x2="-20" y2={y} strokeWidth={leadSw} strokeLinecap="butt" />
+      ))}
+      <path
+        d={`M -20,${-H} L 0,${-H} C ${15 * 0.8},${-H} 15,${-H * 0.5} 15,0 C 15,${H * 0.5} ${15 * 0.8},${H} 0,${H} L -20,${H} Z`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <circle cx="18.5" cy="0" r="3.5" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
+      <line x1="22" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function NorGateSymbol({ strokeWidth = 1.5 }) {
+export function NorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-15.436394" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-15.748539" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <circle cx="19.96338" cy="-0.121196" r="3.374313" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="23.337693" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => {
+        const clampedRatio = Math.min(1, Math.abs(y) / H);
+        const x2 = -20 + 4.5 * (1 - clampedRatio ** 2);
+        return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
+      })}
+      <path
+        d={`M -20,${-H} Q 0,${-H * 0.65} 16,0 Q 0,${H * 0.65} -20,${H} Q -11,0 -20,${-H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <circle cx="19.5" cy="0" r="3.5" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
+      <line x1="23" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function XorGateSymbol({ strokeWidth = 1.5 }) {
+export function XorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-15.769465" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-15.455575" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <path d="M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="22.287907" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => {
+        const clampedRatio = Math.min(1, Math.abs(y) / H);
+        const x2 = -20 + 3.65 * (1 - clampedRatio ** 2);
+        return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
+      })}
+      <path
+        d={`M -13.5,${-H} Q 6.5,${-H * 0.65} 22.3,0 Q 6.5,${H * 0.65} -13.5,${H} Q -4.5,0 -13.5,${-H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <path
+        d={`M -20,${-H} Q -12.7,0 -20,${H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <line x1="22.3" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function XnorGateSymbol({ strokeWidth = 1.5 }) {
+export function XnorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const { ys, H } = getGateParams(data);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
-      <line x1="-30" y1="-10" x2="-15.769465" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <line x1="-30" y1="10" x2="-15.455575" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
-      <path d="M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <path d="M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <circle cx="26.494028" cy="0.002616" r="3.374313" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="29.868341" y1="0" x2="40" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      {ys.map((y, idx) => {
+        const clampedRatio = Math.min(1, Math.abs(y) / H);
+        const x2 = -20 + 3.65 * (1 - clampedRatio ** 2);
+        return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
+      })}
+      <path
+        d={`M -13.5,${-H} Q 6.5,${-H * 0.65} 22.3,0 Q 6.5,${H * 0.65} -13.5,${H} Q -4.5,0 -13.5,${-H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <path
+        d={`M -20,${-H} Q -12.7,0 -20,${H}`}
+        strokeWidth={bodySw}
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+        strokeMiterlimit={4}
+      />
+      <circle cx="25.8" cy="0" r="3.4" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
+      <line x1="29.2" y1="0" x2="40" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
@@ -312,6 +391,29 @@ export function DffSymbol({ strokeWidth = 1.5 }) {
       <polyline points="15,52 26,60 15,68" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" />
       <text x="19" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">D</text>
       <text x="40" y="29" fontSize="9.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">EN</text>
+      <text x="40" y="77" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">RST</text>
+      <text x="61" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+      <text x="61" y="63.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+      <line x1="53" y1="54" x2="61" y2="54" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+    </g>
+  );
+}
+
+export function DffSrSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1;
+  return (
+    <g fill="none" stroke="#000">
+      <rect x="15" y="20" width="50" height="60" strokeWidth={bodySw} strokeLinejoin="miter" />
+      <line x1="10" y1="40" x2="15" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="10" y1="60" x2="15" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="40" y1="10" x2="40" y2="20" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="40" y1="80" x2="40" y2="90" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="65" y1="40" x2="70" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="65" y1="60" x2="70" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <polyline points="15,52 26,60 15,68" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" />
+      <text x="19" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">D</text>
+      <text x="40" y="29" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">SET</text>
       <text x="40" y="77" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">RST</text>
       <text x="61" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
       <text x="61" y="63.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
@@ -442,6 +544,7 @@ export const SYMBOLS = {
   xor: XorGateSymbol,
   xnor: XnorGateSymbol,
   dff: DffSymbol,
+  dff_sr: DffSrSymbol,
   mux: MuxSymbol,
   sw_open: OpenSwitchSymbol,
   sw_closed: ClosedSwitchSymbol,

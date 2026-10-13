@@ -28,7 +28,7 @@ export default function CircuitTabBar({
   const handleStartRename = (e, tab) => {
     e.stopPropagation();
     setEditingTabId(tab.id);
-    setEditTitle(tab.title || 'Bản vẽ');
+    setEditTitle(tab.title || 'Schematic');
   };
 
   const handleFinishRename = (tabId) => {
@@ -62,7 +62,7 @@ export default function CircuitTabBar({
         boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
       }}
     >
-      {/* Danh sách các tab cuộn ngang */}
+      {/* Horizontal scrolling tab list */}
       <div
         ref={tabsContainerRef}
         style={{
@@ -87,7 +87,7 @@ export default function CircuitTabBar({
               data-tab-id={tab.id}
               onClick={() => onSelectTab?.(tab.id)}
               onDoubleClick={(e) => handleStartRename(e, tab)}
-              title={isEditing ? '' : `${tab.title} (Nhấp đúp để đổi tên)`}
+              title={isEditing ? '' : `${tab.title} (Double-click to rename)`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -108,12 +108,12 @@ export default function CircuitTabBar({
                 flexShrink: 0,
               }}
             >
-              {/* Icon trang bản vẽ */}
+              {/* Sheet icon */}
               <span style={{ fontSize: 13, display: 'flex', alignItems: 'center', opacity: isActive ? 1 : 0.7 }}>
                 📄
               </span>
 
-              {/* Tên tab hoặc ô input khi đổi tên */}
+              {/* Tab title or edit input */}
               {isEditing ? (
                 <input
                   type="text"
@@ -149,18 +149,18 @@ export default function CircuitTabBar({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {tab.title || `Bản vẽ ${idx + 1}`}
+                  {tab.title || `Sheet ${idx + 1}`}
                 </span>
               )}
 
-              {/* Nút đóng tab (×) */}
+              {/* Close tab button (×) */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCloseTab?.(tab.id);
                 }}
-                title={tabs.length <= 1 ? 'Đóng và tạo bản vẽ mới' : 'Đóng bản vẽ này'}
+                title={tabs.length <= 1 ? 'Close and create new schematic' : 'Close this schematic'}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -192,11 +192,11 @@ export default function CircuitTabBar({
           );
         })}
 
-        {/* Nút thêm trang mới (+) */}
+        {/* Add sheet button (+) */}
         <button
           type="button"
           onClick={onNewTab}
-          title="Tạo trang bản vẽ mới (+)"
+          title="New Schematic Sheet (+)"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -230,7 +230,7 @@ export default function CircuitTabBar({
         </button>
       </div>
 
-      {/* Thông tin số lượng bản vẽ bên phải */}
+      {/* Sheet count */}
       <div
         style={{
           display: 'flex',
@@ -242,7 +242,7 @@ export default function CircuitTabBar({
           flexShrink: 0,
         }}
       >
-        <span>{tabs.length} trang bản vẽ</span>
+        <span>{tabs.length} sheet{tabs.length > 1 ? 's' : ''}</span>
       </div>
     </div>
   );

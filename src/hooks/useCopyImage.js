@@ -17,7 +17,7 @@ const handleCopyImage = useCallback(() => {
     const selectedWires = wires.filter((w) => w.selected || (selected?.kind === 'wire' && selected.id === w.id));
 
     if (selectedNodes.length === 0 && selectedWires.length === 0) {
-        alert("Vui lòng bôi đen ít nhất 1 linh kiện hoặc dây nối để copy!");
+        alert("Please select at least 1 component or wire to copy!");
         return;
     }
 
@@ -128,8 +128,8 @@ const handleCopyImage = useCallback(() => {
                 canvas.toBlob((croppedBlob) => {
                 if (croppedBlob) {
                     navigator.clipboard.write([new ClipboardItem({ 'image/png': croppedBlob })])
-                    .then(() => alert('Đã copy vùng chọn (trong suốt) vào Clipboard!'))
-                    .catch((err) => alert('Lỗi khi ghi vào Clipboard: ' + err));
+                    .then(() => alert('Selection copied to Clipboard (transparent PNG)!'))
+                    .catch((err) => alert('Failed to copy to Clipboard: ' + err));
                 }
                 URL.revokeObjectURL(url);
 

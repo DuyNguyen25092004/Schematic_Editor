@@ -516,7 +516,7 @@ const {
         }
       }
       else if (e.key === 'w' || e.key === 'W') { setIsWiringMode(true); setIsMoveMode(false); setIsCopyMode(false); setSelected(null); }
-      else if (e.key === 'i' || e.key === 'I') { setQuickAddOpen(true); setSelected(null); }
+      else if (e.key === 'i' || e.key === 'I') { e.preventDefault(); setQuickAddOpen(true); setSelected(null); }
       else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (!isWiringMode && !placingType && (activeNodes.length > 0 || activeWires.length > 0 || selected)) {
           e.preventDefault();

@@ -60,7 +60,7 @@ export const parseVddPort = (id) => {
 // Loại linh kiện mà dây nối vào KHÔNG hiện chấm tròn giao điểm
 export const NO_JUNCTION_DOT_TYPES = new Set(['vdd']);
 // Tên chân cũ (file đã lưu trước khi đổi VDD sang dạng thanh) -> chân mới
-const PORT_ALIASES = { vdd: { p: 'r4' } };
+const PORT_ALIASES = { vdd: { p: 'r4' }, dff_sr: { s: 'set', r: 'rst' } };
 
 export const GND_PORTS = [{ id: 'p', x: 50, y: 30, dir: { x: 0, y: -1 } }];
 export const OPAMP_PORTS = [
@@ -93,6 +93,14 @@ export const DFF_PORTS = [
   { id: 'd',   x: 10, y: 40, dir: { x: -1, y: 0 } },
   { id: 'clk', x: 10, y: 60, dir: { x: -1, y: 0 } },
   { id: 'en',  x: 40, y: 10, dir: { x: 0, y: -1 } },
+  { id: 'rst', x: 40, y: 90, dir: { x: 0, y: 1 } },
+  { id: 'q',   x: 70, y: 40, dir: { x: 1, y: 0 } },
+  { id: 'qn',  x: 70, y: 60, dir: { x: 1, y: 0 } },
+];
+export const DFF_SR_PORTS = [
+  { id: 'd',   x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'clk', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'set', x: 40, y: 10, dir: { x: 0, y: -1 } },
   { id: 'rst', x: 40, y: 90, dir: { x: 0, y: 1 } },
   { id: 'q',   x: 70, y: 40, dir: { x: 1, y: 0 } },
   { id: 'qn',  x: 70, y: 60, dir: { x: 1, y: 0 } },
@@ -139,7 +147,7 @@ export const PORTS_BY_TYPE = {
   inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
   xor: LOGIC_2_PORTS, xnor: XNOR_PORTS,
-  dff: DFF_PORTS, mux: MUX_PORTS,
+  dff: DFF_PORTS, dff_sr: DFF_SR_PORTS, mux: MUX_PORTS,
   sw_open: SW_OPEN_PORTS,
   sw_closed: SW_CLOSED_PORTS,
   sw_spdt: SW_SPDT_PORTS,
@@ -149,9 +157,38 @@ export const PORTS_BY_TYPE = {
   text: [], // văn bản tự do không có chân nối dây
 };
 
-// data: chỉ VDD cần (số chân phụ thuộc độ dài thanh)
-export const getPorts = (type, data) =>
-  (type === 'vdd' ? makeVddPorts(getVddSpan(data)) : (PORTS_BY_TYPE[type] || PORTS));
+// data: chỉ VDD và cổng logic N chân cần (số chân phụ thuộc data)
+export const MULTI_INPUT_LOGIC_TYPES = new Set(['and', 'or', 'nand', 'nor', 'xor', 'xnor']);
+
+export const getLogicPorts = (type, inputs = 2) => {
+  const n = Math.max(2, Math.min(16, Math.round(Number(inputs) || 2)));
+  const ports = [];
+  const y0 = 50 - (n - 1) * 10;
+  for (let i = 1; i <= n; i++) {
+    ports.push({
+      id: `in${i}`,
+      x: 10,
+      y: y0 + (i - 1) * 20,
+      dir: { x: -1, y: 0 },
+    });
+  }
+  const outX = type === 'xnor' ? 80 : 70;
+  ports.push({
+    id: 'out',
+    x: outX,
+    y: 50,
+    dir: { x: 1, y: 0 },
+  });
+  return ports;
+};
+
+export const getPorts = (type, data) => {
+  if (type === 'vdd') return makeVddPorts(getVddSpan(data));
+  if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
+    return getLogicPorts(type, data?.inputs);
+  }
+  return PORTS_BY_TYPE[type] || PORTS;
+};
 
 export const findPort = (type, portId, data) => {
   const ports = getPorts(type, data);
@@ -161,6 +198,9 @@ export const findPort = (type, portId, data) => {
   if (!found && type === 'vdd') {
     const k = parseVddPort(id);
     if (k !== null) return k > 0 ? ports[ports.length - 1] : ports[0];
+  }
+  if (!found && MULTI_INPUT_LOGIC_TYPES.has(type) && String(portId).startsWith('in')) {
+    return ports[ports.length - 2];
   }
   return found;
 };
@@ -185,6 +225,7 @@ export const SYMBOL_BOX_BY_TYPE = {
   xor:      { x: 10, y: 30, w: 60, h: 40 },
   xnor:     { x: 10, y: 30, w: 70, h: 40 },
   dff:      { x: 10, y: 10, w: 60, h: 80 },
+  dff_sr:   { x: 10, y: 10, w: 60, h: 80 },
   mux:      { x: 10, y: 24, w: 60, h: 58 },
   sw_open:   { x: 10, y: 35, w: 60, h: 25 },
   sw_closed: { x: 10, y: 44, w: 60, h: 16 },
@@ -199,6 +240,11 @@ export const getSymbolBox = (type, data) => {
   }
   if (type === 'rect') {
     return { x: 0, y: 0, w: data?.width ?? 160, h: data?.height ?? 100 };
+  }
+  if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
+    const n = Math.max(2, Math.min(16, Math.round(Number(data?.inputs) || 2)));
+    const w = type === 'xnor' ? 70 : 60;
+    return { x: 10, y: 50 - n * 10, w, h: n * 20 };
   }
   return SYMBOL_BOX_BY_TYPE[type] || DEFAULT_SYMBOL_BOX;
 };
@@ -224,34 +270,35 @@ export const COMPONENT_CATEGORIES = [
   { id: 'shapes',      label: 'Shapes' },
 ];
 
-// ============ THƯ VIỆN LINH KIỆN ============
+// ============ THƯ VIỆN LINH KIỆN (COMPONENT LIBRARY) ============
 export const COMPONENT_LIBRARY = [
   { type: 'nmos',     category: 'transistors', short: 'NMOS',    label: 'NMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
   { type: 'pmos',     category: 'transistors', short: 'PMOS',    label: 'PMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
   { type: 'npn',      category: 'transistors', short: 'NPN',     label: 'BJT NPN',       refPrefix: 'Q_',  defaultData: {} },
   { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: {} },
-  { type: 'res',      category: 'passives',    short: 'Res',     label: 'Điện trở',      refPrefix: 'R_',  defaultData: { value: '1k' } },
-  { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Tụ điện',       refPrefix: 'C_',  defaultData: { value: '1p' } },
-  { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Thường mở)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Thường đóng)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'Switch 2 đầu (SPDT)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_sp3t',   category: 'switches',    short: 'SP3T',    label: 'Switch 3 đầu (SP3T)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'Switch 4 đầu (SP4T)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'res',      category: 'passives',    short: 'Res',     label: 'Resistor',      refPrefix: 'R_',  defaultData: { value: '1k' } },
+  { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Capacitor',     refPrefix: 'C_',  defaultData: { value: '1p' } },
+  { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Normally Open)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Normally Closed)', refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'SPDT Switch',   refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_sp3t',   category: 'switches',    short: 'SP3T',    label: 'SP3T Switch',   refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'SP4T Switch',   refPrefix: 'SW_', defaultData: {} },
   { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
-  { type: 'vsource',  category: 'power',       short: 'Vdc',     label: 'Nguồn áp (V)',  refPrefix: 'V_',  defaultData: { value: '1V' } },
-  { type: 'isource',  category: 'power',       short: 'Idc',     label: 'Nguồn dòng (I)', refPrefix: 'I_', defaultData: { value: '1mA' } },
+  { type: 'vsource',  category: 'power',       short: 'Vdc',     label: 'Voltage Source (Vdc)',  refPrefix: 'V_',  defaultData: { value: '1V' } },
+  { type: 'isource',  category: 'power',       short: 'Idc',     label: 'Current Source (Idc)', refPrefix: 'I_', defaultData: { value: '1mA' } },
   { type: 'opamp',    category: 'analog',      short: 'Opamp',   label: 'Opamp',         refPrefix: 'U_',  defaultData: {} },
   { type: 'fdopamp',  category: 'analog',      short: 'FD Opamp', label: 'FD opamp',     refPrefix: 'U_',  defaultData: {} },
   { type: 'inverter', category: 'logic',       short: 'INV',     label: 'Inverter (NOT)', refPrefix: 'U_', defaultData: {} },
   { type: 'buffer',   category: 'logic',       short: 'BUF',     label: 'Buffer',         refPrefix: 'U_', defaultData: {} },
-  { type: 'and',      category: 'logic',       short: 'AND',     label: 'Cổng AND',       refPrefix: 'U_', defaultData: {} },
-  { type: 'or',       category: 'logic',       short: 'OR',      label: 'Cổng OR',        refPrefix: 'U_', defaultData: {} },
-  { type: 'nand',     category: 'logic',       short: 'NAND',    label: 'Cổng NAND',      refPrefix: 'U_', defaultData: {} },
-  { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'Cổng NOR',       refPrefix: 'U_', defaultData: {} },
-  { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'Cổng XOR',       refPrefix: 'U_', defaultData: {} },
-  { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'Cổng XNOR',      refPrefix: 'U_', defaultData: {} },
-  { type: 'dff',      category: 'logic',       short: 'DFF',     label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: {} },
+  { type: 'and',      category: 'logic',       short: 'AND',     label: 'AND Gate',       refPrefix: 'U_', defaultData: {} },
+  { type: 'or',       category: 'logic',       short: 'OR',      label: 'OR Gate',        refPrefix: 'U_', defaultData: {} },
+  { type: 'nand',     category: 'logic',       short: 'NAND',    label: 'NAND Gate',      refPrefix: 'U_', defaultData: {} },
+  { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'NOR Gate',       refPrefix: 'U_', defaultData: {} },
+  { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'XOR Gate',       refPrefix: 'U_', defaultData: {} },
+  { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'XNOR Gate',      refPrefix: 'U_', defaultData: {} },
+  { type: 'dff',      category: 'logic',       short: 'DFF (EN)',  label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: {} },
+  { type: 'dff_sr',   category: 'logic',       short: 'DFF (SET)', label: 'D Flip-Flop (SET, RST)', refPrefix: 'U_', defaultData: {} },
   { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: {} },
-  { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Hình chữ nhật', refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
+  { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rectangle',     refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

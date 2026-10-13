@@ -17,17 +17,17 @@ function OnlineUsers({ me, others = {}, onRename, isHost, canEdit, hostUid, host
   );
 
   const getOtherBadge = (uid, u) => {
-    if (uid === hostUid) return { icon: '👑', tip: `${u.name} (Chủ phòng)` };
-    if (u.hasDriveAccess) return { icon: '📁', tip: `${u.name} (Xác thực Google Drive - Quyền sửa)` };
-    if (hostUser?.approvedEditors?.[uid]) return { icon: '✏️', tip: `${u.name} (Đã được duyệt chỉnh sửa)` };
-    return { icon: '👁️', tip: `${u.name} (Chỉ xem)` };
+    if (uid === hostUid) return { icon: '👑', tip: `${u.name} (Host)` };
+    if (u.hasDriveAccess) return { icon: '📁', tip: `${u.name} (Google Drive Verified - Editor)` };
+    if (hostUser?.approvedEditors?.[uid]) return { icon: '✏️', tip: `${u.name} (Approved Editor)` };
+    return { icon: '👁️', tip: `${u.name} (Viewer)` };
   };
 
   const getMyBadge = () => {
-    if (isHost) return { icon: '👑', tip: 'Bạn là Chủ phòng (Toàn quyền)' };
-    if (me?.hasDriveAccess) return { icon: '📁', tip: 'Bạn có quyền Google Drive (Tự động chỉnh sửa)' };
-    if (canEdit) return { icon: '✏️', tip: 'Bạn đã được duyệt quyền chỉnh sửa' };
-    return { icon: '👁️', tip: 'Bạn đang ở chế độ Chỉ xem' };
+    if (isHost) return { icon: '👑', tip: 'You are Host (Full access)' };
+    if (me?.hasDriveAccess) return { icon: '📁', tip: 'Google Drive permission (Editor)' };
+    if (canEdit) return { icon: '✏️', tip: 'You are approved to edit' };
+    return { icon: '👁️', tip: 'You are in View-only mode' };
   };
 
   const myBadge = getMyBadge();
@@ -46,8 +46,8 @@ function OnlineUsers({ me, others = {}, onRename, isHost, canEdit, hostUid, host
         );
       })}
       {me && (
-        <div title="Bấm để đổi tên hiển thị" onClick={() => onRename(window.prompt('Tên hiển thị:', me.name))}>
-          {chip(me.color, `${me.name} (bạn)`, myBadge.icon, `${myBadge.tip} - Bấm để đổi tên`, { cursor: 'pointer' })}
+        <div title="Click to change display name" onClick={() => onRename(window.prompt('Display name:', me.name))}>
+          {chip(me.color, `${me.name} (you)`, myBadge.icon, `${myBadge.tip} - Click to change name`, { cursor: 'pointer' })}
         </div>
       )}
     </div>

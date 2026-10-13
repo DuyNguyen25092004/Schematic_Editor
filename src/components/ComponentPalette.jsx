@@ -126,10 +126,6 @@ function ComponentPalette({ onComponentDragStart }) {
           );
         })}
       </div>
-
-      <div style={{ padding: '10px 14px', fontSize: 11.5, color: '#888', borderTop: '1px solid #eee', lineHeight: 1.5 }}>
-        Kéo linh kiện vào canvas, hoặc bấm phím <b>I</b> để gọi nhanh.
-      </div>
     </div>
   );
 }

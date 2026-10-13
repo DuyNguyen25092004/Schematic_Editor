@@ -1,7 +1,7 @@
 import { GRID, NO_JUNCTION_DOT_TYPES } from '../constants';
 import { toGridUnit, sameGridPoint } from '../geometry/grid';
 import { resolvePoints } from '../routing/resolveWire';
-import { pointAtRatio, projectOnPath } from '../geometry/pathUtils';
+import { pointAtRatio, projectOnPath, simplifyMiddle } from '../geometry/pathUtils';
 
 export function getJunctionDots(wires, nodes, resolvedMap = null) {
   const dots = [];
@@ -210,4 +210,105 @@ export function fixOrthogonalChain(pointsBefore, pointsAfter, pivotIndex) {
   }
 
   return pts;
+}
+
+// Tính toán kéo thân dây (segment drag) thuần túy từ mốc initialPoints ban đầu.
+// Loại bỏ hoàn toàn lỗi cộng dồn sai số qua từng frame và lỗi lệch segIndex khi mảng co lại.
+export function computeDraggedWire(initialPoints, segIndex, newVal) {
+  if (!initialPoints || initialPoints.length < 2) return initialPoints;
+  const A = initialPoints[segIndex];
+  const B = initialPoints[segIndex + 1];
+  if (!A || !B) return initialPoints;
+
+  const horizontal = Math.abs(A.y - B.y) < 1;
+  const axis = horizontal ? 'y' : 'x';
+  const along = horizontal ? 'x' : 'y';
+
+  const aPinned = segIndex === 0 && !!(A.nodeId || A.onWireId);
+  const bPinned = (segIndex + 1 === initialPoints.length - 1) && !!(B.nodeId || B.onWireId);
+
+  let newSeg = [];
+  if (aPinned) {
+    newSeg.push({ ...A });
+    newSeg.push({ [along]: A[along], [axis]: newVal });
+  } else {
+    newSeg.push({ ...A, [axis]: newVal });
+  }
+
+  if (bPinned) {
+    newSeg.push({ [along]: B[along], [axis]: newVal });
+    newSeg.push({ ...B });
+  } else {
+    newSeg.push({ ...B, [axis]: newVal });
+  }
+
+  const before = initialPoints.slice(0, segIndex);
+  const after = initialPoints.slice(segIndex + 2);
+
+  const raw = [...before, ...newSeg, ...after];
+  return simplifyMiddle(raw);
+}
+
+// Tính toán kéo đầu mút dây (endpoint drag) bảo toàn tính trực giao (orthogonal).
+// Tự động chèn điểm gấp khúc (elbow) vào mảng điểm thực tế khi kéo đầu mút lệch góc,
+// đảm bảo wire.points luôn lưu trữ đường gấp khúc trực giao chuẩn xác thay vì đường chéo thô.
+export function computeEndpointDrag(initialPoints, isStart, snapped) {
+  if (!initialPoints || initialPoints.length < 2) return initialPoints;
+  const pts = initialPoints.map((p) => ({ ...p }));
+  const last = pts.length - 1;
+  const endIdx = isStart ? 0 : last;
+  const fixedIdx = isStart ? last : 0;
+  const fixed = pts[fixedIdx];
+
+  if (pts.length === 2) {
+    const origEnd = pts[endIdx];
+    const wasHorizontal = Math.abs(fixed.y - origEnd.y) < 1;
+
+    // Nếu di chuyển thẳng hàng với điểm neo còn lại
+    if (Math.abs(snapped.x - fixed.x) < 1 || Math.abs(snapped.y - fixed.y) < 1) {
+      pts[endIdx] = { ...snapped };
+      return simplifyMiddle(pts);
+    }
+
+    // Nếu di chuyển lệch hướng tạo góc L:
+    let elbow;
+    if (wasHorizontal) {
+      // Dây ban đầu nằm ngang: kéo tiếp ngang từ fixed tới snapped.x, rồi bẻ góc dọc tới snapped.y
+      elbow = { x: snapped.x, y: fixed.y };
+    } else {
+      // Dây ban đầu nằm dọc: kéo tiếp dọc từ fixed tới snapped.y, rồi bẻ góc ngang tới snapped.x
+      elbow = { x: fixed.x, y: snapped.y };
+    }
+
+    const newPts = isStart
+      ? [{ ...snapped }, elbow, { ...fixed }]
+      : [{ ...fixed }, elbow, { ...snapped }];
+    return simplifyMiddle(newPts);
+  }
+
+  // Nếu pts có từ 3 điểm trở lên:
+  const neighborIdx = isStart ? 1 : last - 1;
+  const prevNeighborIdx = isStart ? 2 : last - 2;
+  const neighbor = pts[neighborIdx];
+  const prevNeighbor = pts[prevNeighborIdx];
+  const prevHorizontal = prevNeighbor ? Math.abs(prevNeighbor.y - neighbor.y) < 1 : false;
+
+  // Kiểm tra xem snapped có thẳng hàng với neighbor hay không
+  if (Math.abs(snapped.x - neighbor.x) < 1 || Math.abs(snapped.y - neighbor.y) < 1) {
+    pts[endIdx] = { ...snapped };
+    return simplifyMiddle(pts);
+  }
+
+  // Chéo góc với neighbor -> chèn thêm elbow vuông góc
+  let elbow;
+  if (prevHorizontal) {
+    elbow = { x: neighbor.x, y: snapped.y };
+  } else {
+    elbow = { x: snapped.x, y: neighbor.y };
+  }
+
+  const newPts = isStart
+    ? [{ ...snapped }, elbow, ...pts.slice(1)]
+    : [...pts.slice(0, last), elbow, { ...snapped }];
+  return simplifyMiddle(newPts);
 }

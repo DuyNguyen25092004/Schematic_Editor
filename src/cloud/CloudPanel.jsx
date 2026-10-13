@@ -66,7 +66,7 @@ function formatDateTime(isoString) {
   if (!isoString) return '';
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return '';
-  return `${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+  return `${d.toLocaleDateString('en-US')} ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 export default function CloudPanel({
@@ -93,11 +93,11 @@ export default function CloudPanel({
   });
 
   // Tên file trong ô input để lưu
-  const [fileNameInput, setFileNameInput] = useState(() => activeFile?.name || 'So do moi');
+  const [fileNameInput, setFileNameInput] = useState(() => activeFile?.name || 'New Schematic');
 
   // Thư mục hiện tại đang duyệt trong Google Drive
-  const [currentFolder, setCurrentFolder] = useState({ id: 'root', name: 'Drive của tôi' });
-  const [breadcrumbs, setBreadcrumbs] = useState([{ id: 'root', name: 'Drive của tôi' }]);
+  const [currentFolder, setCurrentFolder] = useState({ id: 'root', name: 'My Drive' });
+  const [breadcrumbs, setBreadcrumbs] = useState([{ id: 'root', name: 'My Drive' }]);
 
   // Danh sách trong thư mục đang duyệt: folders và files
   const [folderItems, setFolderItems] = useState({ folders: [], files: [] });
@@ -168,7 +168,7 @@ export default function CloudPanel({
     try {
       return await fn();
     } catch (e) {
-      setMsg(e.message || 'Đã có lỗi xảy ra');
+      setMsg(e.message || 'An error occurred');
       if (!isLoggedIn()) setLogged(false);
       return null;
     } finally {
@@ -184,7 +184,7 @@ export default function CloudPanel({
       const res = await driveListFolderContents(folderId);
       setFolderItems(res);
     } catch (e) {
-      setMsg('Không thể nạp nội dung thư mục: ' + e.message);
+      setMsg('Failed to load folder contents: ' + e.message);
     } finally {
       setLoadingFolder(false);
     }
@@ -224,16 +224,16 @@ export default function CloudPanel({
     onAuthChange?.();
   };
 
-  // Chuyển sang xem "Drive của tôi"
+  // Chuyển sang xem "My Drive"
   const switchToMyDrive = () => {
-    const root = { id: 'root', name: 'Drive của tôi' };
+    const root = { id: 'root', name: 'My Drive' };
     setCurrentFolder(root);
     setBreadcrumbs([root]);
   };
 
-  // Chuyển sang xem "Được chia sẻ với tôi"
+  // Chuyển sang xem "Shared with me"
   const switchToSharedWithMe = () => {
-    const shared = { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' };
+    const shared = { id: 'sharedWithMe', name: 'Shared with me' };
     setCurrentFolder(shared);
     setBreadcrumbs([shared]);
   };
@@ -242,23 +242,23 @@ export default function CloudPanel({
   const handleOpenFolderByUrl = () => run(async () => {
     const parsedId = parseFolderIdFromUrl(urlInput);
     if (!parsedId) {
-      setMsg('Link hoặc ID thư mục không hợp lệ.');
+      setMsg('Invalid folder link or ID.');
       return;
     }
     const meta = await driveGetFolderMeta(parsedId);
     if (!meta || !meta.id) {
-      setMsg('Không thể truy cập thư mục này. Vui lòng kiểm tra quyền truy cập hoặc ID.');
+      setMsg('Cannot access this folder. Please check your permissions or folder ID.');
       return;
     }
-    const folderObj = { id: meta.id, name: meta.name || 'Thư mục được chia sẻ' };
+    const folderObj = { id: meta.id, name: meta.name || 'Shared Folder' };
     setCurrentFolder(folderObj);
     setBreadcrumbs([
-      { id: 'sharedWithMe', name: 'Được chia sẻ với tôi' },
+      { id: 'sharedWithMe', name: 'Shared with me' },
       folderObj,
     ]);
     setIsOpeningUrl(false);
     setUrlInput('');
-    setMsg(`Đã mở thư mục "${folderObj.name}" ✔`);
+    setMsg(`Opened folder "${folderObj.name}" ✔`);
   });
 
   // Điều hướng vào 1 thư mục con
@@ -287,7 +287,7 @@ export default function CloudPanel({
   // Tạo thư mục mới trên Google Drive
   const handleCreateNewFolder = () => run(async () => {
     if (currentFolder.id === 'sharedWithMe') {
-      setMsg('Không thể tạo thư mục trực tiếp tại "Được chia sẻ với tôi". Vui lòng chọn một thư mục con hoặc chuyển sang "Drive của tôi".');
+      setMsg('Cannot create folder directly in "Shared with me". Please select a subfolder or switch to "My Drive".');
       return;
     }
     const name = newFolderName.trim();
@@ -295,7 +295,7 @@ export default function CloudPanel({
     const res = await driveCreateFolder(name, currentFolder.id);
     setNewFolderName('');
     setIsCreatingFolder(false);
-    setMsg(`Đã tạo thư mục "${res.name}" ✔`);
+    setMsg(`Created folder "${res.name}" ✔`);
     await loadFolderContents(currentFolder.id);
   });
 
@@ -310,7 +310,7 @@ export default function CloudPanel({
     if (data.sheets && Array.isArray(data.sheets) && data.sheets.length > 0) {
       loadedSheets = data.sheets.map((s) => ({
         id: s.id,
-        name: s.name || 'Trang',
+        name: s.name || 'Sheet',
         nodes: (s.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
         wires: s.wires || [],
       }));
@@ -323,7 +323,7 @@ export default function CloudPanel({
     } else {
       const loadedNodes = (data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) }));
       const loadedWires = data.wires || [];
-      const singleSheet = [{ id: 'sheet_1', name: f.name.replace(SUFFIX, '') || 'Trang 1', nodes: loadedNodes, wires: loadedWires }];
+      const singleSheet = [{ id: 'sheet_1', name: f.name.replace(SUFFIX, '') || 'Sheet 1', nodes: loadedNodes, wires: loadedWires }];
       loadedSheets = singleSheet;
       activeSheet = singleSheet[0];
       if (setSheets) setSheets(singleSheet);
@@ -354,7 +354,7 @@ export default function CloudPanel({
     // Đánh dấu snapshot đã lưu tại thời điểm vừa mở
     lastSavedSnapshotRef.current = makeCircuitSnapshot(activeSheet.nodes, activeSheet.wires, loadedSheets);
     setSaveStatus('saved');
-    setLastSavedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    setLastSavedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
     const openTs = Date.now();
     try {
@@ -461,10 +461,10 @@ export default function CloudPanel({
   // Nút: "Lưu vào thư mục hiện tại" (nếu là file mới, hoặc lưu đè nếu đang mở file trong thư mục này)
   const handleSaveToCurrentFolder = () => run(async () => {
     if (currentFolder.id === 'sharedWithMe') {
-      setMsg('Mục "Được chia sẻ với tôi" là danh sách chung. Hãy chọn vào một thư mục con bên trong để lưu file.');
+      setMsg('The "Shared with me" root is a general list. Please navigate into a subfolder to save your file.');
       return;
     }
-    const name = fileNameInput.trim() || 'So do moi';
+    const name = fileNameInput.trim() || 'New Schematic';
     const isUpdatingSameFile = activeFile?.id && activeFile?.folderId === currentFolder.id && activeFile?.name === name;
 
     const res = await doSaveToDrive({
@@ -473,7 +473,7 @@ export default function CloudPanel({
       targetName: name,
     });
 
-    setMsg(`Đã lưu "${res.name}" vào thư mục "${currentFolder.name}" ✔`);
+    setMsg(`Saved "${res.name}" to folder "${currentFolder.name}" ✔`);
     await loadFolderContents(currentFolder.id);
   });
 
@@ -486,7 +486,7 @@ export default function CloudPanel({
       targetFolderId: activeFile.folderId,
       targetName: name,
     });
-    setMsg(`Đã lưu cập nhật vào file "${activeFile.name}" ✔`);
+    setMsg(`Saved updates to file "${activeFile.name}" ✔`);
     if (currentFolder.id === activeFile.folderId) {
       await loadFolderContents(currentFolder.id);
     }
@@ -495,22 +495,22 @@ export default function CloudPanel({
   // Nút: "Lưu thành bản mới vào thư mục này"
   const handleSaveAsNew = () => run(async () => {
     if (currentFolder.id === 'sharedWithMe') {
-      setMsg('Mục "Được chia sẻ với tôi" là danh sách chung. Hãy chọn vào một thư mục con bên trong để lưu file.');
+      setMsg('The "Shared with me" root is a general list. Please navigate into a subfolder to save your file.');
       return;
     }
-    const name = fileNameInput.trim() || 'So do moi (ban sao)';
+    const name = fileNameInput.trim() || 'New Schematic (copy)';
     const res = await doSaveToDrive({
       targetFileId: null,
       targetFolderId: currentFolder.id,
       targetName: name,
     });
-    setMsg(`Đã tạo bản mới "${res.name}" trong thư mục "${currentFolder.name}" ✔`);
+    setMsg(`Created new copy "${res.name}" in folder "${currentFolder.name}" ✔`);
     await loadFolderContents(currentFolder.id);
   });
 
   // Xóa file trên Google Drive
   const handleDeleteFile = (f) => run(async () => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa file "${f.name}" khỏi Google Drive không?`)) return;
+    if (!window.confirm(`Are you sure you want to delete file "${f.name}" from Google Drive?`)) return;
     await driveDelete(f.id);
     if (activeFile?.id === f.id) {
       setActiveFile(null);
@@ -523,16 +523,16 @@ export default function CloudPanel({
         // ignore
       }
     }
-    setMsg(`Đã xóa "${f.name}" ✔`);
+    setMsg(`Deleted "${f.name}" ✔`);
     await loadFolderContents(currentFolder.id);
   });
 
   // Tạo sơ đồ mới (trang trắng)
   const handleNewDocument = () => {
     if (saveStatus === 'dirty') {
-      if (!window.confirm('Bạn có thay đổi chưa lưu. Bạn có chắc muốn tạo sơ đồ mới không?')) return;
+      if (!window.confirm('You have unsaved changes. Are you sure you want to create a new schematic?')) return;
     }
-    const initialSheet = [{ id: 'sheet_1', name: 'Trang 1', nodes: [], wires: [] }];
+    const initialSheet = [{ id: 'sheet_1', name: 'Sheet 1', nodes: [], wires: [] }];
     if (setSheets) setSheets(initialSheet);
     if (setActiveSheetId) setActiveSheetId('sheet_1');
     setNodes([]);
@@ -540,7 +540,7 @@ export default function CloudPanel({
     setActiveFile(null);
     activeFileRef.current = null;
     lastSavedSnapshotRef.current = null;
-    setFileNameInput('So do moi');
+    setFileNameInput('New Schematic');
     setSaveStatus('idle');
     try {
       sessionStorage.removeItem('schem_active_file');
@@ -548,7 +548,7 @@ export default function CloudPanel({
       // ignore
     }
     onNewRoom?.();
-    setMsg('Đã tạo sơ đồ mới trống');
+    setMsg('Created new empty schematic');
   };
 
   // ===================== CƠ CHẾ AUTO-SAVE =====================
@@ -630,11 +630,11 @@ export default function CloudPanel({
 
         lastSavedSnapshotRef.current = currentSnapshot;
         setSaveStatus('saved');
-        const timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSavedTime(timeStr);
       } catch (err) {
         setSaveStatus('error');
-        setMsg('Tự động lưu lỗi: ' + err.message);
+        setMsg('Auto-save error: ' + err.message);
       }
     }, 1500);
 
@@ -690,12 +690,12 @@ export default function CloudPanel({
 
               lastSavedSnapshotRef.current = makeCircuitSnapshot(curNodes, curWires, currentFullSheets);
               setSaveStatus('saved');
-              setLastSavedTime(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-              setMsg('Đã lưu (Ctrl+S) ✔');
+              setLastSavedTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+              setMsg('Saved (Ctrl+S) ✔');
             })
             .catch((err) => {
               setSaveStatus('error');
-              setMsg('Lỗi lưu: ' + err.message);
+              setMsg('Save error: ' + err.message);
             });
         } else {
           // Chưa có file -> mở panel để người dùng chọn thư mục và đặt tên
@@ -725,28 +725,28 @@ export default function CloudPanel({
     if (saveStatus === 'saving') {
       return (
         <span style={{ color: '#1677ff', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-          💾 Đang lưu...
+          💾 Saving...
         </span>
       );
     }
     if (saveStatus === 'saved') {
       return (
         <span style={{ color: '#52c41a', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-          🟢 Đã lưu {lastSavedTime ? `(${lastSavedTime})` : ''}
+          🟢 Saved {lastSavedTime ? `(${lastSavedTime})` : ''}
         </span>
       );
     }
     if (saveStatus === 'dirty') {
       return (
         <span style={{ color: '#fa8c16', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-          🟡 Chưa lưu
+          🟡 Unsaved
         </span>
       );
     }
     if (saveStatus === 'error') {
       return (
         <span style={{ color: '#ff4d4f', display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-          🔴 Lỗi lưu
+          🔴 Save Error
         </span>
       );
     }
@@ -769,7 +769,7 @@ export default function CloudPanel({
             fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
             padding: '4px 6px', borderRadius: 4, color: '#1677ff',
           }}
-          title="Mở bảng quản lý thư mục Google Drive"
+          title="Open Google Drive folder management"
         >
           ☁ Drive
         </button>
@@ -783,7 +783,7 @@ export default function CloudPanel({
                 fontWeight: 600, color: '#333', cursor: 'pointer',
               }}
               onClick={() => setOpen(true)}
-              title={`File: ${activeFile.name}\nThư mục: ${activeFile.folderName}`}
+              title={`File: ${activeFile.name}\nFolder: ${activeFile.folderName}`}
             >
               📄 {activeFile.name}
             </span>
@@ -800,9 +800,9 @@ export default function CloudPanel({
                   border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11,
                   fontWeight: 600,
                 }}
-                title="Lưu ngay (Ctrl+S)"
+                title="Save now (Ctrl+S)"
               >
-                Lưu ngay
+                Save now
               </button>
             )}
           </>
@@ -812,7 +812,7 @@ export default function CloudPanel({
           <>
             <span style={{ color: '#ddd' }}>|</span>
             <span style={{ color: '#888', fontStyle: 'italic', cursor: 'pointer' }} onClick={() => setOpen(true)}>
-              Chưa lưu vào Drive
+              Not saved to Drive
             </span>
           </>
         )}
@@ -852,7 +852,7 @@ export default function CloudPanel({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 18 }}>☁</span>
-                <b style={{ fontSize: 15, color: '#1a1a1a' }}>Google Drive — Quản lý thư mục & Tự động lưu</b>
+                <b style={{ fontSize: 15, color: '#1a1a1a' }}>Google Drive — Folder Management & Auto-Save</b>
               </div>
               <button
                 onClick={() => setOpen(false)}
@@ -870,9 +870,9 @@ export default function CloudPanel({
               {!logged ? (
                 <div style={{ textAlign: 'center', padding: '30px 10px' }}>
                   <div style={{ fontSize: 42, marginBottom: 12 }}>☁</div>
-                  <h3 style={{ margin: '0 0 8px 0', color: '#222' }}>Đăng nhập Google Drive</h3>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#222' }}>Sign in to Google Drive</h3>
                   <p style={{ color: '#666', fontSize: 13, maxWidth: 420, margin: '0 auto 18px auto', lineHeight: 1.5 }}>
-                    Kết nối với tài khoản Google để chọn chính xác thư mục bạn muốn lưu, mở lại file mạch điện và tự động cập nhật mọi thay đổi trực tiếp lên Drive.
+                    Connect your Google account to choose exactly where to save schematics, reopen existing circuits, and auto-sync changes to Google Drive.
                   </p>
                   <button
                     disabled={busy}
@@ -884,7 +884,7 @@ export default function CloudPanel({
                       boxShadow: '0 2px 6px rgba(22,119,255,0.3)',
                     }}
                   >
-                    {busy ? 'Đang kết nối...' : 'Đăng nhập Google'}
+                    {busy ? 'Connecting...' : 'Sign in with Google'}
                   </button>
                 </div>
               ) : (
@@ -896,7 +896,7 @@ export default function CloudPanel({
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: '#555' }}>
-                        Tài khoản: <b>{email || 'Đã đăng nhập'}</b>
+                        Account: <b>{email || 'Signed in'}</b>
                       </span>
                       <button
                         onClick={handleLogout}
@@ -905,21 +905,21 @@ export default function CloudPanel({
                           cursor: 'pointer', fontSize: 12, textDecoration: 'underline',
                         }}
                       >
-                        Đăng xuất
+                        Sign out
                       </button>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                       <div style={{ fontSize: 13 }}>
-                        File đang mở: {activeFile ? (
+                        Open file: {activeFile ? (
                           <>
                             <b style={{ color: '#1677ff' }}>{activeFile.name}</b>
                             <span style={{ color: '#666', fontSize: 12, marginLeft: 6 }}>
-                              (trong thư mục: <b>{activeFile.folderName}</b>)
+                              (in folder: <b>{activeFile.folderName}</b>)
                             </span>
                           </>
                         ) : (
-                          <i style={{ color: '#888' }}>Chưa mở file nào (Sơ đồ mới chưa lưu)</i>
+                          <i style={{ color: '#888' }}>No file open (New unsaved schematic)</i>
                         )}
                       </div>
                       <div>{renderStatusBadge()}</div>
@@ -934,7 +934,7 @@ export default function CloudPanel({
                           onChange={(e) => handleToggleAutoSave(e.target.checked)}
                           style={{ cursor: 'pointer' }}
                         />
-                        <span>Tự động lưu trực tiếp vào file trên Google Drive mỗi khi có thay đổi (Auto-save)</span>
+                        <span>Automatically save changes directly to Google Drive (Auto-save)</span>
                       </label>
                     </div>
                   </div>
@@ -946,12 +946,12 @@ export default function CloudPanel({
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <label style={{ fontSize: 13, fontWeight: 600, color: '#333', whiteSpace: 'nowrap' }}>
-                        Tên sơ đồ:
+                        Schematic name:
                       </label>
                       <input
                         value={fileNameInput}
                         onChange={(e) => setFileNameInput(e.target.value)}
-                        placeholder="Nhập tên sơ đồ mạch..."
+                        placeholder="Enter schematic name..."
                         style={{
                           flex: 1, padding: '7px 10px', fontSize: 13,
                           border: '1px solid #ccc', borderRadius: 6, outline: 'none',
@@ -970,9 +970,9 @@ export default function CloudPanel({
                           fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
                           display: 'flex', alignItems: 'center', gap: 5,
                         }}
-                        title={`Lưu file "${fileNameInput}" vào thư mục "${currentFolder.name}"`}
+                        title={`Save file "${fileNameInput}" to folder "${currentFolder.name}"`}
                       >
-                        💾 Lưu vào thư mục: {currentFolder.name}
+                        💾 Save to folder: {currentFolder.name}
                       </button>
 
                       {/* Nếu đang mở file cũ và muốn lưu đè vào file đó */}
@@ -985,9 +985,9 @@ export default function CloudPanel({
                             borderRadius: 6, padding: '7px 12px', fontSize: 12,
                             fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
                           }}
-                          title={`Ghi đè trực tiếp vào file "${activeFile.name}" trong thư mục "${activeFile.folderName}"`}
+                          title={`Overwrite existing file "${activeFile.name}" in folder "${activeFile.folderName}"`}
                         >
-                          Lưu đè file hiện tại
+                          Overwrite Current File
                         </button>
                       )}
 
@@ -1002,7 +1002,7 @@ export default function CloudPanel({
                             fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
                           }}
                         >
-                          Lưu thành bản mới
+                          Save as Copy
                         </button>
                       )}
 
@@ -1014,7 +1014,7 @@ export default function CloudPanel({
                           cursor: 'pointer', marginLeft: 'auto',
                         }}
                       >
-                        📄 Tạo sơ đồ mới
+                        📄 New Schematic
                       </button>
                     </div>
                   </div>
@@ -1025,7 +1025,7 @@ export default function CloudPanel({
                     display: 'flex', flexDirection: 'column', flex: 1, minHeight: 240,
                     overflow: 'hidden',
                   }}>
-                    {/* Tabs chuyển đổi giữa Drive của tôi và Được chia sẻ với tôi */}
+                    {/* Tabs switch between My Drive and Shared with me */}
                     <div style={{
                       display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0',
                       background: '#f8fafc', padding: '0 8px', gap: 4, flexWrap: 'wrap',
@@ -1040,7 +1040,7 @@ export default function CloudPanel({
                           fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
                         }}
                       >
-                        <span>🏠</span> Drive của tôi
+                        <span>🏠</span> My Drive
                       </button>
                       <button
                         onClick={switchToSharedWithMe}
@@ -1052,7 +1052,7 @@ export default function CloudPanel({
                           fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
                         }}
                       >
-                        <span>👥</span> Được chia sẻ với tôi
+                        <span>👥</span> Shared with me
                       </button>
                       <button
                         onClick={() => setIsOpeningUrl((v) => !v)}
@@ -1061,19 +1061,19 @@ export default function CloudPanel({
                           border: '1px solid #cbd5e1', borderRadius: 4, background: '#fff',
                           color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                         }}
-                        title="Nhập link Google Drive hoặc mã ID thư mục được chia sẻ"
+                        title="Enter Google Drive link or shared folder ID"
                       >
-                        <span>🔗</span> Mở link / ID thư mục
+                        <span>🔗</span> Open Folder Link / ID
                       </button>
                     </div>
 
-                    {/* Hộp nhập link hoặc ID thư mục */}
+                    {/* Folder Link / ID input box */}
                     {isOpeningUrl && (
                       <div style={{
                         padding: '8px 12px', background: '#f0f7ff', borderBottom: '1px solid #bae0ff',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
-                        <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>Link hoặc ID thư mục:</span>
+                        <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>Folder Link or ID:</span>
                         <input
                           autoFocus
                           value={urlInput}
@@ -1082,7 +1082,7 @@ export default function CloudPanel({
                             if (e.key === 'Enter') handleOpenFolderByUrl();
                             if (e.key === 'Escape') setIsOpeningUrl(false);
                           }}
-                          placeholder="Dán link drive.google.com/drive/folders/... hoặc ID thư mục"
+                          placeholder="Paste drive.google.com/drive/folders/... link or folder ID"
                           style={{
                             flex: 1, padding: '4px 8px', fontSize: 12,
                             border: '1px solid #91caff', borderRadius: 4, outline: 'none',
@@ -1096,7 +1096,7 @@ export default function CloudPanel({
                             color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer',
                           }}
                         >
-                          Mở
+                          Open
                         </button>
                         <button
                           onClick={() => setIsOpeningUrl(false)}
@@ -1105,12 +1105,12 @@ export default function CloudPanel({
                             border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer',
                           }}
                         >
-                          Đóng
+                          Close
                         </button>
                       </div>
                     )}
 
-                    {/* Thanh điều hướng Breadcrumbs */}
+                    {/* Breadcrumbs Navigation */}
                     <div style={{
                       padding: '8px 12px', background: '#fafafa', borderBottom: '1px solid #e8e8e8',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1137,7 +1137,7 @@ export default function CloudPanel({
                         ))}
                       </div>
 
-                      {/* Nút thao tác thư mục */}
+                      {/* Folder action buttons */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button
                           disabled={breadcrumbs.length <= 1 || loadingFolder}
@@ -1148,9 +1148,9 @@ export default function CloudPanel({
                             cursor: breadcrumbs.length > 1 ? 'pointer' : 'not-allowed',
                             color: breadcrumbs.length > 1 ? '#333' : '#aaa',
                           }}
-                          title="Lên thư mục cha"
+                          title="Up one level"
                         >
-                          ⬆ Lên 1 cấp
+                          ⬆ Up 1 Level
                         </button>
 
                         <button
@@ -1164,9 +1164,9 @@ export default function CloudPanel({
                             cursor: currentFolder.id === 'sharedWithMe' ? 'not-allowed' : 'pointer',
                             fontWeight: 600,
                           }}
-                          title={currentFolder.id === 'sharedWithMe' ? 'Không thể tạo thư mục tại mục gốc chia sẻ' : 'Tạo thư mục con trong thư mục này'}
+                          title={currentFolder.id === 'sharedWithMe' ? 'Cannot create folder in shared root' : 'Create subfolder in this folder'}
                         >
-                          📁➕ Thư mục mới
+                          📁➕ New Folder
                         </button>
 
                         <button
@@ -1176,20 +1176,20 @@ export default function CloudPanel({
                             padding: '4px 8px', fontSize: 11, borderRadius: 4,
                             border: '1px solid #ddd', background: '#fff', cursor: 'pointer',
                           }}
-                          title="Tải lại thư mục"
+                          title="Refresh folder"
                         >
                           🔄
                         </button>
                       </div>
                     </div>
 
-                    {/* Hộp tạo thư mục mới (nếu bật) */}
+                    {/* New folder creation box */}
                     {isCreatingFolder && (
                       <div style={{
                         padding: '8px 12px', background: '#f0f7ff', borderBottom: '1px solid #bae0ff',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
-                        <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>Tên thư mục con:</span>
+                        <span style={{ fontSize: 12, color: '#333', fontWeight: 500 }}>Subfolder name:</span>
                         <input
                           autoFocus
                           value={newFolderName}
@@ -1198,7 +1198,7 @@ export default function CloudPanel({
                             if (e.key === 'Enter') handleCreateNewFolder();
                             if (e.key === 'Escape') setIsCreatingFolder(false);
                           }}
-                          placeholder="Ví dụ: Mach_Nguon, Mach_So..."
+                          placeholder="e.g. Power_Circuits, Logic_Gates..."
                           style={{
                             flex: 1, padding: '4px 8px', fontSize: 12,
                             border: '1px solid #91caff', borderRadius: 4, outline: 'none',
@@ -1212,7 +1212,7 @@ export default function CloudPanel({
                             color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer',
                           }}
                         >
-                          Tạo
+                          Create
                         </button>
                         <button
                           onClick={() => setIsCreatingFolder(false)}
@@ -1221,26 +1221,26 @@ export default function CloudPanel({
                             border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer',
                           }}
                         >
-                          Hủy
+                          Cancel
                         </button>
                       </div>
                     )}
 
-                    {/* Danh sách Thư mục con & File */}
+                    {/* Subfolders & Files List */}
                     <div style={{ flex: 1, maxHeight: 260, overflowY: 'auto', padding: 4 }}>
                       {loadingFolder ? (
                         <div style={{ textAlign: 'center', padding: '30px 0', color: '#888', fontSize: 13 }}>
-                          Đang tải dữ liệu từ Google Drive...
+                          Loading data from Google Drive...
                         </div>
                       ) : (
                         <>
                           {folderItems.folders.length === 0 && folderItems.files.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '30px 0', color: '#999', fontSize: 12, fontStyle: 'italic' }}>
-                              Thư mục này trống (chưa có thư mục con hay file sơ đồ nào)
+                              This folder is empty (no subfolders or schematic files)
                             </div>
                           )}
 
-                          {/* Danh sách Thư mục con */}
+                          {/* Subfolders list */}
                           {folderItems.folders.map((f) => (
                             <div
                               key={f.id}
@@ -1258,15 +1258,15 @@ export default function CloudPanel({
                                 <span>{f.name}</span>
                                 {f.isShortcut && (
                                   <span style={{ fontSize: 10, background: '#e2e8f0', color: '#475569', padding: '1px 5px', borderRadius: 3 }}>
-                                    Lối tắt
+                                    Shortcut
                                   </span>
                                 )}
                               </div>
-                              <span style={{ fontSize: 11, color: '#888' }}>Thư mục ›</span>
+                              <span style={{ fontSize: 11, color: '#888' }}>Folder ›</span>
                             </div>
                           ))}
 
-                          {/* Danh sách File sơ đồ */}
+                          {/* Schematic files list */}
                           {folderItems.files.map((file) => {
                             const isCurrentOpen = activeFile?.id === file.id;
                             const cleanTitle = file.name.replace(SUFFIX, '');
@@ -1286,7 +1286,7 @@ export default function CloudPanel({
                                     display: 'flex', alignItems: 'center', gap: 8, flex: 1,
                                     cursor: 'pointer', overflow: 'hidden',
                                   }}
-                                  title={`Bấm để mở "${file.name}"`}
+                                  title={`Click to open "${file.name}"`}
                                 >
                                   <span style={{ fontSize: 16 }}>{file.isShortcut ? '🔗📄' : '📄'}</span>
                                   <span style={{
@@ -1298,7 +1298,7 @@ export default function CloudPanel({
                                   </span>
                                   {file.isShortcut && (
                                     <span style={{ fontSize: 10, background: '#e2e8f0', color: '#475569', padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>
-                                      Lối tắt
+                                      Shortcut
                                     </span>
                                   )}
                                   {isCurrentOpen && (
@@ -1306,7 +1306,7 @@ export default function CloudPanel({
                                       fontSize: 10, background: '#1677ff', color: '#fff',
                                       padding: '1px 6px', borderRadius: 10, fontWeight: 600, flexShrink: 0,
                                     }}>
-                                      Đang mở
+                                      Currently Open
                                     </span>
                                   )}
                                 </div>
@@ -1322,7 +1322,7 @@ export default function CloudPanel({
                                       color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer',
                                     }}
                                   >
-                                    Mở
+                                    Open
                                   </button>
                                   <button
                                     onClick={() => handleDeleteFile(file)}
@@ -1330,7 +1330,7 @@ export default function CloudPanel({
                                       padding: '3px 6px', fontSize: 12, background: 'transparent',
                                       border: 'none', cursor: 'pointer', color: '#999',
                                     }}
-                                    title="Xóa file khỏi Google Drive"
+                                    title="Delete file from Google Drive"
                                   >
                                     🗑
                                   </button>
@@ -1345,10 +1345,10 @@ export default function CloudPanel({
                 </>
               )}
 
-              {/* Thông báo tiến trình hoặc lỗi */}
+              {/* Progress and status message */}
               {busy && (
                 <div style={{ color: '#1677ff', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span>⏳</span> Đang xử lý trên Google Drive...
+                  <span>⏳</span> Processing on Google Drive...
                 </div>
               )}
               {msg && (
@@ -1375,7 +1375,7 @@ export default function CloudPanel({
                   borderRadius: 6, fontSize: 13, cursor: 'pointer', fontWeight: 500,
                 }}
               >
-                Đóng
+                Close
               </button>
             </div>
           </div>
