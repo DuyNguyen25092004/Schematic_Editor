@@ -109,10 +109,14 @@ Tài liệu này được cập nhật liên tục vào cuối mỗi phiên làm
     - `configurable_logic_gate_inputs_plan.md`
     - `full_english_localization_plan.md`
     - `fix_mid_wire_snap_between_close_terminals.md`
-- **Máy chủ Vite**: Đang hoạt động bình thường tại `http://localhost:5173/Schematic_Editor/`.
+- **Máy chủ Vite & Deployment**:
+  - Máy chủ Vite đang hoạt động bình thường tại `http://localhost:5173/Schematic_Editor/`.
+  - Đã commit và push toàn bộ thay đổi lên nhánh `main` trên GitHub repository: `https://github.com/DuyNguyen25092004/Schematic_Editor`.
+  - Đã build và xuất bản (deploy) phiên bản mới nhất thành công lên GitHub Pages via `npm run deploy` (`gh-pages`): [https://DuyNguyen25092004.github.io/Schematic_Editor/](https://DuyNguyen25092004.github.io/Schematic_Editor/).
 
 ---
 
 ### 3. Hướng dẫn & Dự kiến cho Phiên Kế tiếp
-- Sẵn sàng bàn giao cho người dùng sử dụng trực tiếp.
+- Sẵn sàng bàn giao cho người dùng sử dụng trực tiếp trên cả local và GitHub Pages production.
 - Mọi tính năng hoặc yêu cầu mới phát sinh trong phiên tiếp theo cần tiếp tục tuân thủ quy tắc **Plan-First & User Approval** (`AGENTS.md`) trước khi thực hiện chỉnh sửa code.
+
