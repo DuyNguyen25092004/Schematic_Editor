@@ -16,36 +16,15 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
 
 ## 🌟 Key Features
 
-### 1. Industrial IC Component Library
-- **Active Transistors**:
-  - **NMOS & PMOS**: Symmetrical 4-terminal MOSFET layout with true `Drain - Gate - Source - Bulk` pin configuration (PMOS arrow points toward Gate on Source lead connected to VDD rail). Configurable width ($W$), length ($L$), model name, and multiplier ($M$).
-  - **BJT**: NPN and PNP bipolar junction transistors.
-- **Physical Passives (Cadence Virtuoso PDK Models)**:
-  - **Resistors**:
-    - **Value Mode**: Pure resistance in Ohms ($\Omega$, $k\Omega$, $M\Omega$).
-    - **Dimension Mode**: Physical silicon resistor defined by width ($W$), length ($L$), and technology model (e.g. `rnpolywo`, `rppoly`).
-  - **Capacitors**:
-    - **Ideal Value Mode**: Capacitance in Farads ($pF$, $fF$, etc.).
-    - **MIM Mode**: Metal-Insulator-Metal capacitor defined by dimension ($W, L$) and PDK model (`CMIM`).
-    - **MOM Mode**: Metal-Oxide-Metal multi-layer interdigitated capacitor parameterized by $W$, $L$, number of fingers, bottom metal layer (e.g. `M2`), top metal layer (e.g. `M5`), and multiplier ($M$).
+### 1. Component Library (Razavi Textbook Style)
+All schematic symbols and drawing conventions follow the iconic textbook style of **Prof. Behzad Razavi** (*Design of Analog CMOS Integrated Circuits*), combining clean academic presentation with industrial Cadence Virtuoso parameters:
 
-<p align="center">
-  <img src="screenshots/passives_inspector.png" alt="Property Inspector - Physical MOM Capacitor Model Parameters" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-- **Independent Waveform Sources**:
-  - Independent Voltage (`VSOURCE`) and Current (`ISOURCE`) generators supporting **DC**, **PULSE**, **SIN**, and **PWL** functions with instant SPICE waveform formatting.
-- **Power & Ground Rails**:
-  - **VDD Rail**: Dynamic expandable horizontal bus bar with auto-snapping at any $10\text{px}$ grid point without separate terminal pins.
-  - **Ground**: Standard triangle GND reference node (SPICE node `0`).
-- **Analog & Digital Blocks**:
-  - Single-ended Operational Amplifier (`OPAMP`) and Fully Differential Op-Amp (`FD_OPAMP`).
-  - **Configurable Multi-Input Logic Gates**: AND, OR, NAND, NOR, XOR, XNOR dynamically scalable from **2 to 16 input pins** with Cadence Virtuoso proportional curved Bezier hulls, plus Inverter, Buffer, D-Flip-Flop (with Set/Reset), and 2:1 Multiplexer.
-
-<p align="center">
-  <img src="screenshots/logic_gates_scaling.png" alt="Multi-Input Scalable Logic Gates and Dynamic Input Configuration" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
-</p>
-- **Switches & Annotations**:
-  - Normally Open/Closed switches, SPDT, SP3T, SP4T, customizable border boxes, and free LaTeX text annotations.
+- **Active Transistors**: NMOS & PMOS (symmetrical 4-terminal symbols with Razavi-style source arrow), NPN & PNP bipolar transistors.
+- **Physical Passives**: Resistors (Ideal Value & Physical $W/L$ Dimension modes) and Capacitors (Ideal, MIM, and multi-layer MOM with finger configuration).
+- **Power & Ground**: Expandable horizontal $V_{DD}$ bus rail and standard Ground reference nodes.
+- **Waveform Sources**: Independent Voltage (`VSOURCE`) and Current (`ISOURCE`) sources supporting DC, PULSE, SIN, and PWL waveforms.
+- **Analog & Digital Blocks**: Single-ended Op-Amp, Fully Differential Op-Amp (FD-Opamp), Inverter, Buffer, D-Flip-Flop, 2:1 MUX, and Multi-Input Logic Gates (AND, OR, NAND, NOR, XOR, XNOR scalable from 2 to 16 inputs).
+- **Switches & Annotations**: Switches (NO, NC, SPDT, SP3T, SP4T), functional subcircuit bounding boxes, and LaTeX mathematical annotations.
 
 ### 2. Virtuoso-Standard Orthogonal Wiring
 - **Intelligent Orthogonal Router**: Single-click `W` key to activate Cadence-style orthogonal wire routing.
