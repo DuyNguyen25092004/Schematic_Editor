@@ -4,7 +4,7 @@
 [![Vite](https://img.shields.io/badge/Vite-8.3-646CFF.svg)](https://vitejs.dev/)
 [![Live Demo](https://img.shields.io/badge/Demo-GitHub%20Pages-brightgreen.svg)](https://DuyNguyen25092004.github.io/Schematic_Editor/)
 
-A modern, high-performance web-based clone of the industry-standard **Cadence Virtuoso Schematic Capture** tool. Designed for analog, digital, and mixed-signal integrated circuit (IC) schematic design, orthogonal wiring, and direct SPICE/Spectre netlist export.
+A modern, high-performance web-based clone of the industry-standard **Cadence Virtuoso Schematic Capture** tool. Designed for analog, digital, and mixed-signal integrated circuit (IC) schematic design, orthogonal wiring, and direct SPICE netlist export.
 
 🚀 **Live Interactive Demo**: [https://DuyNguyen25092004.github.io/Schematic_Editor/](https://DuyNguyen25092004.github.io/Schematic_Editor/)
 
@@ -26,18 +26,12 @@ All schematic symbols and drawing conventions follow the iconic textbook style o
 - **Analog & Digital Blocks**: Single-ended Op-Amp, Fully Differential Op-Amp (FD-Opamp), Inverter, Buffer, D-Flip-Flop, 2:1 MUX, and Multi-Input Logic Gates (AND, OR, NAND, NOR, XOR, XNOR scalable from 2 to 16 inputs).
 - **Switches & Annotations**: Switches (NO, NC, SPDT, SP3T, SP4T), functional subcircuit bounding boxes, and LaTeX mathematical annotations.
 
-### 2. Production-Ready SPICE & Spectre Netlist Export
-- **One-Click Netlist Generation**: Generates clean, simulation-ready netlists with standard node ordering.
-- **Automatic Subcircuit (`X`) Prefixing**:
-  - Conforms to TSMC 65nm / 28nm and Cadence Spectre requirements: any passive component or subcircuit block with a technology model (`rnpolywo`, `CMIM`, `CMOM`, standard cells) is automatically exported with prefix `X` (e.g., `X1 VOUT N_1 rnpolywo w=1u l=1u m=1`), preventing Spectre `ERROR (SFE-1997)`.
-  - Primitive ideal passives retain standard `R` and `C` designations (`R1 VOUT 0 10k M=1`).
-- **Accurate Transistor Pin Order**:
-  - PMOS: `Drain Gate Source Bulk` (`M2 VOUT N_1 VDD VDD pch W=1u L=150n M=1`).
-  - NMOS: `Drain Gate Source Bulk` (`M1 VOUT N_1 0 0 nch W=1u L=150n M=1`).
-- **Autonomous Simulation Fallbacks**: Generates built-in `.subckt` and `.model` definitions when `Include Default Simulation Models` is checked.
+### 2. Standard SPICE Netlist Export
+- **Simulation-Ready SPICE Netlist**: Instant one-click generation of standard SPICE netlists (compatible with **NGSPICE**, **LTspice**, and common circuit simulators) featuring accurate transistor pin ordering, parameter pass-through, and subcircuit prefixing.
+- **Cadence Spectre Support (Coming Soon)**: Dedicated native Spectre netlist syntax is currently under development and will be available in an upcoming update.
 
 <p align="center">
-  <img src="screenshots/spice_export.png" alt="SPICE & Spectre Netlist Export Dialog" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+  <img src="screenshots/spice_export.png" alt="SPICE Netlist Export Dialog" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
 </p>
 
 ### 3. Real-Time Collaboration & Cloud Workspace
@@ -93,8 +87,8 @@ All schematic symbols and drawing conventions follow the iconic textbook style o
 
 ### 5. Exporting SPICE Netlist
 1. Click **Export Netlist** in the top navigation bar.
-2. Review the generated SPICE/Spectre netlist in the popup modal.
-3. Click **Copy to Clipboard** or **Download .sp / .cir** to simulate directly in Cadence Spectre, NGSPICE, or LTspice.
+2. Review the generated SPICE netlist in the popup modal.
+3. Click **Copy to Clipboard** or **Download .cir** to simulate directly in NGSPICE or LTspice (Cadence Spectre support coming soon).
 
 ---
 
