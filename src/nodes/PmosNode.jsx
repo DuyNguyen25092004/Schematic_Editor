@@ -48,9 +48,9 @@ function PmosNode({ data, selected }) {
       <div style={{ width: '100%', height: '100%', transform: transformStr, transformOrigin: '40px 50px' }}>
         <Handle type="target" position={Position.Left} id="gate"
           style={{ left: '20px', top: '50px', transform: 'translate(-50%,-50%)', opacity: 0, width: 20, height: 20, zIndex: 100, border: 'none' }} />
-        <Handle type="source" position={Position.Top} id="drain"
+        <Handle type="source" position={Position.Top} id="source"
           style={{ left: '50px', top: '30px', transform: 'translate(-50%,-50%)', opacity: 0, width: 20, height: 20, zIndex: 100, border: 'none' }} />
-        <Handle type="source" position={Position.Bottom} id="source"
+        <Handle type="source" position={Position.Bottom} id="drain"
           style={{ left: '50px', top: '70px', transform: 'translate(-50%,-50%)', opacity: 0, width: 20, height: 20, zIndex: 100, border: 'none' }} />
 
         {selected && (
@@ -104,6 +104,14 @@ function PmosNode({ data, selected }) {
         {data.l && (
           <LatexText
             text={formatLatexMosParam('L', data.l)}
+            latex={true}
+            size={10}
+            color="#000"
+          />
+        )}
+        {data.m && Number(data.m) > 1 && (
+          <LatexText
+            text={`M = ${data.m}`}
             latex={true}
             size={10}
             color="#000"

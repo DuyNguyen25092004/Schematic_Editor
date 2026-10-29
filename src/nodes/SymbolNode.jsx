@@ -63,7 +63,7 @@ function SymbolNode({ data, selected, type }) {
   const cfg = isVdd
     ? { x: vddEnd + 8, y: VDD_BAR.y, side: 'right' }
     : isLogicGate
-    ? { x: 40, y: Math.min(35, box.y - 2), side: 'top' }
+    ? { x: box.x + box.w / 2, y: Math.min(35, box.y - 2), side: 'top' }
     : LABELS[type];
   if (cfg) {
     const [rx, ry] = transformVec(cfg.x - 40, cfg.y - 50, flip, rot);
@@ -129,6 +129,14 @@ function SymbolNode({ data, selected, type }) {
             size={isVdd ? 16 : 14}
             color="#000"
           />
+          {data.m && Number(data.m) > 1 && (
+            <LatexText
+              text={`M = ${data.m}`}
+              latex={true}
+              size={11}
+              color="#000"
+            />
+          )}
         </div>
       )}
     </div>

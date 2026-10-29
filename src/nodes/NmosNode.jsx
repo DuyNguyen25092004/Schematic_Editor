@@ -113,6 +113,14 @@ function NmosNode({ data, selected }) {
             color="#000"
           />
         )}
+        {data.m && Number(data.m) > 1 && (
+          <LatexText
+            text={`M = ${data.m}`}
+            latex={true}
+            size={10}
+            color="#000"
+          />
+        )}
       </div>
     </div>
   );

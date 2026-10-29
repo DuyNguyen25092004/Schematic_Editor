@@ -71,9 +71,18 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
         }
 
         if (perpDist < bestMidPerpDist) {
-          bestMidPerpDist = perpDist;
           const sx = Math.round(projX / GRID) * GRID;
           const sy = Math.round(projY / GRID) * GRID;
+
+          // Loại trừ 2 đầu mút ngoài cùng của wire w:
+          // Nếu (sx, sy) trùng với pts[0] hoặc pts[last] thì đây là đầu mút của dây (Endpoint),
+          // KHÔNG PHẢI điểm giữa thân dây (Mid-wire), nên không gán onWireId tại đây.
+          const isEndpointOfW =
+            (sx === Math.round(pts[0].x / GRID) * GRID && sy === Math.round(pts[0].y / GRID) * GRID) ||
+            (sx === Math.round(pts[pts.length - 1].x / GRID) * GRID && sy === Math.round(pts[pts.length - 1].y / GRID) * GRID);
+          if (isEndpointOfW) continue;
+
+          bestMidPerpDist = perpDist;
           const snapDist = Math.hypot(sx - p.x, sy - p.y);
           const isPortMatch = bestPort && bestPort.x === sx && bestPort.y === sy;
 
@@ -99,7 +108,7 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
     if (!pts || pts.length < 2) continue;
     const ends = [pts[0], pts[pts.length - 1]];
     for (const end of ends) {
-      const radius = end.nodeId ? SNAP_RADIUS : MID_WIRE_SNAP_RADIUS;
+      const radius = SNAP_RADIUS;
       const d = Math.hypot(end.x - p.x, end.y - p.y);
       if (d < radius && d < bestEndDist) {
         bestEndDist = d;
@@ -114,18 +123,16 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
   }
 
   // 4. PHÂN XỬ (Arbitration):
-  // 4a. Chuột nằm sát thân dây (trong bán kính MID_WIRE_SNAP_RADIUS)
-  if (bestMid) {
-    if (bestMid.isPortMatch) {
-      return { x: bestMid.x, y: bestMid.y, nodeId: bestMid.isPortMatch.nodeId, portId: bestMid.isPortMatch.portId };
-    }
-    if (!bestPort || bestMid.snapDist <= bestPort.d) {
-      return { x: bestMid.x, y: bestMid.y, onWireId: bestMid.onWireId };
-    }
+  // 4a. Nếu bestMid trùng với Port
+  if (bestMid?.isPortMatch) {
+    return { x: bestMid.x, y: bestMid.y, nodeId: bestMid.isPortMatch.nodeId, portId: bestMid.isPortMatch.portId };
   }
 
-  // 4b. Ưu tiên Wire Endpoint nếu gần hơn
-  if (bestEnd && (!bestPort || bestEnd.d < bestPort.d)) {
+  // 4b. Ưu tiên Wire Endpoint nếu chuột gần đầu mút hơn hoặc bằng thân dây
+  if (bestEnd && (!bestMid || bestEnd.d <= bestMid.snapDist)) {
+    if (bestPort && bestPort.d < bestEnd.d) {
+      return { x: bestPort.x, y: bestPort.y, nodeId: bestPort.nodeId, portId: bestPort.portId };
+    }
     return {
       x: bestEnd.x, y: bestEnd.y,
       ...(bestEnd.nodeId ? { nodeId: bestEnd.nodeId, portId: bestEnd.portId }
@@ -134,13 +141,21 @@ export function snapPoint(p, nodes, wires = [], resolvedMap = null) {
   }
 
   // 4c. Ưu tiên Port nếu chuột gần Port hơn thân dây lướt qua
-  if (bestPort) {
-    if (closestWirePerpDist === Infinity || bestPort.d <= closestWirePerpDist) {
-      return { x: bestPort.x, y: bestPort.y, nodeId: bestPort.nodeId, portId: bestPort.portId };
+  if (bestPort && (closestWirePerpDist === Infinity || bestPort.d <= closestWirePerpDist)) {
+    return { x: bestPort.x, y: bestPort.y, nodeId: bestPort.nodeId, portId: bestPort.portId };
+  }
+
+  // 4d. Chuột nằm sát thân dây (T-junction / Mid-wire)
+  if (bestMid) {
+    if (!bestPort || bestMid.snapDist <= bestPort.d) {
+      return { x: bestMid.x, y: bestMid.y, onWireId: bestMid.onWireId };
     }
   }
 
-  // 4d. Fallback wire endpoint nếu có
+  // 4e. Fallback Port hoặc Wire Endpoint
+  if (bestPort) {
+    return { x: bestPort.x, y: bestPort.y, nodeId: bestPort.nodeId, portId: bestPort.portId };
+  }
   if (bestEnd) {
     return {
       x: bestEnd.x, y: bestEnd.y,

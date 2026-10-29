@@ -33,7 +33,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
   if (!selected) return null;
 
   const box = {
-    position: 'absolute', top: 60, right: 16, zIndex: 20, width: 220,
+    position: 'absolute', top: 60, right: 16, zIndex: 20, width: 260,
     background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: 12,
     boxShadow: '0 4px 12px rgba(0,0,0,.12)', fontFamily: 'sans-serif', fontSize: 13,
   };
@@ -58,9 +58,38 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     };
 
     const isMos = node.type === 'nmos' || node.type === 'pmos';
+    const isBjt = node.type === 'npn' || node.type === 'pnp';
+    const isTransistor = isMos || isBjt;
+    const defaultModel = node.type === 'nmos' ? 'NMOS' : node.type === 'pmos' ? 'PMOS' : node.type === 'npn' ? 'NPN' : node.type === 'pnp' ? 'PNP' : '';
     const isRect = node.type === 'rect';
     const isText = node.type === 'text';
     const isLogicGate = MULTI_INPUT_LOGIC_TYPES.has(node.type);
+    const isAnalog = node.type === 'opamp' || node.type === 'fdopamp';
+    const defaultAnalogModel = node.type === 'fdopamp' ? 'FD_OPAMP' : 'OPAMP';
+    const isLogic = isLogicGate || ['inverter', 'buffer', 'dff', 'dff_sr', 'mux'].includes(node.type);
+    const defaultLogicModel = isLogicGate
+      ? `${node.type.toUpperCase()}_${node.data?.inputs || 2}`
+      : ({
+          inverter: 'INV',
+          buffer: 'BUF',
+          dff: 'DFF',
+          dff_sr: 'DFF_SR',
+          mux: 'MUX',
+        }[node.type] || node.type?.toUpperCase() || '');
+
+    const setLogicInputs = (newInputs) => {
+      if (readOnly) return;
+      const oldInputs = node.data?.inputs || 2;
+      const currentModel = node.data?.model;
+      const defaultOldModel = `${node.type.toUpperCase()}_${oldInputs}`;
+      const defaultNewModel = `${node.type.toUpperCase()}_${newInputs}`;
+      if (!currentModel || currentModel === defaultOldModel || currentModel === node.type.toUpperCase()) {
+        setNodes((ns) => ns.map((n) =>
+          n.id === node.id ? { ...n, data: { ...n.data, inputs: newInputs, model: defaultNewModel } } : n));
+      } else {
+        patch('inputs', newInputs);
+      }
+    };
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
       res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
@@ -79,7 +108,9 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       rect: 'Rectangle',
       text: 'Text',
     }[node.type] || String(node.type).toUpperCase();
-    const hasValue = node.type === 'res' || node.type === 'cap' || node.type === 'vsource' || node.type === 'isource';
+    const isPassive = node.type === 'res' || node.type === 'cap';
+    const isSource = node.type === 'vsource' || node.type === 'isource';
+    const hasMultiplier = isMos || isBjt || isPassive;
     return (
       <div style={box}>
         <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -113,6 +144,48 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           </>
         )}
 
+        {isTransistor && (
+          <>
+            <label style={label}>Model Name</label>
+            <input
+              style={input}
+              value={node.data?.model ?? defaultModel}
+              placeholder={defaultModel}
+              disabled={readOnly}
+              readOnly={readOnly}
+              onChange={(e) => patch('model', e.target.value)}
+            />
+          </>
+        )}
+
+        {isAnalog && (
+          <>
+            <label style={label}>Model Name</label>
+            <input
+              style={input}
+              value={node.data?.model ?? defaultAnalogModel}
+              placeholder={defaultAnalogModel}
+              disabled={readOnly}
+              readOnly={readOnly}
+              onChange={(e) => patch('model', e.target.value)}
+            />
+          </>
+        )}
+
+        {isLogic && (
+          <>
+            <label style={label}>Model Name</label>
+            <input
+              style={input}
+              value={node.data?.model ?? defaultLogicModel}
+              placeholder={defaultLogicModel}
+              disabled={readOnly}
+              readOnly={readOnly}
+              onChange={(e) => patch('model', e.target.value)}
+            />
+          </>
+        )}
+
         {isLogicGate && (
           <>
             <label style={label}>Inputs ({node.data?.inputs || 2})</label>
@@ -120,7 +193,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
               <button
                 type="button"
                 disabled={readOnly || (node.data?.inputs || 2) <= 2}
-                onClick={() => patch('inputs', Math.max(2, (node.data?.inputs || 2) - 1))}
+                onClick={() => setLogicInputs(Math.max(2, (node.data?.inputs || 2) - 1))}
                 style={{ padding: '3px 8px', border: '1px solid #ccc', borderRadius: 4, background: '#f5f5f5', cursor: readOnly ? 'default' : 'pointer', fontWeight: 'bold' }}
               >
                 -
@@ -130,7 +203,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
                   key={n}
                   type="button"
                   disabled={readOnly}
-                  onClick={() => patch('inputs', n)}
+                  onClick={() => setLogicInputs(n)}
                   style={{
                     flex: 1, padding: '3px 0',
                     border: (node.data?.inputs || 2) === n ? '1px solid #1677ff' : '1px solid #ddd',
@@ -147,7 +220,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
               <button
                 type="button"
                 disabled={readOnly || (node.data?.inputs || 2) >= 16}
-                onClick={() => patch('inputs', Math.min(16, (node.data?.inputs || 2) + 1))}
+                onClick={() => setLogicInputs(Math.min(16, (node.data?.inputs || 2) + 1))}
                 style={{ padding: '3px 8px', border: '1px solid #ccc', borderRadius: 4, background: '#f5f5f5', cursor: readOnly ? 'default' : 'pointer', fontWeight: 'bold' }}
               >
                 +
@@ -225,18 +298,663 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           </>
         )}
 
-        {hasValue && (
+        {node.type === 'res' && (() => {
+          const resMode = node.data?.resMode || (node.data?.w && node.data?.l && !node.data?.value ? 'dimension' : 'value');
+          return (
+            <>
+              <label style={label}>Define By</label>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                {[
+                  { id: 'value', label: 'Value (R)' },
+                  { id: 'dimension', label: 'Dimensions (W, L)' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => patch('resMode', m.id)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 0',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: resMode === m.id ? 700 : 500,
+                      border: resMode === m.id ? '1px solid #1677ff' : '1px solid #ccc',
+                      background: resMode === m.id ? '#e6f4ff' : '#fff',
+                      color: resMode === m.id ? '#1677ff' : '#333',
+                      cursor: readOnly ? 'default' : 'pointer',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {resMode === 'value' ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={label}>Value (Resistance)</label>
+                    {node.data?.value && (
+                      <LatexText text={formatLatexPassiveValue(node.data.value, node.type)} latex={true} size={13} color="#1677ff" />
+                    )}
+                  </div>
+                  <input
+                    style={input}
+                    value={node.data.value || ''}
+                    placeholder="1k"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('value', e.target.value)}
+                  />
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>Width (W)</label>
+                      <input
+                        style={input}
+                        value={node.data?.w ?? '1u'}
+                        placeholder="1u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('w', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>Length (L)</label>
+                      <input
+                        style={input}
+                        value={node.data?.l ?? '10u'}
+                        placeholder="10u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('l', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <label style={label}>Model Name (Optional)</label>
+              <input
+                style={input}
+                value={node.data?.model || ''}
+                placeholder="e.g. RPOLY, RNWELL"
+                disabled={readOnly}
+                readOnly={readOnly}
+                onChange={(e) => patch('model', e.target.value)}
+              />
+            </>
+          );
+        })()}
+
+        {node.type === 'cap' && (() => {
+          const capMode = node.data?.capMode || 'value';
+          return (
+            <>
+              <label style={label}>Capacitor Type</label>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                {[
+                  { id: 'value', label: 'Ideal (C)' },
+                  { id: 'mim', label: 'MIM Cap' },
+                  { id: 'mom', label: 'MOM Cap' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => {
+                      if (readOnly) return;
+                      const nextData = { capMode: m.id };
+                      if (m.id === 'mim' && (!node.data?.model || node.data?.model === 'CMOM')) {
+                        nextData.model = 'CMIM';
+                      } else if (m.id === 'mom' && (!node.data?.model || node.data?.model === 'CMIM')) {
+                        nextData.model = 'CMOM';
+                      }
+                      setNodes((ns) => ns.map((n) =>
+                        n.id === node.id ? { ...n, data: { ...n.data, ...nextData } } : n));
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '4px 0',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: capMode === m.id ? 700 : 500,
+                      border: capMode === m.id ? '1px solid #1677ff' : '1px solid #ccc',
+                      background: capMode === m.id ? '#e6f4ff' : '#fff',
+                      color: capMode === m.id ? '#1677ff' : '#333',
+                      cursor: readOnly ? 'default' : 'pointer',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {capMode === 'value' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={label}>Value (Capacitance)</label>
+                    {node.data?.value && (
+                      <LatexText text={formatLatexPassiveValue(node.data.value, node.type)} latex={true} size={13} color="#1677ff" />
+                    )}
+                  </div>
+                  <input
+                    style={input}
+                    value={node.data.value || ''}
+                    placeholder="1p"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('value', e.target.value)}
+                  />
+                  <label style={label}>Model Name (Optional)</label>
+                  <input
+                    style={input}
+                    value={node.data?.model || ''}
+                    placeholder="e.g. CMODEL"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('model', e.target.value)}
+                  />
+                </>
+              )}
+
+              {capMode === 'mim' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>Width (W)</label>
+                      <input
+                        style={input}
+                        value={node.data?.w ?? '10u'}
+                        placeholder="10u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('w', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>Length (L)</label>
+                      <input
+                        style={input}
+                        value={node.data?.l ?? '10u'}
+                        placeholder="10u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('l', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <label style={label}>Model Name</label>
+                  <input
+                    style={input}
+                    value={node.data?.model ?? 'CMIM'}
+                    placeholder="CMIM"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('model', e.target.value)}
+                  />
+                </>
+              )}
+
+              {capMode === 'mom' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>Width (W)</label>
+                      <input
+                        style={input}
+                        value={node.data?.w ?? '2u'}
+                        placeholder="2u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('w', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>Length (L)</label>
+                      <input
+                        style={input}
+                        value={node.data?.l ?? '10u'}
+                        placeholder="10u"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('l', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <label style={label}>Fingers (Number of fingers)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    style={input}
+                    value={node.data?.fingers ?? 10}
+                    placeholder="10"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('fingers', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>Bottom Layer</label>
+                      <select
+                        style={{ ...input, cursor: readOnly ? 'not-allowed' : 'pointer' }}
+                        value={node.data?.bot_layer ?? 'M2'}
+                        disabled={readOnly}
+                        onChange={(e) => patch('bot_layer', e.target.value)}
+                      >
+                        {['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'].map((l) => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={label}>Top Layer</label>
+                      <select
+                        style={{ ...input, cursor: readOnly ? 'not-allowed' : 'pointer' }}
+                        value={node.data?.top_layer ?? 'M5'}
+                        disabled={readOnly}
+                        onChange={(e) => patch('top_layer', e.target.value)}
+                      >
+                        {['M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9'].map((l) => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <label style={label}>Model Name</label>
+                  <input
+                    style={input}
+                    value={node.data?.model ?? 'CMOM'}
+                    placeholder="CMOM"
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('model', e.target.value)}
+                  />
+                </>
+              )}
+            </>
+          );
+        })()}
+
+        {isSource && (() => {
+          const sType = node.data?.sourceType || 'dc';
+          const isV = node.type === 'vsource';
+          const unit = isV ? 'V' : 'A';
+          return (
+            <>
+              <label style={label}>Source Mode</label>
+              <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+                {['dc', 'pulse', 'sin', 'pwl'].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => patch('sourceType', t)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 0',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: sType === t ? 700 : 500,
+                      border: sType === t ? '1px solid #1677ff' : '1px solid #ccc',
+                      background: sType === t ? '#e6f4ff' : '#fff',
+                      color: sType === t ? '#1677ff' : '#333',
+                      cursor: readOnly ? 'default' : 'pointer',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {sType === 'dc' && (
+                <>
+                  <label style={label}>DC Value ({unit})</label>
+                  <input
+                    style={input}
+                    value={node.data?.value ?? (isV ? '1V' : '1mA')}
+                    placeholder={isV ? '1V' : '1mA'}
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('value', e.target.value)}
+                  />
+                </>
+              )}
+
+              {sType === 'pulse' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>V1 (Initial)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_v1 ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_v1', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>V2 (Pulsed)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_v2 ?? (isV ? '1.8V' : '1mA')}
+                        placeholder={isV ? '1.8V' : '1mA'}
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_v2', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>TD (Delay)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_td ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_td', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>TR (Rise)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_tr ?? '1n'}
+                        placeholder="1n"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_tr', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>TF (Fall)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_tf ?? '1n'}
+                        placeholder="1n"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_tf', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>PW (Width)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_pw ?? '5n'}
+                        placeholder="5n"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_pw', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>PER (Period)</label>
+                      <input
+                        style={input}
+                        value={node.data?.pulse_per ?? '10n'}
+                        placeholder="10n"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('pulse_per', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {sType === 'sin' && (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>VO (Offset)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_vo ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_vo', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>VA (Amplitude)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_va ?? (isV ? '1V' : '1mA')}
+                        placeholder={isV ? '1V' : '1mA'}
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_va', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>FREQ (Hz)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_freq ?? '1k'}
+                        placeholder="1k"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_freq', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>TD (Delay)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_td ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_td', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <label style={label}>Theta (Damp)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_theta ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_theta', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={label}>Phase (°)</label>
+                      <input
+                        style={input}
+                        value={node.data?.sin_phase ?? '0'}
+                        placeholder="0"
+                        disabled={readOnly}
+                        readOnly={readOnly}
+                        onChange={(e) => patch('sin_phase', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {sType === 'pwl' && (() => {
+                let pairs = Array.isArray(node.data?.pwl_pairs) ? [...node.data.pwl_pairs] : null;
+                if (!pairs) {
+                  const raw = String(node.data?.pwl_points || '').trim();
+                  if (raw) {
+                    const tokens = raw.split(/\s+/).filter(Boolean);
+                    pairs = [];
+                    for (let i = 0; i < tokens.length; i += 2) {
+                      pairs.push({ t: tokens[i] || '', v: tokens[i + 1] || '' });
+                    }
+                  } else {
+                    pairs = isV
+                      ? [{ t: '0', v: '0' }, { t: '1n', v: '1.8V' }, { t: '5n', v: '1.8V' }, { t: '6n', v: '0' }]
+                      : [{ t: '0', v: '0' }, { t: '1n', v: '1mA' }, { t: '5n', v: '1mA' }, { t: '6n', v: '0' }];
+                  }
+                }
+
+                const numPairs = pairs.length;
+
+                const setNumPairs = (n) => {
+                  const targetCount = Math.max(1, Math.min(20, n));
+                  let newPairs = [...pairs];
+                  if (targetCount > newPairs.length) {
+                    while (newPairs.length < targetCount) {
+                      newPairs.push({ t: '', v: '' });
+                    }
+                  } else if (targetCount < newPairs.length) {
+                    newPairs = newPairs.slice(0, targetCount);
+                  }
+                  patch('pwl_pairs', newPairs);
+                };
+
+                const updatePair = (index, field, val) => {
+                  const newPairs = pairs.map((p, i) => (i === index ? { ...p, [field]: val } : p));
+                  patch('pwl_pairs', newPairs);
+                };
+
+                const removePair = (index) => {
+                  if (pairs.length <= 1) return;
+                  const newPairs = pairs.filter((_, i) => i !== index);
+                  patch('pwl_pairs', newPairs);
+                };
+
+                const addPair = () => {
+                  patch('pwl_pairs', [...pairs, { t: '', v: '' }]);
+                };
+
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={label}>Number of pairs of time, value</label>
+                      <span style={{ fontSize: 11, color: '#1677ff', fontWeight: 600 }}>{numPairs} pairs</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      style={input}
+                      value={numPairs}
+                      disabled={readOnly}
+                      readOnly={readOnly}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) setNumPairs(val);
+                      }}
+                    />
+
+                    <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 8, paddingRight: 2 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 24px', gap: 4, marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>Time</span>
+                        <span style={{ fontSize: 11, color: '#666', fontWeight: 600 }}>Value ({unit})</span>
+                        <span />
+                      </div>
+
+                      {pairs.map((p, idx) => (
+                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 24px', gap: 4, marginBottom: 4, alignItems: 'center' }}>
+                          <input
+                            style={{ ...input, marginBottom: 0, padding: '3px 4px', fontSize: 12 }}
+                            placeholder={idx === 0 ? '0' : `${idx}n`}
+                            value={p.t || ''}
+                            disabled={readOnly}
+                            readOnly={readOnly}
+                            onChange={(e) => updatePair(idx, 't', e.target.value)}
+                          />
+                          <input
+                            style={{ ...input, marginBottom: 0, padding: '3px 4px', fontSize: 12 }}
+                            placeholder={isV ? '1.8V' : '1mA'}
+                            value={p.v || ''}
+                            disabled={readOnly}
+                            readOnly={readOnly}
+                            onChange={(e) => updatePair(idx, 'v', e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            title="Remove pair"
+                            disabled={readOnly || pairs.length <= 1}
+                            onClick={() => removePair(idx)}
+                            style={{
+                              width: 20, height: 20, padding: 0, borderRadius: 3,
+                              border: '1px solid #ddd', background: '#fff',
+                              color: pairs.length <= 1 ? '#ccc' : '#ff4d4f',
+                              fontSize: 11, cursor: pairs.length <= 1 || readOnly ? 'default' : 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      onClick={addPair}
+                      style={{
+                        width: '100%', padding: '4px 0', border: '1px dashed #1677ff',
+                        borderRadius: 4, background: '#f0f7ff', color: '#1677ff',
+                        fontSize: 12, fontWeight: 600, cursor: readOnly ? 'default' : 'pointer',
+                        marginBottom: 10,
+                      }}
+                    >
+                      + Add Pair
+                    </button>
+                  </>
+                );
+              })()}
+            </>
+          );
+        })()}
+
+        {hasMultiplier && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={label}>Value</label>
-              {node.data?.value && (
-                <LatexText text={formatLatexPassiveValue(node.data.value, node.type)} latex={true} size={13} color="#1677ff" />
+              <label style={label}>Multiplier (M)</label>
+              {Number(node.data?.m || 1) > 1 && (
+                <span style={{ fontSize: 11, color: '#1677ff', fontWeight: 600 }}>M = {node.data?.m}</span>
               )}
             </div>
-            <input style={input} value={node.data.value || ''}
-                  disabled={readOnly}
-                  readOnly={readOnly}
-                  onChange={(e) => patch('value', e.target.value)} />
+            <input
+              type="number"
+              min="1"
+              step="1"
+              style={input}
+              placeholder="1"
+              value={node.data?.m ?? 1}
+              disabled={readOnly}
+              readOnly={readOnly}
+              onChange={(e) => {
+                const val = e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value, 10) || 1);
+                patch('m', val);
+              }}
+              onBlur={(e) => {
+                if (!e.target.value || parseInt(e.target.value, 10) < 1) {
+                  patch('m', 1);
+                }
+              }}
+            />
           </>
         )}
         {isMos && (

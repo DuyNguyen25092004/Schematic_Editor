@@ -39,6 +39,7 @@ import TextNode from './nodes/TextNode';
 import TextDialog from './components/TextDialog';
 import LatexText, { formatLatexRef } from './components/LatexText';
 import CircuitTabBar from './components/CircuitTabBar';
+import SpiceNetlistDialog from './components/SpiceNetlistDialog';
 
 // nodeTypes: thêm  text: TextNode
 
@@ -126,6 +127,7 @@ function Flow() {
   ]);
   const [activeSheetId, setActiveSheetId] = useState('sheet_1');
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
+  const [isNetlistOpen, setIsNetlistOpen] = useState(false);
 
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
@@ -353,7 +355,20 @@ function Flow() {
       }
       return;
     }
-    setTextTool({ phase: attach ? 'attach' : 'place', text, latex });
+    if (attach) {
+      const queue = text.trim().split(/\s+/).filter(Boolean);
+      if (queue.length > 0) {
+        setTextTool({
+          phase: 'attach',
+          queue,
+          index: 0,
+          text: queue[0],
+          latex,
+        });
+      }
+      return;
+    }
+    setTextTool({ phase: 'place', text, latex });
   }, [textDialog, setNodes, setWires]);
 
   const handleTextDelete = useCallback(() => {
@@ -372,11 +387,24 @@ function Flow() {
 
   const handleAttachLabel = useCallback((wireId, ratio) => {
     if (!textTool) return;
+    const currentText = textTool.text || (textTool.queue ? textTool.queue[textTool.index || 0] : '');
     const label = {
       id: `lbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      text: textTool.text, latex: textTool.latex, ratio,
+      text: currentText, latex: textTool.latex, ratio,
     };
     setWires((ws) => ws.map((w) => (w.id === wireId ? { ...w, labels: [...(w.labels || []), label] } : w)));
+
+    if (textTool.queue && textTool.index !== undefined) {
+      const nextIndex = textTool.index + 1;
+      if (nextIndex < textTool.queue.length) {
+        setTextTool({
+          ...textTool,
+          index: nextIndex,
+          text: textTool.queue[nextIndex],
+        });
+        return;
+      }
+    }
     setTextTool(null);
   }, [textTool, setWires]);
 
@@ -434,10 +462,12 @@ function Flow() {
       id,
       type: comp.type,
       position: { x: snappedX, y: snappedY },
+      zIndex: comp.type === 'rect' ? 0 : 10,
       data: { reference: id, ...comp.defaultData, onResize: handleResizeRect, onTextChange: handleRectTextChange },
       style: {
         width: comp.defaultData?.width || 160, height: comp.defaultData?.height || 100,
         background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
+        zIndex: comp.type === 'rect' ? 0 : 10,
       },
     }]);
   }, [nextId, setNodes, handleResizeRect, handleRectTextChange, canEdit]);
@@ -673,6 +703,7 @@ function Flow() {
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
     textTool, openTextDialog, cancelTextTool,
+    onOpenNetlist: () => setIsNetlistOpen(true),
     canEdit,
   });
  
@@ -880,7 +911,7 @@ function Flow() {
           onDelete={deleteSelected}
           readOnly={!canEdit}
         />
-        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21 }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
             sheets={sheets} setSheets={setSheets}
@@ -892,6 +923,39 @@ function Flow() {
             onAuthChange={checkAuthAndAccess}
             openTrigger={openCloudTrigger}
           />
+          <button
+            type="button"
+            onClick={() => setIsNetlistOpen(true)}
+            style={{
+              height: 34,
+              padding: '0 12px',
+              borderRadius: 6,
+              background: '#fff',
+              border: '1px solid #d9d9d9',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#333',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#1677ff';
+              e.currentTarget.style.color = '#1677ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#d9d9d9';
+              e.currentTarget.style.color = '#333';
+            }}
+            title="Export SPICE Netlist (Ctrl+E)"
+          >
+            <span style={{ fontSize: 15 }}>📄</span>
+            <span>Netlist</span>
+          </button>
         </div>
 
         {/* Banner hiển thị khi người dùng ở chế độ Chỉ xem */}
@@ -1017,8 +1081,13 @@ function Flow() {
             position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 30,
             background: '#1677ff', color: '#fff', padding: '6px 14px', borderRadius: 16,
             fontFamily: 'sans-serif', fontSize: 13, pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           }}>
-            {textTool.phase === 'attach' ? 'Click vào dây để gắn nhãn' : 'Click để đặt văn bản'} — Esc để hủy
+            {textTool.phase === 'attach'
+              ? (textTool.queue && textTool.queue.length > 1
+                  ? `Click wire to attach "${textTool.text}" (${(textTool.index || 0) + 1}/${textTool.queue.length}) — Esc to cancel`
+                  : `Click wire to attach label "${textTool.text}" — Esc to cancel`)
+              : 'Click to place text — Esc to cancel'}
           </div>
         )}
 
@@ -1047,6 +1116,16 @@ function Flow() {
           onNewTab={handleNewSheet}
           onCloseTab={handleCloseSheet}
           onRenameTab={handleRenameSheet}
+        />
+
+        <SpiceNetlistDialog
+          isOpen={isNetlistOpen}
+          onClose={() => setIsNetlistOpen(false)}
+          nodes={nodes}
+          wires={wires}
+          sheets={sheets}
+          activeSheetId={activeSheetId}
+          circuitName={circuitId}
         />
       </div>
     </div>

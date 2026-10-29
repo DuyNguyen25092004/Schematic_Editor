@@ -110,6 +110,22 @@ code {
   border: none !important;
 }
 
+/* Khối hình chữ nhật (Rect / Shape) luôn nằm ở tầng dưới linh kiện */
+.react-flow__node-rect {
+  z-index: 0 !important;
+}
+.react-flow__node-rect.selected {
+  z-index: 5 !important;
+}
+
+/* Linh kiện và chữ luôn nằm trên khối hình chữ nhật */
+.react-flow__node:not(.react-flow__node-rect) {
+  z-index: 10;
+}
+.react-flow__node:not(.react-flow__node-rect).selected {
+  z-index: 1000;
+}
+
 .react-flow__node-nmos, .react-flow__node-pmos, .react-flow__node-npn, .react-flow__node-pnp,
 .react-flow__node-res, .react-flow__node-cap, .react-flow__node-vsource, .react-flow__node-isource,
 .react-flow__node-vdd, .react-flow__node-gnd,

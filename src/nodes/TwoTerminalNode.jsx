@@ -2,7 +2,7 @@ import React from 'react';
 import { Handle, Position, useStore } from 'reactflow';
 import { SYMBOLS } from '../symbols';
 import { getSymbolBox } from '../constants';
-import LatexText, { formatLatexRef, formatLatexPassiveValue } from '../components/LatexText';
+import LatexText, { formatLatexRef, formatLatexPassiveValue, formatLatexMosParam } from '../components/LatexText';
 
 // Ký hiệu nằm dọc tại x=50, xoay quanh tâm (40,50).
 // Label cách tâm xoay OFFSET đơn vị về bên phải (chưa xoay), rồi xoay/lật theo node.
@@ -42,6 +42,13 @@ function TwoTerminalNode({ data, selected, type }) {
   }[anchor.side];
   const isVerticalSide = anchor.side === 'top' || anchor.side === 'bottom';
 
+  // Không hiển thị thuộc tính của nguồn (vsource, isource) trên canvas theo chuẩn Cadence Virtuoso
+  const isRes = type === 'res';
+  const isCap = type === 'cap';
+  const isResDimension = isRes && (data.resMode === 'dimension' || (data.w && data.l && !data.value));
+  const isCapMim = isCap && data.capMode === 'mim';
+  const isCapMom = isCap && data.capMode === 'mom';
+
   return (
     <div style={{ position: 'relative', width: '160px', height: '100px', boxSizing: 'border-box' }}>
       <div style={{ width: '100%', height: '100%', transform: transformStr, transformOrigin: '40px 50px' }}>
@@ -79,9 +86,94 @@ function TwoTerminalNode({ data, selected, type }) {
           size={14}
           color="#000"
         />
-        {data.value && (
+
+        {/* Resistor Dimension Mode */}
+        {isResDimension && (
+          <>
+            {data.w && (
+              <LatexText
+                text={formatLatexMosParam('W', data.w)}
+                latex={true}
+                size={10}
+                color="#000"
+              />
+            )}
+            {data.l && (
+              <LatexText
+                text={formatLatexMosParam('L', data.l)}
+                latex={true}
+                size={10}
+                color="#000"
+              />
+            )}
+          </>
+        )}
+
+        {/* Resistor Value Mode */}
+        {isRes && !isResDimension && data.value && (
           <LatexText
             text={formatLatexPassiveValue(data.value, type)}
+            latex={true}
+            size={11}
+            color="#000"
+          />
+        )}
+
+        {/* Capacitor MOM Mode */}
+        {isCapMom && (
+          <>
+            <LatexText
+              text={`${data.fingers || 10}\\,\\text{fng } (${data.bot_layer || 'M2'}\\text{-}${data.top_layer || 'M5'})`}
+              latex={true}
+              size={10}
+              color="#000"
+            />
+            {data.w && data.l && (
+              <LatexText
+                text={`W=${data.w},\\, L=${data.l}`}
+                latex={true}
+                size={10}
+                color="#000"
+              />
+            )}
+          </>
+        )}
+
+        {/* Capacitor MIM Mode */}
+        {isCapMim && (
+          <>
+            {data.w && (
+              <LatexText
+                text={formatLatexMosParam('W', data.w)}
+                latex={true}
+                size={10}
+                color="#000"
+              />
+            )}
+            {data.l && (
+              <LatexText
+                text={formatLatexMosParam('L', data.l)}
+                latex={true}
+                size={10}
+                color="#000"
+              />
+            )}
+          </>
+        )}
+
+        {/* Capacitor Ideal/Value Mode */}
+        {isCap && !isCapMim && !isCapMom && data.value && (
+          <LatexText
+            text={formatLatexPassiveValue(data.value, type)}
+            latex={true}
+            size={11}
+            color="#000"
+          />
+        )}
+
+        {data.m && Number(data.m) > 1 && (
+          <LatexText
+            text={`M = ${data.m}`}
             latex={true}
             size={11}
             color="#000"

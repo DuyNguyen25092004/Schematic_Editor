@@ -1,41 +1,160 @@
-import { GRID, NO_JUNCTION_DOT_TYPES } from '../constants';
+import { GRID, NO_JUNCTION_DOT_TYPES, getPorts } from '../constants';
 import { toGridUnit, sameGridPoint } from '../geometry/grid';
+import { getTransformedPort } from '../geometry/ports';
 import { resolvePoints } from '../routing/resolveWire';
 import { pointAtRatio, projectOnPath, simplifyMiddle } from '../geometry/pathUtils';
 
 export function getJunctionDots(wires, nodes, resolvedMap = null) {
-  const dots = [];
-  const seen = new Set();
-  const portCount = new Map();
-  const wireIdSet = new Set(wires.map((w) => w.id));
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  if (!wires || wires.length === 0) return [];
 
-  wires.forEach((w) => {
+  const dots = [];
+  const seenDots = new Set();
+  const portCount = new Map();
+  const nodeMap = new Map((nodes || []).map((n) => [n.id, n]));
+
+  // Tập hợp tọa độ các cổng thuộc các loại linh kiện không được vẽ chấm (Pin, Port...)
+  const noDotPortLocations = new Set();
+  if (nodes && nodes.length) {
+    for (const n of nodes) {
+      if (NO_JUNCTION_DOT_TYPES.has(n.type)) {
+        for (const port of getPorts(n.type, n.data)) {
+          const tPort = getTransformedPort(port, n);
+          const px = Math.round(n.position.x) + tPort.x;
+          const py = Math.round(n.position.y) + tPort.y;
+          noDotPortLocations.add(`${toGridUnit(px)},${toGridUnit(py)}`);
+        }
+      }
+    }
+  }
+
+  // 1. Phân giải đường đi của tất cả các dây
+  const wirePaths = [];
+  const vertexWireMap = new Map(); // key `${gx},${gy}` -> Set of wireIds having a vertex at this point
+  const candidatePoints = new Map(); // key `${gx},${gy}` -> { gx, gy, x, y }
+
+  for (const w of wires) {
     const raw = w.points;
-    if (!raw || raw.length < 2) return;
+    if (!raw || raw.length < 2) continue;
     const res = resolvedMap?.get(w.id) || resolvePoints(raw, nodes, w.lockedVertical, wires, w.id, w.routed);
-    [[raw[0], res[0]], [raw[raw.length - 1], res[res.length - 1]]].forEach(([r, p]) => {
-      if (r.nodeId) {
+    if (!res || res.length < 2) continue;
+
+    wirePaths.push({ wire: w, raw, res });
+
+    // Thu thập các đỉnh (vertices) của dây
+    for (let i = 0; i < res.length; i++) {
+      const pt = res[i];
+      const gx = toGridUnit(pt.x);
+      const gy = toGridUnit(pt.y);
+      const key = `${gx},${gy}`;
+
+      if (!vertexWireMap.has(key)) {
+        vertexWireMap.set(key, new Set());
+      }
+      vertexWireMap.get(key).add(w.id);
+
+      if (!candidatePoints.has(key)) {
+        candidatePoints.set(key, { gx, gy, x: gx * GRID, y: gy * GRID });
+      }
+    }
+  }
+
+  // 2. Xử lý cổng linh kiện (Port connections)
+  // Nếu >= 2 dây nối vào cùng 1 port -> sinh dot (trừ NO_JUNCTION_DOT_TYPES)
+  for (const { raw, res } of wirePaths) {
+    const ends = [
+      [raw[0], res[0]],
+      [raw[raw.length - 1], res[res.length - 1]],
+    ];
+    for (const [r, p] of ends) {
+      if (r && r.nodeId) {
         const hostNode = nodeMap.get(r.nodeId);
-        if (hostNode && NO_JUNCTION_DOT_TYPES.has(hostNode.type)) return;
+        if (hostNode && NO_JUNCTION_DOT_TYPES.has(hostNode.type)) continue;
         const k = `${r.nodeId}.${r.portId}`;
         const c = portCount.get(k) || { n: 0, x: p.x, y: p.y };
         c.n += 1;
         portCount.set(k, c);
-        return;
       }
-      if (!r.onWireId) return;
-      if (!wireIdSet.has(r.onWireId)) return;
-      const key = `${toGridUnit(p.x)},${toGridUnit(p.y)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      dots.push({ x: toGridUnit(p.x) * GRID, y: toGridUnit(p.y) * GRID });
-    });
-  });
+    }
+  }
 
   portCount.forEach((c) => {
-    if (c.n >= 2) dots.push({ x: toGridUnit(c.x) * GRID, y: toGridUnit(c.y) * GRID });
+    if (c.n >= 2) {
+      const gx = toGridUnit(c.x);
+      const gy = toGridUnit(c.y);
+      const key = `${gx},${gy}`;
+      if (!noDotPortLocations.has(key) && !seenDots.has(key)) {
+        seenDots.add(key);
+        dots.push({ x: gx * GRID, y: gy * GRID });
+      }
+    }
   });
+
+  // 3. Phân tích tô pô mạng dây (Topological Branch Counting):
+  // Một điểm P(gx, gy) được coi là nút giao (junction) nếu có từ 3 nhánh dây trở lên (degree >= 3)
+  // tỏa ra từ P theo các hướng trực giao.
+  for (const [key, cand] of candidatePoints.entries()) {
+    if (seenDots.has(key)) continue;
+    if (noDotPortLocations.has(key)) continue;
+
+    const { gx, gy } = cand;
+    const directions = new Set(); // chứa 'U', 'D', 'L', 'R'
+
+    for (const { wire, res } of wirePaths) {
+      for (let i = 0; i < res.length - 1; i++) {
+        const a = res[i];
+        const b = res[i + 1];
+        const ax = toGridUnit(a.x);
+        const ay = toGridUnit(a.y);
+        const bx = toGridUnit(b.x);
+        const by = toGridUnit(b.y);
+
+        if (ax === bx && ay === by) continue; // đoạn suy biến
+
+        // Điểm P là đầu A của đoạn thẳng
+        if (ax === gx && ay === gy) {
+          if (bx > gx) directions.add('R');
+          else if (bx < gx) directions.add('L');
+          else if (by > gy) directions.add('D');
+          else if (by < gy) directions.add('U');
+        }
+        // Điểm P là đầu B của đoạn thẳng
+        else if (bx === gx && by === gy) {
+          if (ax > gx) directions.add('R');
+          else if (ax < gx) directions.add('L');
+          else if (ay > gy) directions.add('D');
+          else if (ay < gy) directions.add('U');
+        }
+        // Điểm P nằm lọt giữa đoạn thẳng A-B (Interior of segment)
+        else {
+          const isH = ay === by && ay === gy;
+          const isV = ax === bx && ax === gx;
+          if (isH && gx > Math.min(ax, bx) && gx < Math.max(ax, bx)) {
+            // P nằm trong đoạn ngang của wire.
+            // Đoạn này cung cấp 2 nhánh (L và R) khi có dây khác nối tại P
+            const wiresAtP = vertexWireMap.get(key);
+            if (wiresAtP && (wiresAtP.size > 1 || !wiresAtP.has(wire.id))) {
+              directions.add('L');
+              directions.add('R');
+            }
+          } else if (isV && gy > Math.min(ay, by) && gy < Math.max(ay, by)) {
+            // P nằm trong đoạn dọc của wire.
+            const wiresAtP = vertexWireMap.get(key);
+            if (wiresAtP && (wiresAtP.size > 1 || !wiresAtP.has(wire.id))) {
+              directions.add('U');
+              directions.add('D');
+            }
+          }
+        }
+      }
+    }
+
+    // Nếu bậc tô pô >= 3: sinh dấu chấm
+    if (directions.size >= 3) {
+      seenDots.add(key);
+      dots.push({ x: cand.x, y: cand.y });
+    }
+  }
+
   return dots;
 }
 
@@ -126,7 +245,7 @@ export function mergeTouchingWires(wires, nodes) {
             labels = [...remap(A.labels, ptsA), ...remap(B.labels, ptsB)];
           }
           const merged = {
-            ...A, points: mergedPoints, lockedVertical: undefined,
+            ...A, points: simplifyMiddle(mergedPoints), lockedVertical: undefined,
             net: A.net || B.net, name: A.name || B.name, color: A.color || B.color,
             ...(labels.length ? { labels } : {}),
           };

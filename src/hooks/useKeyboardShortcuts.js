@@ -15,12 +15,20 @@ const {
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
     textTool, openTextDialog, cancelTextTool,
+    onOpenNetlist,
     canEdit = true,
 } = ctx;
  useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
+      // Ctrl+E: Mở hộp thoại xuất SPICE Netlist
+      if ((e.key === 'e' || e.key === 'E') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        onOpenNetlist?.();
+        return;
+      }
+
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey) {
         e.preventDefault();
         fitView({ padding: 0.2, duration: 300 });
@@ -54,8 +62,8 @@ const {
       if (e.key === 'r' || e.key === 'R') {
         if (e.repeat) return;
 
-        const isMirrorH = (e.ctrlKey || e.metaKey) && !e.shiftKey;
-        const isMirrorV = e.shiftKey && !e.ctrlKey && !e.metaKey;
+        const isMirrorH = e.shiftKey && !e.ctrlKey && !e.metaKey;
+        const isMirrorV = (e.ctrlKey || e.metaKey) && !e.shiftKey;
         const isRotate = !e.ctrlKey && !e.metaKey && !e.shiftKey;
 
         // Chỉ xử lý nếu là R, Ctrl+R hoặc Shift+R
@@ -212,11 +220,11 @@ const {
             let nextFlip = curFlip;
 
             if (isMirrorH) {
-              // Lật ngang (Ctrl+R): (360 - rot) % 360, đảo cờ flip
+              // Lật ngang (Shift+R): (360 - rot) % 360, đảo cờ flip
               nextRot = (360 - curRot) % 360;
               nextFlip = !curFlip;
             } else if (isMirrorV) {
-              // Lật dọc (Shift+R): (180 - rot + 360) % 360, đảo cờ flip
+              // Lật dọc (Ctrl+R): (180 - rot + 360) % 360, đảo cờ flip
               nextRot = (180 - curRot + 360) % 360;
               nextFlip = !curFlip;
             } else {

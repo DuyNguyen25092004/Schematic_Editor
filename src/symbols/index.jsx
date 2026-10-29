@@ -249,22 +249,27 @@ export function AndGateSymbol({ strokeWidth = 1.5, data }) {
 export function OrGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
-  const { ys, H } = getGateParams(data);
+  const { n, ys, H } = getGateParams(data);
+  const extraW = (n - 2) * 20;
+  const noseX = 14 + extraW;
+  const outX = 30 + extraW;
+  const rTop = 34 + extraW;
+  const rBack = Math.round((20 / 15) * H * 10) / 10;
+  const xc = -20 - Math.sqrt(rBack * rBack - H * H);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       {ys.map((y, idx) => {
-        const clampedRatio = Math.min(1, Math.abs(y) / H);
-        const x2 = -20 + 4.5 * (1 - clampedRatio ** 2);
+        const x2 = xc + Math.sqrt(Math.max(0, rBack * rBack - y * y));
         return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
       })}
       <path
-        d={`M -20,${-H} Q 0,${-H * 0.65} 16,0 Q 0,${H * 0.65} -20,${H} Q -11,0 -20,${-H}`}
+        d={`M -20,${-H} A ${rTop} ${rTop} 0 0 1 ${noseX} 0 A ${rTop} ${rTop} 0 0 1 -20 ${H} A ${rBack} ${rBack} 0 0 0 -20 ${-H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
         strokeMiterlimit={4}
       />
-      <line x1="16" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1={noseX} y1="0" x2={outX} y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
@@ -294,23 +299,31 @@ export function NandGateSymbol({ strokeWidth = 1.5, data }) {
 export function NorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
-  const { ys, H } = getGateParams(data);
+  const { n, ys, H } = getGateParams(data);
+  const extraW = (n - 2) * 20;
+  const noseX = 14 + extraW;
+  const outX = 30 + extraW;
+  const rTop = 34 + extraW;
+  const rBack = Math.round((20 / 15) * H * 10) / 10;
+  const xc = -20 - Math.sqrt(rBack * rBack - H * H);
+  const bubbleR = 3.5;
+  const bubbleCx = noseX + bubbleR + 0.5;
+  const outX1 = bubbleCx + bubbleR;
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       {ys.map((y, idx) => {
-        const clampedRatio = Math.min(1, Math.abs(y) / H);
-        const x2 = -20 + 4.5 * (1 - clampedRatio ** 2);
+        const x2 = xc + Math.sqrt(Math.max(0, rBack * rBack - y * y));
         return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
       })}
       <path
-        d={`M -20,${-H} Q 0,${-H * 0.65} 16,0 Q 0,${H * 0.65} -20,${H} Q -11,0 -20,${-H}`}
+        d={`M -20,${-H} A ${rTop} ${rTop} 0 0 1 ${noseX} 0 A ${rTop} ${rTop} 0 0 1 -20 ${H} A ${rBack} ${rBack} 0 0 0 -20 ${-H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
         strokeMiterlimit={4}
       />
-      <circle cx="19.5" cy="0" r="3.5" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="23" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx={bubbleCx} cy="0" r={bubbleR} strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
+      <line x1={outX1} y1="0" x2={outX} y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
@@ -318,29 +331,35 @@ export function NorGateSymbol({ strokeWidth = 1.5, data }) {
 export function XorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
-  const { ys, H } = getGateParams(data);
+  const { n, ys, H } = getGateParams(data);
+  const extraW = (n - 2) * 20;
+  const dx = 6.5;
+  const bodyStartX = -20 + dx;
+  const noseX = 14 + dx + extraW;
+  const outX = 30 + extraW;
+  const rTop = 34 + extraW;
+  const rBack = Math.round((20 / 15) * H * 10) / 10;
+  const xc1 = -20 - Math.sqrt(rBack * rBack - H * H);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       {ys.map((y, idx) => {
-        const clampedRatio = Math.min(1, Math.abs(y) / H);
-        const x2 = -20 + 3.65 * (1 - clampedRatio ** 2);
+        const x2 = xc1 + Math.sqrt(Math.max(0, rBack * rBack - y * y));
         return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
       })}
       <path
-        d={`M -13.5,${-H} Q 6.5,${-H * 0.65} 22.3,0 Q 6.5,${H * 0.65} -13.5,${H} Q -4.5,0 -13.5,${-H}`}
+        d={`M -20,${-H} A ${rBack} ${rBack} 0 0 1 -20 ${H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
-        strokeMiterlimit={4}
       />
       <path
-        d={`M -20,${-H} Q -12.7,0 -20,${H}`}
+        d={`M ${bodyStartX},${-H} A ${rTop} ${rTop} 0 0 1 ${noseX} 0 A ${rTop} ${rTop} 0 0 1 ${bodyStartX} ${H} A ${rBack} ${rBack} 0 0 0 ${bodyStartX} ${-H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
         strokeMiterlimit={4}
       />
-      <line x1="22.3" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1={noseX} y1="0" x2={outX} y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
@@ -348,30 +367,39 @@ export function XorGateSymbol({ strokeWidth = 1.5, data }) {
 export function XnorGateSymbol({ strokeWidth = 1.5, data }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
-  const { ys, H } = getGateParams(data);
+  const { n, ys, H } = getGateParams(data);
+  const extraW = (n - 2) * 20;
+  const dx = 6.5;
+  const bodyStartX = -20 + dx;
+  const noseX = 14 + dx + extraW;
+  const outX = 40 + extraW;
+  const rTop = 34 + extraW;
+  const rBack = Math.round((20 / 15) * H * 10) / 10;
+  const xc1 = -20 - Math.sqrt(rBack * rBack - H * H);
+  const bubbleR = 3.5;
+  const bubbleCx = noseX + bubbleR + 0.5;
+  const outX1 = bubbleCx + bubbleR;
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       {ys.map((y, idx) => {
-        const clampedRatio = Math.min(1, Math.abs(y) / H);
-        const x2 = -20 + 3.65 * (1 - clampedRatio ** 2);
+        const x2 = xc1 + Math.sqrt(Math.max(0, rBack * rBack - y * y));
         return <line key={idx} x1="-30" y1={y} x2={x2} y2={y} strokeWidth={leadSw} strokeLinecap="butt" />;
       })}
       <path
-        d={`M -13.5,${-H} Q 6.5,${-H * 0.65} 22.3,0 Q 6.5,${H * 0.65} -13.5,${H} Q -4.5,0 -13.5,${-H}`}
+        d={`M -20,${-H} A ${rBack} ${rBack} 0 0 1 -20 ${H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
-        strokeMiterlimit={4}
       />
       <path
-        d={`M -20,${-H} Q -12.7,0 -20,${H}`}
+        d={`M ${bodyStartX},${-H} A ${rTop} ${rTop} 0 0 1 ${noseX} 0 A ${rTop} ${rTop} 0 0 1 ${bodyStartX} ${H} A ${rBack} ${rBack} 0 0 0 ${bodyStartX} ${-H}`}
         strokeWidth={bodySw}
         strokeLinecap="butt"
         strokeLinejoin="miter"
         strokeMiterlimit={4}
       />
-      <circle cx="25.8" cy="0" r="3.4" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
-      <line x1="29.2" y1="0" x2="40" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
+      <circle cx={bubbleCx} cy="0" r={bubbleR} strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" strokeMiterlimit={4} />
+      <line x1={outX1} y1="0" x2={outX} y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }

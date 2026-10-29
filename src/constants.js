@@ -7,6 +7,13 @@ export const PORTS = [
   { id: 'source', x: 50, y: 70 },
 ];
 
+// PMOS: Source nằm TRÊN (y=30, có mũi tên), Drain nằm DƯỚI (y=70) — đối xứng chuẩn CMOS với NMOS
+export const PMOS_PORTS = [
+  { id: 'gate',   x: 20, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'source', x: 50, y: 30, dir: { x: 0, y: -1 } },
+  { id: 'drain',  x: 50, y: 70, dir: { x: 0, y: 1 } },
+];
+
 export const NPN_PORTS = [
   { id: 'base',      x: 20, y: 50, dir: { x: -1, y: 0 } },
   { id: 'collector', x: 50, y: 30, dir: { x: 0, y: -1 } },
@@ -141,6 +148,7 @@ export const SW_SP4T_PORTS = [
 ];
 
 export const PORTS_BY_TYPE = {
+  pmos: PMOS_PORTS,
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
   vsource: TWO_TERM_PORTS, isource: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
@@ -172,7 +180,9 @@ export const getLogicPorts = (type, inputs = 2) => {
       dir: { x: -1, y: 0 },
     });
   }
-  const outX = type === 'xnor' ? 80 : 70;
+  const isCurved = type === 'or' || type === 'nor' || type === 'xor' || type === 'xnor';
+  const extraW = isCurved ? (n - 2) * 20 : 0;
+  const outX = (type === 'xnor' ? 80 : 70) + extraW;
   ports.push({
     id: 'out',
     x: outX,
@@ -243,8 +253,10 @@ export const getSymbolBox = (type, data) => {
   }
   if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
     const n = Math.max(2, Math.min(16, Math.round(Number(data?.inputs) || 2)));
-    const w = type === 'xnor' ? 70 : 60;
-    return { x: 10, y: 50 - n * 10, w, h: n * 20 };
+    const isCurved = type === 'or' || type === 'nor' || type === 'xor' || type === 'xnor';
+    const extraW = isCurved ? (n - 2) * 20 : 0;
+    const baseW = type === 'xnor' ? 70 : 60;
+    return { x: 10, y: 50 - n * 10, w: baseW + extraW, h: n * 20 };
   }
   return SYMBOL_BOX_BY_TYPE[type] || DEFAULT_SYMBOL_BOX;
 };
@@ -252,7 +264,8 @@ export const getSymbolBox = (type, data) => {
 export const nodeBoxStyle = (n) => ({
   ...(n.type === 'text' ? {} : { width: n.data?.width || 160, height: n.data?.height || 100 }),
   background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
-  });
+  zIndex: n.type === 'rect' ? 0 : 10,
+});
 
 export const MID_WIRE_SNAP_RADIUS = 5; // chỉ hút vào GIỮA dây khi click rất sát (nửa ô lưới)
 
@@ -272,12 +285,12 @@ export const COMPONENT_CATEGORIES = [
 
 // ============ THƯ VIỆN LINH KIỆN (COMPONENT LIBRARY) ============
 export const COMPONENT_LIBRARY = [
-  { type: 'nmos',     category: 'transistors', short: 'NMOS',    label: 'NMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
-  { type: 'pmos',     category: 'transistors', short: 'PMOS',    label: 'PMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n' } },
-  { type: 'npn',      category: 'transistors', short: 'NPN',     label: 'BJT NPN',       refPrefix: 'Q_',  defaultData: {} },
-  { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: {} },
-  { type: 'res',      category: 'passives',    short: 'Res',     label: 'Resistor',      refPrefix: 'R_',  defaultData: { value: '1k' } },
-  { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Capacitor',     refPrefix: 'C_',  defaultData: { value: '1p' } },
+  { type: 'nmos',     category: 'transistors', short: 'NMOS',    label: 'NMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n', model: 'NMOS', m: 1 } },
+  { type: 'pmos',     category: 'transistors', short: 'PMOS',    label: 'PMOS',          refPrefix: 'M_',  defaultData: { w: '1u', l: '150n', model: 'PMOS', m: 1 } },
+  { type: 'npn',      category: 'transistors', short: 'NPN',     label: 'BJT NPN',       refPrefix: 'Q_',  defaultData: { model: 'NPN', m: 1 } },
+  { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: { model: 'PNP', m: 1 } },
+  { type: 'res',      category: 'passives',    short: 'Res',     label: 'Resistor',      refPrefix: 'R_',  defaultData: { resMode: 'value', value: '1k', w: '1u', l: '10u', m: 1, model: '' } },
+  { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Capacitor',     refPrefix: 'C_',  defaultData: { capMode: 'value', value: '1p', w: '10u', l: '10u', fingers: 10, bot_layer: 'M2', top_layer: 'M5', m: 1, model: '' } },
   { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Normally Open)', refPrefix: 'SW_', defaultData: {} },
   { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Normally Closed)', refPrefix: 'SW_', defaultData: {} },
   { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'SPDT Switch',   refPrefix: 'SW_', defaultData: {} },
@@ -285,20 +298,20 @@ export const COMPONENT_LIBRARY = [
   { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'SP4T Switch',   refPrefix: 'SW_', defaultData: {} },
   { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
-  { type: 'vsource',  category: 'power',       short: 'Vdc',     label: 'Voltage Source (Vdc)',  refPrefix: 'V_',  defaultData: { value: '1V' } },
-  { type: 'isource',  category: 'power',       short: 'Idc',     label: 'Current Source (Idc)', refPrefix: 'I_', defaultData: { value: '1mA' } },
-  { type: 'opamp',    category: 'analog',      short: 'Opamp',   label: 'Opamp',         refPrefix: 'U_',  defaultData: {} },
-  { type: 'fdopamp',  category: 'analog',      short: 'FD Opamp', label: 'FD opamp',     refPrefix: 'U_',  defaultData: {} },
-  { type: 'inverter', category: 'logic',       short: 'INV',     label: 'Inverter (NOT)', refPrefix: 'U_', defaultData: {} },
-  { type: 'buffer',   category: 'logic',       short: 'BUF',     label: 'Buffer',         refPrefix: 'U_', defaultData: {} },
-  { type: 'and',      category: 'logic',       short: 'AND',     label: 'AND Gate',       refPrefix: 'U_', defaultData: {} },
-  { type: 'or',       category: 'logic',       short: 'OR',      label: 'OR Gate',        refPrefix: 'U_', defaultData: {} },
-  { type: 'nand',     category: 'logic',       short: 'NAND',    label: 'NAND Gate',      refPrefix: 'U_', defaultData: {} },
-  { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'NOR Gate',       refPrefix: 'U_', defaultData: {} },
-  { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'XOR Gate',       refPrefix: 'U_', defaultData: {} },
-  { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'XNOR Gate',      refPrefix: 'U_', defaultData: {} },
-  { type: 'dff',      category: 'logic',       short: 'DFF (EN)',  label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: {} },
-  { type: 'dff_sr',   category: 'logic',       short: 'DFF (SET)', label: 'D Flip-Flop (SET, RST)', refPrefix: 'U_', defaultData: {} },
-  { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: {} },
+  { type: 'vsource',  category: 'power',       short: 'Vsource', label: 'Voltage Source (Vdc/Vpulse/Vsin/Vpwl)', refPrefix: 'V_',  defaultData: { sourceType: 'dc', value: '1V', pulse_v1: '0', pulse_v2: '1.8V', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n', sin_vo: '0', sin_va: '1V', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0', pwl_pairs: [{ t: '0', v: '0' }, { t: '1n', v: '1.8V' }, { t: '5n', v: '1.8V' }, { t: '6n', v: '0' }] } },
+  { type: 'isource',  category: 'power',       short: 'Isource', label: 'Current Source (Idc/Ipulse/Isin/Ipwl)', refPrefix: 'I_', defaultData: { sourceType: 'dc', value: '1mA', pulse_v1: '0', pulse_v2: '1mA', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n', sin_vo: '0', sin_va: '1mA', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0', pwl_pairs: [{ t: '0', v: '0' }, { t: '1n', v: '1mA' }, { t: '5n', v: '1mA' }, { t: '6n', v: '0' }] } },
+  { type: 'opamp',    category: 'analog',      short: 'Opamp',   label: 'Opamp',         refPrefix: 'U_',  defaultData: { model: 'OPAMP' } },
+  { type: 'fdopamp',  category: 'analog',      short: 'FD Opamp', label: 'FD opamp',     refPrefix: 'U_',  defaultData: { model: 'FD_OPAMP' } },
+  { type: 'inverter', category: 'logic',       short: 'INV',     label: 'Inverter (NOT)', refPrefix: 'U_', defaultData: { model: 'INV' } },
+  { type: 'buffer',   category: 'logic',       short: 'BUF',     label: 'Buffer',         refPrefix: 'U_', defaultData: { model: 'BUF' } },
+  { type: 'and',      category: 'logic',       short: 'AND',     label: 'AND Gate',       refPrefix: 'U_', defaultData: { model: 'AND_2' } },
+  { type: 'or',       category: 'logic',       short: 'OR',      label: 'OR Gate',        refPrefix: 'U_', defaultData: { model: 'OR_2' } },
+  { type: 'nand',     category: 'logic',       short: 'NAND',    label: 'NAND Gate',      refPrefix: 'U_', defaultData: { model: 'NAND_2' } },
+  { type: 'nor',      category: 'logic',       short: 'NOR',     label: 'NOR Gate',       refPrefix: 'U_', defaultData: { model: 'NOR_2' } },
+  { type: 'xor',      category: 'logic',       short: 'XOR',     label: 'XOR Gate',       refPrefix: 'U_', defaultData: { model: 'XOR_2' } },
+  { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'XNOR Gate',      refPrefix: 'U_', defaultData: { model: 'XNOR_2' } },
+  { type: 'dff',      category: 'logic',       short: 'DFF (EN)',  label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: { model: 'DFF' } },
+  { type: 'dff_sr',   category: 'logic',       short: 'DFF (SET)', label: 'D Flip-Flop (SET, RST)', refPrefix: 'U_', defaultData: { model: 'DFF_SR' } },
+  { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: { model: 'MUX' } },
   { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rectangle',     refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
 ];

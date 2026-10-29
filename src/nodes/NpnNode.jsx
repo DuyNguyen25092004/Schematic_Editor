@@ -87,6 +87,14 @@ function NpnNode({ data, selected, type }) {
           size={14}
           color="#000"
         />
+        {data.m && Number(data.m) > 1 && (
+          <LatexText
+            text={`M = ${data.m}`}
+            latex={true}
+            size={11}
+            color="#000"
+          />
+        )}
       </div>
     </div>
   );
