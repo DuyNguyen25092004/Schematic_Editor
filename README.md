@@ -9,7 +9,7 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
 🚀 **Live Interactive Demo**: [https://DuyNguyen25092004.github.io/Schematic_Editor/](https://DuyNguyen25092004.github.io/Schematic_Editor/)
 
 <p align="center">
-  <img src="screenshots/overview.png" alt="Cadence Virtuoso Schematic Capture Interface - TSMC 65nm CMOS Inverter" width="100%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+  <img src="screenshots/overview.png" alt="Cadence Virtuoso Schematic Capture Interface - CMOS Differential Pair (Razavi Style)" width="100%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
 </p>
 
 ---
@@ -26,14 +26,7 @@ All schematic symbols and drawing conventions follow the iconic textbook style o
 - **Analog & Digital Blocks**: Single-ended Op-Amp, Fully Differential Op-Amp (FD-Opamp), Inverter, Buffer, D-Flip-Flop, 2:1 MUX, and Multi-Input Logic Gates (AND, OR, NAND, NOR, XOR, XNOR scalable from 2 to 16 inputs).
 - **Switches & Annotations**: Switches (NO, NC, SPDT, SP3T, SP4T), functional subcircuit bounding boxes, and LaTeX mathematical annotations.
 
-### 2. Virtuoso-Standard Orthogonal Wiring
-- **Intelligent Orthogonal Router**: Single-click `W` key to activate Cadence-style orthogonal wire routing.
-- **Distance Arbitration with Mid-Wire Priority**: Prevents unintentional jumping to nearby device pins when tapping directly into mid-wire segments.
-- **Topological Junction Dot Computation**: Automatically places connection dots only on electrical junctions with degree $\ge 3$ (T-junctions, cross-connections). Clean corners ($90^\circ$ bends) and crossovers display no dots.
-- **Automatic Inline Wire Merging & Segment Dragging**: Seamlessly drag wire runs with baseline anchor stability and automatic collinear segment simplification.
-- **LaTeX Mathematical Net Labels**: Assign net names using mathematical LaTeX formatting (e.g., `$V_{DD}$`, `$V_{out}$`, `$\overline{Q}$`, `$A_{1}$`). SPICE exporter automatically sanitizes these into clean SPICE identifiers (`VDD`, `Vout`, `Q_b`, `A1`).
-
-### 3. Production-Ready SPICE & Spectre Netlist Export
+### 2. Production-Ready SPICE & Spectre Netlist Export
 - **One-Click Netlist Generation**: Generates clean, simulation-ready netlists with standard node ordering.
 - **Automatic Subcircuit (`X`) Prefixing**:
   - Conforms to TSMC 65nm / 28nm and Cadence Spectre requirements: any passive component or subcircuit block with a technology model (`rnpolywo`, `CMIM`, `CMOM`, standard cells) is automatically exported with prefix `X` (e.g., `X1 VOUT N_1 rnpolywo w=1u l=1u m=1`), preventing Spectre `ERROR (SFE-1997)`.
@@ -47,7 +40,7 @@ All schematic symbols and drawing conventions follow the iconic textbook style o
   <img src="screenshots/spice_export.png" alt="SPICE & Spectre Netlist Export Dialog" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
 </p>
 
-### 4. Real-Time Collaboration & Cloud Workspace
+### 3. Real-Time Collaboration & Cloud Workspace
 - **Multi-User Live Collaboration**: Real-time cursor presence and circuit synchronization powered by Firebase Realtime Database.
 - **Google Drive Storage Integration**: Open, save, and auto-backup schematic capture sheets directly to Google Drive.
 - **High-Resolution Snapshot Copy**: Instantly copy crisp, vector-like PNG snapshots of selected components or entire circuits to the clipboard via `Ctrl + Shift + C`.
