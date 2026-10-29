@@ -8,6 +8,10 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
 
 🚀 **Live Interactive Demo**: [https://DuyNguyen25092004.github.io/Schematic_Editor/](https://DuyNguyen25092004.github.io/Schematic_Editor/)
 
+<p align="center">
+  <img src="screenshots/overview.png" alt="Cadence Virtuoso Schematic Capture Interface - TSMC 65nm CMOS Inverter" width="100%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+</p>
+
 ---
 
 ## 🌟 Key Features
@@ -24,6 +28,10 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
     - **Ideal Value Mode**: Capacitance in Farads ($pF$, $fF$, etc.).
     - **MIM Mode**: Metal-Insulator-Metal capacitor defined by dimension ($W, L$) and PDK model (`CMIM`).
     - **MOM Mode**: Metal-Oxide-Metal multi-layer interdigitated capacitor parameterized by $W$, $L$, number of fingers, bottom metal layer (e.g. `M2`), top metal layer (e.g. `M5`), and multiplier ($M$).
+
+<p align="center">
+  <img src="screenshots/passives_inspector.png" alt="Property Inspector - Physical MOM Capacitor Model Parameters" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+</p>
 - **Independent Waveform Sources**:
   - Independent Voltage (`VSOURCE`) and Current (`ISOURCE`) generators supporting **DC**, **PULSE**, **SIN**, and **PWL** functions with instant SPICE waveform formatting.
 - **Power & Ground Rails**:
@@ -32,6 +40,10 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
 - **Analog & Digital Blocks**:
   - Single-ended Operational Amplifier (`OPAMP`) and Fully Differential Op-Amp (`FD_OPAMP`).
   - **Configurable Multi-Input Logic Gates**: AND, OR, NAND, NOR, XOR, XNOR dynamically scalable from **2 to 16 input pins** with Cadence Virtuoso proportional curved Bezier hulls, plus Inverter, Buffer, D-Flip-Flop (with Set/Reset), and 2:1 Multiplexer.
+
+<p align="center">
+  <img src="screenshots/logic_gates_scaling.png" alt="Multi-Input Scalable Logic Gates and Dynamic Input Configuration" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+</p>
 - **Switches & Annotations**:
   - Normally Open/Closed switches, SPDT, SP3T, SP4T, customizable border boxes, and free LaTeX text annotations.
 
@@ -51,6 +63,10 @@ A modern, high-performance web-based clone of the industry-standard **Cadence Vi
   - PMOS: `Drain Gate Source Bulk` (`M2 VOUT N_1 VDD VDD pch W=1u L=150n M=1`).
   - NMOS: `Drain Gate Source Bulk` (`M1 VOUT N_1 0 0 nch W=1u L=150n M=1`).
 - **Autonomous Simulation Fallbacks**: Generates built-in `.subckt` and `.model` definitions when `Include Default Simulation Models` is checked.
+
+<p align="center">
+  <img src="screenshots/spice_export.png" alt="SPICE & Spectre Netlist Export Dialog" width="95%" style="border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);" />
+</p>
 
 ### 4. Real-Time Collaboration & Cloud Workspace
 - **Multi-User Live Collaboration**: Real-time cursor presence and circuit synchronization powered by Firebase Realtime Database.
