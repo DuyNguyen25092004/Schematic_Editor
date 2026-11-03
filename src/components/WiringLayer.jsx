@@ -89,69 +89,88 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
           return (
             <React.Fragment key={`lbl-wrap-${w.id}`}>
               {/* Tên dây wire.name (tự động nhận dạng LaTeX) */}
-              {mid && (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelected({ kind: 'wire', id: w.id });
-                    setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: mid.x,
-                    top: mid.y,
-                    transform: mid.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
-                    pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <LatexText
-                    text={formatLatexRef(w.name)}
-                    latex={true}
-                    size={12}
-                    color={isSel ? '#1677ff' : wireColor}
-                  />
-                </div>
-              )}
+              {mid && (() => {
+                const isNameSel = selected?.kind === 'wire-name' && selected.wireId === w.id;
+                return (
+                  <div
+                    data-wire-name-id={w.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent('select-wire-name', { detail: { wireId: w.id, clientX: e.clientX, clientY: e.clientY } }));
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: mid.x,
+                      top: mid.y,
+                      transform: mid.horizontal
+                        ? (w.nameSide === 'below' ? 'translate(-50%, 6px)' : 'translate(-50%, calc(-100% - 3px))')
+                        : (w.nameSide === 'left' ? 'translate(calc(-100% - 6px), -50%)' : 'translate(6px, -50%)'),
+                      pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
+                      lineHeight: 1,
+                      whiteSpace: 'nowrap',
+                      border: isNameSel ? '1.5px dashed #1677ff' : '1.5px solid transparent',
+                      borderRadius: '3px',
+                      background: isNameSel ? 'rgba(22, 119, 255, 0.08)' : 'transparent',
+                      boxShadow: isNameSel ? '0 0 0 2px rgba(22, 119, 255, 0.15)' : 'none',
+                      padding: '1px 3px',
+                      zIndex: isNameSel ? 20 : 10,
+                    }}
+                  >
+                    <LatexText
+                      text={formatLatexRef(w.name)}
+                      latex={true}
+                      size={12}
+                      color={isNameSel ? '#1677ff' : wireColor}
+                    />
+                  </div>
+                );
+              })()}
 
               {/* Các nhãn dán wire.labels */}
-              {resolvedLabels.map((l) => (
-                <div
-                  key={l.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelected({ kind: 'wire', id: w.id });
-                    setWires((ws) => ws.map((x) => ({ ...x, selected: x.id === w.id })));
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    onEditLabel?.(w.id, l.id);
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: l.pt.x,
-                    top: l.pt.y,
-                    transform: l.pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
-                    pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
-                    lineHeight: 1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <LatexText
-                    text={l.text}
-                    latex={l.latex ?? /[_\^\\{}]/.test(l.text)}
-                    size={l.size || 12}
-                    color={isSel ? '#1677ff' : wireColor}
-                  />
-                </div>
-              ))}
+              {resolvedLabels.map((l) => {
+                const isLabelSel = selected?.kind === 'wire-label' && selected.wireId === w.id && selected.labelId === l.id;
+                return (
+                  <div
+                    key={l.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.dispatchEvent(new CustomEvent('select-wire-label', { detail: { wireId: w.id, labelId: l.id, clientX: e.clientX, clientY: e.clientY } }));
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      onEditLabel?.(w.id, l.id);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      left: l.pt.x,
+                      top: l.pt.y,
+                      transform: l.pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+                      pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      textShadow: '0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff',
+                      lineHeight: 1,
+                      whiteSpace: 'nowrap',
+                      border: isLabelSel ? '1.5px dashed #1677ff' : '1.5px solid transparent',
+                      borderRadius: '3px',
+                      background: isLabelSel ? 'rgba(22, 119, 255, 0.08)' : 'transparent',
+                      boxShadow: isLabelSel ? '0 0 0 2px rgba(22, 119, 255, 0.15)' : 'none',
+                      padding: '1px 3px',
+                      zIndex: isLabelSel ? 20 : 10,
+                    }}
+                  >
+                    <LatexText
+                      text={l.text}
+                      latex={l.latex ?? /[_^\{}]/.test(l.text)}
+                      size={l.size || 12}
+                      color={isLabelSel ? '#1677ff' : wireColor}
+                    />
+                  </div>
+                );
+              })}
 
               {/* Nhãn nháp khi đang di chuột attach tool */}
               {attachTool && attachHover?.wireId === w.id && (() => {
@@ -250,7 +269,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
       const rp = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed, map);
       map.set(w.id, rp);
       const pts = pointsToPolyline(rp);
-      const mid = (w.name && (!w.labels || w.labels.length === 0)) ? pointAtRatio(rp, 0.5) : null;
+      const mid = (w.name && (!w.labels || w.labels.length === 0)) ? pointAtRatio(rp, w.nameRatio ?? 0.5) : null;
       const resolvedLabels = (w.labels || []).map((l) => ({
         ...l,
         pt: pointAtRatio(rp, l.ratio),

@@ -8,7 +8,10 @@ const DEBOUNCE_MS = 300;
 const MAX_HISTORY = 100;
 
 const nodesSig = (nodes) =>
-  JSON.stringify(nodes.map((n) => [n.id, n.type, n.position?.x, n.position?.y, n.data]));
+  JSON.stringify(nodes.map((n) => {
+    const { isLabelSelected, ...restData } = n.data || {};
+    return [n.id, n.type, n.position?.x, n.position?.y, restData];
+  }));
 const wiresSig = (wires) =>
   JSON.stringify(wires.map((w) => { const { selected: _s, ...rest } = w; return rest; }));
 const snapSig = (s) => `${nodesSig(s.nodes)}|${wiresSig(s.wires)}`;

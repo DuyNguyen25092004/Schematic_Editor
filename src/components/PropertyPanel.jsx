@@ -29,8 +29,8 @@ const RECT_COLORS = [
   { name: 'Gray', value: '#757575' },
 ];
 
-function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, readOnly = false }) {
-  if (!selected) return null;
+function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, readOnly = false, isOpen = false, onClose }) {
+  if (!isOpen || !selected) return null;
 
   const box = {
     position: 'absolute', top: 60, right: 16, zIndex: 20, width: 260,
@@ -48,8 +48,9 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
   };
 
-  if (selected.kind === 'node') {
-    const node = nodes.find((n) => n.id === selected.id);
+  if (selected.kind === 'node' || selected.kind === 'node-label') {
+    const nodeId = selected.kind === 'node' ? selected.id : (selected.nodeId || selected.id);
+    const node = nodes.find((n) => n.id === nodeId);
     if (!node) return null;
     const patch = (key, value) => {
       if (readOnly) return;
@@ -113,18 +114,33 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     const hasMultiplier = isMos || isBjt || isPassive;
     return (
       <div style={box}>
-        <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span>{title}</span>
-          {!isRect && !isText && node.data?.reference && (
-            <>
-              <span style={{ color: '#888' }}>—</span>
-              <LatexText text={formatLatexRef(node.data.reference, node.type === 'vdd')} latex={true} size={14} color="#1677ff" />
-            </>
-          )}
-          {readOnly && (
-            <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
-              Read-only
-            </span>
+        <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>{title}</span>
+            {!isRect && !isText && node.data?.reference && (
+              <>
+                <span style={{ color: '#888' }}>—</span>
+                <LatexText text={formatLatexRef(node.data.reference, node.type === 'vdd')} latex={true} size={14} color="#1677ff" />
+              </>
+            )}
+            {readOnly && (
+              <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
+                Read-only
+              </span>
+            )}
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close (Esc)"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: 16,
+                color: '#888', padding: '0 4px', lineHeight: 1, display: 'flex', alignItems: 'center'
+              }}
+            >
+              ✕
+            </button>
           )}
         </div>
         
@@ -141,6 +157,20 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
                       patch('reference', formatted);
                     }
                   }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: -4 }}>
+              <label style={{ ...label, marginBottom: 0, cursor: readOnly ? 'default' : 'pointer', fontSize: 12 }} htmlFor="hide-value-cb">
+                Hide Value on Canvas
+              </label>
+              <input
+                id="hide-value-cb"
+                type="checkbox"
+                checked={!!node.data?.hideValue}
+                disabled={readOnly}
+                onChange={(e) => patch('hideValue', e.target.checked)}
+                style={{ cursor: readOnly ? 'not-allowed' : 'pointer' }}
+              />
+            </div>
           </>
         )}
 
@@ -994,7 +1024,8 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     );
   }
 
-  const wire = wires.find((w) => w.id === selected.id);
+  const wireId = selected.kind === 'wire' ? selected.id : selected.wireId;
+  const wire = wires.find((w) => w.id === wireId);
   if (!wire) return null;
   const fmt = (p) => (p.nodeId ? `${p.nodeId}.${p.portId}` : 'floating');
   const ends = [wire.points[0], wire.points[wire.points.length - 1]];
@@ -1002,11 +1033,26 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
   return (
     <div style={box}>
       <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>Wire</span>
-        {readOnly && (
-          <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
-            Read-only
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{selected.kind === 'wire-name' ? 'Wire Name' : selected.kind === 'wire-label' ? 'Wire Label' : 'Wire'}</span>
+          {readOnly && (
+            <span style={{ fontSize: 11, background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e', borderRadius: 10, padding: '1px 6px', fontWeight: 600 }}>
+              Read-only
+            </span>
+          )}
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close (Esc)"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', fontSize: 16,
+              color: '#888', padding: '0 4px', lineHeight: 1, display: 'flex', alignItems: 'center'
+            }}
+          >
+            ✕
+          </button>
         )}
       </div>
       
@@ -1031,9 +1077,30 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
         }}
       />
       {wire.name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '4px 8px', background: '#f5f5f5', borderRadius: 4 }}>
-          <span style={{ fontSize: 11, color: '#666' }}>LaTeX Preview:</span>
-          <LatexText text={formatLatexRef(wire.name)} latex={true} size={14} color="#1677ff" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, padding: '4px 8px', background: '#f5f5f5', borderRadius: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11, color: '#666' }}>LaTeX:</span>
+            <LatexText text={formatLatexRef(wire.name)} latex={true} size={14} color="#1677ff" />
+          </div>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => {
+              if (readOnly) return;
+              setWires((ws) => ws.map((w) => {
+                if (w.id !== wire.id) return w;
+                const isBelowOrLeft = w.nameSide === 'below' || w.nameSide === 'left';
+                return { ...w, nameSide: isBelowOrLeft ? 'above' : 'below' };
+              }));
+            }}
+            style={{
+              fontSize: 11, padding: '2px 6px', background: '#fff', border: '1px solid #d9d9d9',
+              borderRadius: 4, cursor: readOnly ? 'default' : 'pointer'
+            }}
+            title="Toggle position (Ctrl+R / Shift+R)"
+          >
+            {wire.nameSide === 'below' ? 'Dưới / Trái ⤹' : 'Trên / Phải ⤸'}
+          </button>
         </div>
       )}
       {(wire.labels || []).length > 0 && (

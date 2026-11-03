@@ -24,7 +24,10 @@ const handleStyle = (left, top) => ({
   width: 20, height: 20, zIndex: 100, border: 'none',
 });
 
-function TwoTerminalNode({ data, selected, type }) {
+function TwoTerminalNode({ id, data, selected, type }) {
+  const labelOffsetX = data.labelOffset?.x || 0;
+  const labelOffsetY = data.labelOffset?.y || 0;
+  const isLabelSelected = !!data?.isLabelSelected;
   const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
@@ -70,14 +73,26 @@ function TwoTerminalNode({ data, selected, type }) {
           <Symbol strokeWidth={sw} />
         </svg>
       </div>
-
-      <div style={{
+      <div
+        className="nodrag device-label"
+        onClick={(e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('select-node-label', { detail: { nodeId: id, clientX: e.clientX, clientY: e.clientY } }));
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
         position: 'absolute',
-        left: `${anchor.x}px`, top: `${anchor.y}px`,
+        left: `${anchor.x + labelOffsetX}px`, top: `${anchor.y + labelOffsetY}px`,
         transform: labelTransform,
         display: 'flex', flexDirection: 'column',
         alignItems: isVerticalSide ? 'center' : (anchor.side === 'left' ? 'flex-end' : 'flex-start'),
-        whiteSpace: 'nowrap', pointerEvents: 'none',
+        whiteSpace: 'nowrap', pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none',
+        border: isLabelSelected ? '1.5px dashed #1677ff' : '1.5px solid transparent',
+        borderRadius: '3px',
+        background: isLabelSelected ? 'rgba(22, 119, 255, 0.08)' : 'transparent',
+        boxShadow: isLabelSelected ? '0 0 0 2px rgba(22, 119, 255, 0.15)' : 'none',
+        padding: '1px 3px',
+        zIndex: isLabelSelected ? 20 : 10,
         fontFamily: 'sans-serif', lineHeight: 1.15,
       }}>
         <LatexText
@@ -87,97 +102,101 @@ function TwoTerminalNode({ data, selected, type }) {
           color="#000"
         />
 
-        {/* Resistor Dimension Mode */}
-        {isResDimension && (
+        {!data.hideValue && (
           <>
-            {data.w && (
+            {/* Resistor Dimension Mode */}
+            {isResDimension && (
+              <>
+                {data.w && (
+                  <LatexText
+                    text={formatLatexMosParam('W', data.w)}
+                    latex={true}
+                    size={10}
+                    color="#000"
+                  />
+                )}
+                {data.l && (
+                  <LatexText
+                    text={formatLatexMosParam('L', data.l)}
+                    latex={true}
+                    size={10}
+                    color="#000"
+                  />
+                )}
+              </>
+            )}
+
+            {/* Resistor Value Mode */}
+            {isRes && !isResDimension && data.value && (
               <LatexText
-                text={formatLatexMosParam('W', data.w)}
+                text={formatLatexPassiveValue(data.value, type)}
                 latex={true}
-                size={10}
+                size={11}
                 color="#000"
               />
             )}
-            {data.l && (
+
+            {/* Capacitor MOM Mode */}
+            {isCapMom && (
+              <>
+                <LatexText
+                  text={`${data.fingers || 10}\\,\\text{fng } (${data.bot_layer || 'M2'}\\text{-}${data.top_layer || 'M5'})`}
+                  latex={true}
+                  size={10}
+                  color="#000"
+                />
+                {data.w && data.l && (
+                  <LatexText
+                    text={`W=${data.w},\\, L=${data.l}`}
+                    latex={true}
+                    size={10}
+                    color="#000"
+                  />
+                )}
+              </>
+            )}
+
+            {/* Capacitor MIM Mode */}
+            {isCapMim && (
+              <>
+                {data.w && (
+                  <LatexText
+                    text={formatLatexMosParam('W', data.w)}
+                    latex={true}
+                    size={10}
+                    color="#000"
+                  />
+                )}
+                {data.l && (
+                  <LatexText
+                    text={formatLatexMosParam('L', data.l)}
+                    latex={true}
+                    size={10}
+                    color="#000"
+                  />
+                )}
+              </>
+            )}
+
+            {/* Capacitor Ideal/Value Mode */}
+            {isCap && !isCapMim && !isCapMom && data.value && (
               <LatexText
-                text={formatLatexMosParam('L', data.l)}
+                text={formatLatexPassiveValue(data.value, type)}
                 latex={true}
-                size={10}
+                size={11}
+                color="#000"
+              />
+            )}
+
+            {data.m && Number(data.m) > 1 && (
+              <LatexText
+                text={`M = ${data.m}`}
+                latex={true}
+                size={11}
                 color="#000"
               />
             )}
           </>
-        )}
-
-        {/* Resistor Value Mode */}
-        {isRes && !isResDimension && data.value && (
-          <LatexText
-            text={formatLatexPassiveValue(data.value, type)}
-            latex={true}
-            size={11}
-            color="#000"
-          />
-        )}
-
-        {/* Capacitor MOM Mode */}
-        {isCapMom && (
-          <>
-            <LatexText
-              text={`${data.fingers || 10}\\,\\text{fng } (${data.bot_layer || 'M2'}\\text{-}${data.top_layer || 'M5'})`}
-              latex={true}
-              size={10}
-              color="#000"
-            />
-            {data.w && data.l && (
-              <LatexText
-                text={`W=${data.w},\\, L=${data.l}`}
-                latex={true}
-                size={10}
-                color="#000"
-              />
-            )}
-          </>
-        )}
-
-        {/* Capacitor MIM Mode */}
-        {isCapMim && (
-          <>
-            {data.w && (
-              <LatexText
-                text={formatLatexMosParam('W', data.w)}
-                latex={true}
-                size={10}
-                color="#000"
-              />
-            )}
-            {data.l && (
-              <LatexText
-                text={formatLatexMosParam('L', data.l)}
-                latex={true}
-                size={10}
-                color="#000"
-              />
-            )}
-          </>
-        )}
-
-        {/* Capacitor Ideal/Value Mode */}
-        {isCap && !isCapMim && !isCapMom && data.value && (
-          <LatexText
-            text={formatLatexPassiveValue(data.value, type)}
-            latex={true}
-            size={11}
-            color="#000"
-          />
-        )}
-
-        {data.m && Number(data.m) > 1 && (
-          <LatexText
-            text={`M = ${data.m}`}
-            latex={true}
-            size={11}
-            color="#000"
-          />
         )}
       </div>
     </div>

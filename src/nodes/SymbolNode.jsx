@@ -39,7 +39,10 @@ function transformVec(dx, dy, flip, rot) {
   return [dx, dy];
 }
 
-function SymbolNode({ data, selected, type }) {
+function SymbolNode({ id, data, selected, type }) {
+  const labelOffsetX = data.labelOffset?.x || 0;
+  const labelOffsetY = data.labelOffset?.y || 0;
+  const isLabelSelected = !!data?.isLabelSelected;
   const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
   const sw = 1.5 / strokeScale;
   const Symbol = SYMBOLS[type];
@@ -114,13 +117,26 @@ function SymbolNode({ data, selected, type }) {
       </div>
 
       {label && (
-        <div style={{
-          position: 'absolute',
-          left: `${label.x}px`, top: `${label.y}px`,
+      <div
+        className="nodrag device-label"
+        onClick={(e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('select-node-label', { detail: { nodeId: id, clientX: e.clientX, clientY: e.clientY } }));
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+        position: 'absolute',
+        left: `${label.x + labelOffsetX}px`, top: `${label.y + labelOffsetY}px`,
           transform: labelTransform,
           display: 'flex', flexDirection: 'column',
           alignItems: isVerticalSide ? 'center' : (label.side === 'left' ? 'flex-end' : 'flex-start'),
-          whiteSpace: 'nowrap', pointerEvents: 'none',
+          whiteSpace: 'nowrap', pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none',
+          border: isLabelSelected ? '1.5px dashed #1677ff' : '1.5px solid transparent',
+          borderRadius: '3px',
+          background: isLabelSelected ? 'rgba(22, 119, 255, 0.08)' : 'transparent',
+          boxShadow: isLabelSelected ? '0 0 0 2px rgba(22, 119, 255, 0.15)' : 'none',
+          padding: '1px 3px',
+          zIndex: isLabelSelected ? 20 : 10,
           fontFamily: 'sans-serif', lineHeight: 1.15,
         }}>
           <LatexText
@@ -129,7 +145,7 @@ function SymbolNode({ data, selected, type }) {
             size={isVdd ? 16 : 14}
             color="#000"
           />
-          {data.m && Number(data.m) > 1 && (
+          {!data.hideValue && data.m && Number(data.m) > 1 && (
             <LatexText
               text={`M = ${data.m}`}
               latex={true}

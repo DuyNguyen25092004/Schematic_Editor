@@ -16,6 +16,9 @@ function makeCircuitSnapshot(nodes, wires, sheets) {
     return JSON.stringify(sheets.map((s) => ({
       id: s.id,
       name: s.name,
+      type: s.type || 'schematic',
+      waveJson: s.waveJson || '',
+      skin: s.skin || 'default',
       nodes: (s.nodes || []).map((n) => ({
         id: n.id,
         type: n.type,
@@ -311,6 +314,9 @@ export default function CloudPanel({
       loadedSheets = data.sheets.map((s) => ({
         id: s.id,
         name: s.name || 'Sheet',
+        type: s.type || 'schematic',
+        waveJson: s.waveJson || '',
+        skin: s.skin || 'default',
         nodes: (s.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
         wires: s.wires || [],
       }));
@@ -596,6 +602,9 @@ export default function CloudPanel({
         const currentFullSheets = (sheetsRef.current || []).map((s) => ({
           id: s.id,
           name: s.name,
+          type: s.type || 'schematic',
+          waveJson: s.waveJson || '',
+          skin: s.skin || 'default',
           nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
           wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
         }));

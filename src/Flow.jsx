@@ -18,6 +18,7 @@ import { usePresence } from './realtime/usePresence';
 import { GRID, COMPONENT_LIBRARY, nodeBoxStyle } from './constants';
 import { getSymbolBBox } from './geometry/ports';
 import { resolvePoints } from './routing/resolveWire';
+import { projectOnPath } from './geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from './wires/snap';
 import { mergeTouchingWires } from './wires/wireOps';
 import { GhostIcon } from './symbols';
@@ -40,6 +41,8 @@ import TextDialog from './components/TextDialog';
 import LatexText, { formatLatexRef } from './components/LatexText';
 import CircuitTabBar from './components/CircuitTabBar';
 import SpiceNetlistDialog from './components/SpiceNetlistDialog';
+import WaveformTabEditor from './waveform/WaveformTabEditor';
+import { DEFAULT_WAVEJSON } from './waveform/waveformPresets';
 
 // nodeTypes: thêm  text: TextNode
 
@@ -122,8 +125,9 @@ function Flow() {
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
   const [cursorNodeId, setCursorNodeId] = useState(null); 
   const [isRotatingFlag, setIsRotatingFlag] = useState(false);
+  const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(false);
   const [sheets, setSheets] = useState(() => [
-    { id: 'sheet_1', name: 'Sheet 1', nodes: initialNodes, wires: [] },
+    { id: 'sheet_1', name: 'Sheet 1', type: 'schematic', nodes: initialNodes, wires: [] },
   ]);
   const [activeSheetId, setActiveSheetId] = useState('sheet_1');
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
@@ -137,7 +141,7 @@ function Flow() {
   const startNewCircuitRoom = useCallback(() => {
     const newId = newCircuitId();
     setCircuitIdState(newId);
-    const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', nodes: [], wires: [] }];
+    const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', type: 'schematic', nodes: [], wires: [] }];
     setSheets(resetSheet);
     setActiveSheetId('sheet_1');
     setNodes([]);
@@ -145,55 +149,89 @@ function Flow() {
     setSelected(null);
   }, [setNodes, setWiresRaw]);
 
+  // Cập nhật thuộc tính của waveform sheet đang active
+  const handleUpdateActiveSheet = useCallback((updates) => {
+    setSheets((prev) =>
+      prev.map((s) => (s.id === activeSheetId ? { ...s, ...updates } : s))
+    );
+  }, [activeSheetId]);
+
   // Chuyển đổi giữa các trang (sheet) trong cùng một project
   const handleSelectSheet = useCallback((targetSheetId) => {
     if (targetSheetId === activeSheetId) return;
 
-    // 1. Lưu nodes/wires của sheet hiện tại
+    // 1. Lưu nodes/wires của sheet hiện tại nếu là schematic
     const curNodes = nodesRef.current;
     const curWires = wiresRef.current;
     setSheets((prev) =>
-      prev.map((s) =>
-        s.id === activeSheetId ? { ...s, nodes: curNodes, wires: curWires } : s
-      )
+      prev.map((s) => {
+        if (s.id !== activeSheetId) return s;
+        if (s.type === 'waveform') return s;
+        return { ...s, nodes: curNodes, wires: curWires };
+      })
     );
 
     // 2. Chuyển sang sheet mới
     const targetSheet = sheets.find((s) => s.id === targetSheetId);
     setActiveSheetId(targetSheetId);
-    setNodes(targetSheet?.nodes || []);
-    setWiresRaw(targetSheet?.wires || []);
+    if (targetSheet?.type !== 'waveform') {
+      setNodes(targetSheet?.nodes || []);
+      setWiresRaw(targetSheet?.wires || []);
+    }
     setSelected(null);
   }, [activeSheetId, sheets, setNodes, setWiresRaw]);
 
-  // Tạo thêm sheet mới trong cùng project
-  const handleNewSheet = useCallback(() => {
+  // Tạo thêm sheet mới trong cùng project (hỗ trợ tab 'schematic' hoặc 'waveform')
+  const handleNewSheet = useCallback((tabType = 'schematic') => {
     const curNodes = nodesRef.current;
     const curWires = wiresRef.current;
     const newId = 'sheet_' + Math.random().toString(36).slice(2, 9);
-    const newName = `Sheet ${sheets.length + 1}`;
-    const newSheet = { id: newId, name: newName, nodes: [], wires: [] };
+
+    let newSheet;
+    if (tabType === 'waveform') {
+      const waveCount = sheets.filter((s) => s.type === 'waveform').length + 1;
+      newSheet = {
+        id: newId,
+        name: `Waveform ${waveCount}`,
+        type: 'waveform',
+        waveJson: DEFAULT_WAVEJSON,
+        skin: 'default',
+        nodes: [],
+        wires: [],
+      };
+    } else {
+      const schemCount = sheets.filter((s) => s.type !== 'waveform').length + 1;
+      newSheet = {
+        id: newId,
+        name: `Sheet ${schemCount}`,
+        type: 'schematic',
+        nodes: [],
+        wires: [],
+      };
+    }
 
     setSheets((prev) => {
-      const updated = prev.map((s) =>
-        s.id === activeSheetId
-          ? { ...s, nodes: curNodes, wires: curWires }
-          : s
-      );
+      const updated = prev.map((s) => {
+        if (s.id !== activeSheetId) return s;
+        if (s.type === 'waveform') return s;
+        return { ...s, nodes: curNodes, wires: curWires };
+      });
       return [...updated, newSheet];
     });
 
     setActiveSheetId(newId);
-    setNodes([]);
-    setWiresRaw([]);
+    if (tabType !== 'waveform') {
+      setNodes([]);
+      setWiresRaw([]);
+    }
     setSelected(null);
-  }, [sheets.length, activeSheetId, setNodes, setWiresRaw]);
+  }, [sheets, activeSheetId, setNodes, setWiresRaw]);
 
   // Xóa một sheet khỏi project
   const handleCloseSheet = useCallback((sheetIdToClose) => {
     if (sheets.length <= 1) {
       // Chỉ còn 1 sheet -> reset trắng trang đó
-      const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', nodes: [], wires: [] }];
+      const resetSheet = [{ id: 'sheet_1', name: 'Sheet 1', type: 'schematic', nodes: [], wires: [] }];
       setSheets(resetSheet);
       setActiveSheetId('sheet_1');
       setNodes([]);
@@ -211,8 +249,10 @@ function Flow() {
       const nextIdx = idx >= remaining.length ? remaining.length - 1 : idx;
       const nextSheet = remaining[nextIdx];
       setActiveSheetId(nextSheet.id);
-      setNodes(nextSheet.nodes || []);
-      setWiresRaw(nextSheet.wires || []);
+      if (nextSheet.type !== 'waveform') {
+        setNodes(nextSheet.nodes || []);
+        setWiresRaw(nextSheet.wires || []);
+      }
       setSelected(null);
     }
   }, [sheets, activeSheetId, setNodes, setWiresRaw]);
@@ -422,6 +462,97 @@ function Flow() {
     const label = wiresRef.current.find((w) => w.id === wireId)?.labels?.find((l) => l.id === labelId);
     if (label) setTextDialog({ mode: 'edit', kind: 'wire', wireId, labelId, initial: label });
   }, []);
+
+  useEffect(() => {
+    const onSelectNodeLabel = (e) => {
+      if (isWiringMode || placingType || textTool) return;
+      const { nodeId } = e.detail;
+      const n = nodesRef.current.find((x) => x.id === nodeId);
+      if (!n) return;
+
+      if (isMoveMode) {
+        if (!canEdit) return;
+        const mouseScreen = (e.detail?.clientX !== undefined) ? { x: e.detail.clientX, y: e.detail.clientY } : lastMouse.current;
+        lastMouse.current = mouseScreen;
+        const flowPos = screenToFlowPosition(mouseScreen);
+        setMoveGroup({
+          startX: Math.round(flowPos.x / GRID) * GRID,
+          startY: Math.round(flowPos.y / GRID) * GRID,
+          labelItem: {
+            kind: 'node-label',
+            nodeId: n.id,
+            initialOffset: n.data?.labelOffset || { x: 0, y: 0 },
+          },
+        });
+      }
+      setSelected({ kind: 'node-label', nodeId });
+      setNodes((ns) => ns.map((x) => ({
+        ...x,
+        selected: false,
+        data: { ...x.data, isLabelSelected: x.id === nodeId },
+      })));
+      setWiresRaw((ws) => ws.map((w) => (w.selected ? { ...w, selected: false } : w)));
+    };
+
+    const onSelectWireName = (e) => {
+      if (isWiringMode || placingType || textTool) return;
+      const { wireId } = e.detail;
+      const w = wiresRef.current.find((x) => x.id === wireId);
+      if (!w) return;
+
+      if (isMoveMode) {
+        if (!canEdit) return;
+        const flowPos = screenToFlowPosition(lastMouse.current);
+        setMoveGroup({
+          startX: Math.round(flowPos.x / GRID) * GRID,
+          startY: Math.round(flowPos.y / GRID) * GRID,
+          labelItem: {
+            kind: 'wire-name',
+            wireId: w.id,
+            initialRatio: w.nameRatio ?? 0.5,
+          },
+        });
+      }
+      setSelected({ kind: 'wire-name', wireId });
+      setWiresRaw((ws) => ws.map((x) => ({ ...x, selected: false })));
+      setNodes((ns) => ns.map((x) => ({ ...x, selected: false, data: { ...x.data, isLabelSelected: false } })));
+    };
+
+    const onSelectWireLabel = (e) => {
+      if (isWiringMode || placingType || textTool) return;
+      const { wireId, labelId } = e.detail;
+      const w = wiresRef.current.find((x) => x.id === wireId);
+      const l = w?.labels?.find((x) => x.id === labelId);
+      if (!w || !l) return;
+
+      if (isMoveMode) {
+        if (!canEdit) return;
+        const flowPos = screenToFlowPosition(lastMouse.current);
+        setMoveGroup({
+          startX: Math.round(flowPos.x / GRID) * GRID,
+          startY: Math.round(flowPos.y / GRID) * GRID,
+          labelItem: {
+            kind: 'wire-label',
+            wireId: w.id,
+            labelId: l.id,
+            initialRatio: l.ratio ?? 0.5,
+          },
+        });
+      }
+      setSelected({ kind: 'wire-label', wireId, labelId });
+      setWiresRaw((ws) => ws.map((x) => ({ ...x, selected: false })));
+      setNodes((ns) => ns.map((x) => ({ ...x, selected: false, data: { ...x.data, isLabelSelected: false } })));
+    };
+
+    window.addEventListener('select-node-label', onSelectNodeLabel);
+    window.addEventListener('select-wire-name', onSelectWireName);
+    window.addEventListener('select-wire-label', onSelectWireLabel);
+    return () => {
+      window.removeEventListener('select-node-label', onSelectNodeLabel);
+      window.removeEventListener('select-wire-name', onSelectWireName);
+      window.removeEventListener('select-wire-label', onSelectWireLabel);
+    };
+  }, [isWiringMode, placingType, textTool, isMoveMode, canEdit, screenToFlowPosition, lastMouse, setNodes, setWiresRaw, setSelected]);
   // --- STATE LƯU TỌA ĐỘ BẮT ĐẦU QUÉT KHỐI ---
   const selectionStart = useRef(null); 
   // -----------------------------------------
@@ -527,7 +658,7 @@ function Flow() {
   }, []);
 
   const handleGlobalMouseMove = useCallback((e) => {
-    lastMouse.current = { x: e.clientX, y: e.clientY };
+        lastMouse.current = { x: e.clientX, y: e.clientY };
     const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     sendCursor(fp.x, fp.y);
 
@@ -538,6 +669,45 @@ function Flow() {
           rafMoveId.current = null;
           if (!pendingMovePos.current) return;
           const { clientX, clientY } = pendingMovePos.current;
+
+          if (moveGroup?.labelItem) {
+            const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
+            const { labelItem } = moveGroup;
+
+            if (labelItem.kind === 'node-label') {
+              const dx = Math.round((flowPos.x - moveGroup.startX) / GRID) * GRID;
+              const dy = Math.round((flowPos.y - moveGroup.startY) / GRID) * GRID;
+              const newOffset = {
+                x: (labelItem.initialOffset?.x || 0) + dx,
+                y: (labelItem.initialOffset?.y || 0) + dy,
+              };
+              setNodes((ns) => ns.map((n) => (n.id === labelItem.nodeId
+                ? { ...n, data: { ...n.data, labelOffset: newOffset } }
+                : n)));
+            } else if (labelItem.kind === 'wire-label') {
+              const w = wiresRef.current.find((x) => x.id === labelItem.wireId);
+              if (w) {
+                const rp = resolvePoints(w.points, nodesRef.current, w.lockedVertical, wiresRef.current, w.id, w.routed);
+                const proj = projectOnPath(rp, flowPos);
+                const newRatio = Math.round(proj.ratio * 100) / 100;
+                setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId
+                  ? {
+                      ...x,
+                      labels: (x.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, ratio: newRatio } : lbl)),
+                    }
+                  : x)));
+              }
+            } else if (labelItem.kind === 'wire-name') {
+              const w = wiresRef.current.find((x) => x.id === labelItem.wireId);
+              if (w) {
+                const rp = resolvePoints(w.points, nodesRef.current, w.lockedVertical, wiresRef.current, w.id, w.routed);
+                const proj = projectOnPath(rp, flowPos);
+                const newRatio = Math.round(proj.ratio * 100) / 100;
+                setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId ? { ...x, nameRatio: newRatio } : x)));
+              }
+            }
+            return;
+          }
 
           const applyGroup = (group) => {
             const flowPos = screenToFlowPosition({ x: clientX, y: clientY });
@@ -620,7 +790,7 @@ function Flow() {
       }));
     } else {
       // Kéo quá nhỏ (gần như click) -> bỏ chọn hết, tránh chọn nhầm khi chỉ lỡ tay rê nhẹ
-      setNodes((ns) => ns.map((n) => ({ ...n, selected: false })));
+      setNodes((ns) => ns.map((n) => (n.selected || n.data?.isLabelSelected ? { ...n, selected: false, data: { ...n.data, isLabelSelected: false } } : n)));
       setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
     }
     selectionStart.current = null;
@@ -677,6 +847,25 @@ function Flow() {
   // --- NÂNG CẤP XÓA: HỖ TRỢ XÓA NHIỀU DÂY ĐIỆN CÙNG LÚC ---
   const deleteSelected = useCallback(() => {
     if (!canEdit) return;
+    if (selected?.kind === 'wire-label') {
+      setWires((ws) => ws.map((w) => (w.id === selected.wireId
+        ? { ...w, labels: (w.labels || []).filter((l) => l.id !== selected.labelId) }
+        : w)));
+      setSelected(null);
+      return;
+    }
+    if (selected?.kind === 'wire-name') {
+      setWires((ws) => ws.map((w) => (w.id === selected.wireId ? { ...w, name: undefined } : w)));
+      setSelected(null);
+      return;
+    }
+    if (selected?.kind === 'node-label') {
+      const targetNodeId = selected.nodeId || selected.id;
+      setNodes((ns) => ns.map((n) => (n.id === targetNodeId
+        ? { ...n, data: { ...n.data, labelOffset: { x: 0, y: 0 } } }
+        : n)));
+      return;
+    }
     const activeNodes = nodes.filter((n) => n.selected).map((n) => n.id);
     const activeWires = wires.filter((w) => w.selected).map((w) => w.id); // Lấy các dây đang bôi đen
 
@@ -690,8 +879,12 @@ function Flow() {
     }));
     
     setSelected(null);
+    setIsPropertyPanelOpen(false);
   }, [nodes, wires, selected, setNodes, setWires, canEdit]);
   // -------------------------------------------------------
+
+  const activeSheet = sheets.find((s) => s.id === activeSheetId);
+  const isWaveformTab = activeSheet?.type === 'waveform';
 
   useKeyboardShortcuts({
     nodes, wires, selected, moveGroup, copyGroup, cursorNodeId,
@@ -705,11 +898,19 @@ function Flow() {
     textTool, openTextDialog, cancelTextTool,
     onOpenNetlist: () => setIsNetlistOpen(true),
     canEdit,
+    isPropertyPanelOpen, setIsPropertyPanelOpen,
+    disabled: isWaveformTab,
   });
  
  useEffect(() => {
   const forceDropOnClick = (e) => {
     if ((moveGroup || copyGroup || cursorNodeId) && e.button === 0) {
+      if (moveGroup?.labelItem) {
+        e.stopPropagation();
+        setMoveGroup(null);
+        setIsMoveMode(false);
+        return;
+      }
       const movedIds = new Set([
         ...(moveGroup?.wireItems || []),
         ...(copyGroup?.wireItems || []),
@@ -742,6 +943,7 @@ function Flow() {
       setIsCopyMode(false);
     } else if (!isWiringMode && !placingType) {
       setSelected(null);
+      setIsPropertyPanelOpen(false);
       setNodes((ns) => ns.map((n) => ({ ...n, selected: false })));
       setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
     }
@@ -761,20 +963,31 @@ function Flow() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex' }}>
-      <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
+      {!isWaveformTab && (
+        <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
+      )}
 
       <div 
         ref={reactFlowWrapper} 
         onMouseMove={handleGlobalMouseMove}
         
         onContextMenu={(e) => {
+          if (isWaveformTab) return;
           e.preventDefault();
           const hasSelection = nodes.some(n => n.selected) || wires.some(w => w.selected);
           if (hasSelection) setContextMenu({ x: e.clientX, y: e.clientY });
         }}
         style={{ position: 'relative', flex: 1, height: '100%', minWidth: 0, overflow: 'hidden' }}
       >
-        {contextMenu && (
+        {isWaveformTab ? (
+          <WaveformTabEditor
+            sheet={activeSheet}
+            onUpdateSheet={handleUpdateActiveSheet}
+            allSheets={sheets}
+          />
+        ) : (
+          <>
+            {contextMenu && (
           <div
             id="context-menu" 
             style={{
@@ -833,6 +1046,11 @@ function Flow() {
               return;
             }
 
+            // Click trên label -> không xử lý như click ra nền
+            if (e.target?.closest?.('.device-label')) {
+              return;
+            }
+
             // Click ngoài vùng xanh -> xử lý như click ra nền
             if (!isInsideSymbol(e, node)) {
               handlePaneClick();
@@ -859,7 +1077,7 @@ function Flow() {
               setCursorNodeId(newId); 
             } else if (!isWiringMode && !placingType) {
               setSelected({ kind: 'node', id: node.id });
-              setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === node.id })));
+              setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === node.id, data: { ...n.data, isLabelSelected: false } })));
               setWiresRaw(ws => ws.map(w => ({ ...w, selected: false })));
             }
           }}
@@ -903,6 +1121,8 @@ function Flow() {
         />
 
         <PropertyPanel
+          isOpen={isPropertyPanelOpen}
+          onClose={() => setIsPropertyPanelOpen(false)}
           selected={selected}
           nodes={nodes}
           setNodes={setNodes}
@@ -1108,9 +1328,11 @@ function Flow() {
               />
           </div>
         )}
+          </>
+        )}
 
         <CircuitTabBar
-          tabs={sheets.map((s) => ({ id: s.id, title: s.name }))}
+          tabs={sheets.map((s) => ({ id: s.id, title: s.name, type: s.type || 'schematic' }))}
           activeTabId={activeSheetId}
           onSelectTab={handleSelectSheet}
           onNewTab={handleNewSheet}

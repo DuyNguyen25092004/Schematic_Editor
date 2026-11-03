@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { GRID } from '../constants';
 import { getSymbolBBox } from '../geometry/ports';
 import { resolvePoints } from '../routing/resolveWire';
+import { pointAtRatio } from '../geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from '../wires/snap';
 
 export function useKeyboardShortcuts(ctx) {
@@ -17,8 +18,11 @@ const {
     textTool, openTextDialog, cancelTextTool,
     onOpenNetlist,
     canEdit = true,
-} = ctx;
+    isPropertyPanelOpen, setIsPropertyPanelOpen,
+    disabled = false,
+  } = ctx;
  useEffect(() => {
+    if (disabled) return;
     const handleKeyDown = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
@@ -50,6 +54,26 @@ const {
       const activeNodes = nodes.filter((n) => n.selected);
       const activeWires = wires.filter((w) => w.selected);
       
+      // Phím Q: Bật/tắt bảng thuộc tính Property Panel cho đối tượng đang chọn
+      if ((e.key === 'q' || e.key === 'Q') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId || placingType || textTool) return;
+        const hasSelection = activeNodes.length > 0 || activeWires.length > 0 ||
+          selected?.kind === 'node' || selected?.kind === 'wire' ||
+          selected?.kind === 'node-label' || selected?.kind === 'wire-label' || selected?.kind === 'wire-name';
+        if (hasSelection) {
+          e.preventDefault();
+          if (!selected) {
+            if (activeNodes.length > 0) {
+              setSelected({ kind: 'node', id: activeNodes[0].id });
+            } else if (activeWires.length > 0) {
+              setSelected({ kind: 'wire', id: activeWires[0].id });
+            }
+          }
+          setIsPropertyPanelOpen?.((prev) => !prev);
+          return;
+        }
+      }
+
       // Phím L: đặt tên cho dây đang chọn
       if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.repeat || moveGroup || copyGroup || cursorNodeId || placingType || textTool) return;
@@ -68,6 +92,36 @@ const {
 
         // Chỉ xử lý nếu là R, Ctrl+R hoặc Shift+R
         if (!isMirrorH && !isMirrorV && !isRotate) return;
+        e.preventDefault();
+
+        const currentWires = wiresRef.current || wires;
+        // LẬT VỊ TRÍ TÊN DÂY: Ctrl+R (lật trên/dưới cho dây ngang), Shift+R (lật trái/phải cho dây dọc)
+        const singleWire = (selected?.kind === 'wire' || selected?.kind === 'wire-name')
+          ? currentWires.find((w) => w.id === (selected.kind === 'wire' ? selected.id : selected.wireId))
+          : (activeWires.length === 1 && activeNodes.length === 0 ? activeWires[0] : null);
+
+        if (singleWire && singleWire.name && (isMirrorV || isMirrorH)) {
+          const rp = resolvePoints(singleWire.points, nodesRef.current, singleWire.lockedVertical, wiresRef.current, singleWire.id, singleWire.routed);
+          const mid = pointAtRatio(rp, singleWire.nameRatio ?? 0.5);
+
+          e.stopPropagation();
+
+          setWires((ws) => ws.map((w) => {
+            if (w.id !== singleWire.id) return w;
+            let nextSide;
+            if (mid.horizontal) {
+              // Đoạn dây ngang: lật giữa 'above' và 'below'
+              const isBelow = w.nameSide === 'below';
+              nextSide = isBelow ? 'above' : 'below';
+            } else {
+              // Đoạn dây dọc: lật giữa 'right' và 'left'
+              const isLeft = w.nameSide === 'left';
+              nextSide = isLeft ? 'right' : 'left';
+            }
+            return { ...w, nameSide: nextSide };
+          }));
+          return;
+        }
 
         const targetIds = moveGroup ? moveGroup.items.map((i) => i.id)
           : copyGroup ? copyGroup.items.map((i) => i.id)
@@ -312,6 +366,30 @@ const {
       }
 
       if (e.key === 'Escape') {
+        if (isPropertyPanelOpen) {
+          setIsPropertyPanelOpen(false);
+          return;
+        }
+        if (moveGroup?.labelItem) {
+          const { labelItem } = moveGroup;
+          if (labelItem.kind === 'node-label') {
+            setNodes((ns) => ns.map((n) => (n.id === labelItem.nodeId
+              ? { ...n, data: { ...n.data, labelOffset: labelItem.initialOffset } }
+              : n)));
+          } else if (labelItem.kind === 'wire-label') {
+            setWiresRaw((ws) => ws.map((w) => (w.id === labelItem.wireId
+              ? {
+                  ...w,
+                  labels: (w.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, ratio: labelItem.initialRatio } : lbl)),
+                }
+              : w)));
+          } else if (labelItem.kind === 'wire-name') {
+            setWiresRaw((ws) => ws.map((w) => (w.id === labelItem.wireId ? { ...w, nameRatio: labelItem.initialRatio } : w)));
+          }
+          setMoveGroup(null);
+          setIsMoveMode(false);
+          return;
+        }
         if (isCopyMode && cursorNodeId) setNodes((ns) => ns.filter((n) => n.id !== cursorNodeId));
 
         // THÊM: nếu đang copy cả khối thì xoá luôn các bản sao vừa tạo
@@ -345,6 +423,62 @@ const {
       if (moveGroup || copyGroup || cursorNodeId || textTool) return;
 
       if (e.key === 'm' || e.key === 'M') {
+        if (selected?.kind === 'node-label') {
+          e.preventDefault();
+          const targetNodeId = selected.nodeId || selected.id;
+          const n = nodes.find((x) => x.id === targetNodeId);
+          if (!n) return;
+          const flowPos = screenToFlowPosition(lastMouse.current);
+          setMoveGroup({
+            startX: Math.round(flowPos.x / GRID) * GRID,
+            startY: Math.round(flowPos.y / GRID) * GRID,
+            labelItem: {
+              kind: 'node-label',
+              nodeId: n.id,
+              initialOffset: n.data?.labelOffset || { x: 0, y: 0 },
+            },
+          });
+          setIsMoveMode(true);
+          return;
+        }
+
+        if (selected?.kind === 'wire-label') {
+          e.preventDefault();
+          const w = wires.find((x) => x.id === selected.wireId);
+          const l = w?.labels?.find((x) => x.id === selected.labelId);
+          if (!w || !l) return;
+          const flowPos = screenToFlowPosition(lastMouse.current);
+          setMoveGroup({
+            startX: Math.round(flowPos.x / GRID) * GRID,
+            startY: Math.round(flowPos.y / GRID) * GRID,
+            labelItem: {
+              kind: 'wire-label',
+              wireId: w.id,
+              labelId: l.id,
+              initialRatio: l.ratio ?? 0.5,
+            },
+          });
+          setIsMoveMode(true);
+          return;
+        }
+
+        if (selected?.kind === 'wire-name') {
+          e.preventDefault();
+          const w = wires.find((x) => x.id === selected.wireId);
+          if (!w) return;
+          const flowPos = screenToFlowPosition(lastMouse.current);
+          setMoveGroup({
+            startX: Math.round(flowPos.x / GRID) * GRID,
+            startY: Math.round(flowPos.y / GRID) * GRID,
+            labelItem: {
+              kind: 'wire-name',
+              wireId: w.id,
+              initialRatio: w.nameRatio ?? 0.5,
+            },
+          });
+          setIsMoveMode(true);
+          return;
+        }
         const targetNodes = activeNodes.length > 0
           ? activeNodes
           : (selected?.kind === 'node' ? [nodes.find((n) => n.id === selected.id)].filter(Boolean) : []);
@@ -534,5 +668,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool, canEdit]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool, canEdit, isPropertyPanelOpen, setIsPropertyPanelOpen]);
 }
