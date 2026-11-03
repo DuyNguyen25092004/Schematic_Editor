@@ -1,5 +1,6 @@
 const DEFAULT_CLIENT_ID = '426478121890-6obqhmmmubaae152h332e75i45s2gd91.apps.googleusercontent.com';
 const TOKEN_KEY = 'google_drive_token';
+const TOKEN_EXPIRES_KEY = 'google_drive_token_expires_at';
 
 export function getClientId() {
   const envId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -13,73 +14,176 @@ export function getClientId() {
 const SCOPE = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email';
 const SUFFIX = '.schem.json';
 
-let token = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(TOKEN_KEY) : null;
+function getInitialToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function getInitialExpiresAt() {
+  try {
+    const raw = localStorage.getItem(TOKEN_EXPIRES_KEY) || sessionStorage.getItem(TOKEN_EXPIRES_KEY);
+    return raw ? parseInt(raw, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+let token = typeof window !== 'undefined' ? getInitialToken() : null;
+let tokenExpiresAt = typeof window !== 'undefined' ? getInitialExpiresAt() : 0;
+
+function saveToken(t, expiresInSec = 3600) {
+  token = t;
+  tokenExpiresAt = Date.now() + Math.max(300, expiresInSec) * 1000;
+  try {
+    localStorage.setItem(TOKEN_KEY, t);
+    localStorage.setItem(TOKEN_EXPIRES_KEY, String(tokenExpiresAt));
+    sessionStorage.setItem(TOKEN_KEY, t);
+    sessionStorage.setItem(TOKEN_EXPIRES_KEY, String(tokenExpiresAt));
+  } catch {
+    // ignore
+  }
+}
+
+function clearSavedToken() {
+  token = null;
+  tokenExpiresAt = 0;
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRES_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_EXPIRES_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export const isLoggedIn = () => !!token;
 export const getToken = () => token;
 
-export function driveLogin(providedClientId) {
-  return new Promise((resolve, reject) => {
-    const clientId = (providedClientId || getClientId() || '').trim();
+let tokenClient = null;
+let activeTokenPromise = null;
+let activeTokenResolve = null;
+let activeTokenReject = null;
 
-    if (!clientId) {
-      return reject(
-        new Error('Missing Google Client ID: Please check configuration.')
-      );
-    }
+function ensureTokenClient(providedClientId) {
+  if (tokenClient) return tokenClient;
+  if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) return null;
 
-    if (!window.google?.accounts?.oauth2) {
-      return reject(new Error('Google Identity Services library not loaded. Please reload the page or check network connection.'));
-    }
+  const clientId = (providedClientId || getClientId() || '').trim();
+  if (!clientId) return null;
 
-    try {
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: SCOPE,
-        callback: (res) => {
-          if (res.error) return reject(new Error(res.error_description || res.error));
+  try {
+    tokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: SCOPE,
+      callback: (res) => {
+        if (res.error) {
+          if (activeTokenReject) activeTokenReject(new Error(res.error_description || res.error));
+          activeTokenPromise = null;
+          activeTokenResolve = null;
+          activeTokenReject = null;
+          return;
+        }
 
-          const hasDriveScope = window.google?.accounts?.oauth2?.hasGrantedAllScopes
-            ? window.google.accounts.oauth2.hasGrantedAllScopes(res, 'https://www.googleapis.com/auth/drive')
-            : (res.scope && res.scope.includes('https://www.googleapis.com/auth/drive'));
+        const hasDriveScope = window.google?.accounts?.oauth2?.hasGrantedAllScopes
+          ? window.google.accounts.oauth2.hasGrantedAllScopes(res, 'https://www.googleapis.com/auth/drive')
+          : (res.scope && res.scope.includes('https://www.googleapis.com/auth/drive'));
 
-          if (!hasDriveScope) {
-            token = null;
-            try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
-            return reject(
+        if (!hasDriveScope) {
+          clearSavedToken();
+          if (activeTokenReject) {
+            activeTokenReject(
               new Error(
                 'Google Drive permission not granted! When the sign-in popup appears, please CHECK the box: "See, edit, create, and delete all of your Google Drive files" and click Continue.'
               )
             );
           }
+          activeTokenPromise = null;
+          activeTokenResolve = null;
+          activeTokenReject = null;
+          return;
+        }
 
-          token = res.access_token;
-          try {
-            sessionStorage.setItem(TOKEN_KEY, token);
-          } catch {
-            // ignore
-          }
-          resolve(token);
-        },
-        error_callback: (err) => {
-          let msg = 'Sign-in cancelled';
-          if (err?.type === 'popup_closed') {
-            msg = 'Sign-in popup was closed.';
-          } else if (err?.type === 'popup_blocked') {
-            msg = 'Popup blocked by browser. Please allow popups to sign in with Google.';
-          } else if (err?.message) {
-            msg = err.message;
-          } else if (err?.type) {
-            msg = err.type;
-          }
-          reject(new Error(msg));
-        },
-      });
-      client.requestAccessToken({ prompt: 'consent' });
-    } catch (err) {
-      reject(err);
+        saveToken(res.access_token, res.expires_in || 3600);
+        if (activeTokenResolve) activeTokenResolve(token);
+        activeTokenPromise = null;
+        activeTokenResolve = null;
+        activeTokenReject = null;
+      },
+      error_callback: (err) => {
+        let msg = 'Sign-in cancelled';
+        if (err?.type === 'popup_closed') {
+          msg = 'Sign-in popup was closed.';
+        } else if (err?.type === 'popup_blocked') {
+          msg = 'Popup blocked by browser. Please allow popups to sign in with Google.';
+        } else if (err?.message) {
+          msg = err.message;
+        } else if (err?.type) {
+          msg = err.type;
+        }
+        if (activeTokenReject) activeTokenReject(new Error(msg));
+        activeTokenPromise = null;
+        activeTokenResolve = null;
+        activeTokenReject = null;
+      },
+    });
+    return tokenClient;
+  } catch (err) {
+    console.error('Failed to initTokenClient:', err);
+    return null;
+  }
+}
+
+// Yêu cầu token âm thầm trong nền (Silent Token Refresh) không hiện popup
+export function refreshDriveTokenSilent() {
+  if (activeTokenPromise) return activeTokenPromise;
+
+  const client = ensureTokenClient();
+  if (!client) {
+    return Promise.reject(new Error('Google Identity Services not ready'));
+  }
+
+  activeTokenPromise = new Promise((resolve, reject) => {
+    activeTokenResolve = resolve;
+    activeTokenReject = reject;
+    try {
+      client.requestAccessToken({ prompt: '' });
+    } catch (e) {
+      activeTokenPromise = null;
+      activeTokenResolve = null;
+      activeTokenReject = null;
+      reject(e);
     }
   });
+
+  return activeTokenPromise;
+}
+
+export function driveLogin(providedClientId) {
+  const clientId = (providedClientId || getClientId() || '').trim();
+  if (!clientId) {
+    return Promise.reject(new Error('Missing Google Client ID: Please check configuration.'));
+  }
+
+  if (!window.google?.accounts?.oauth2) {
+    return Promise.reject(new Error('Google Identity Services library not loaded. Please reload the page or check network connection.'));
+  }
+
+  const client = ensureTokenClient(clientId);
+  if (!client) {
+    return Promise.reject(new Error('Failed to initialize Google Auth Client.'));
+  }
+
+  activeTokenPromise = new Promise((resolve, reject) => {
+    activeTokenResolve = resolve;
+    activeTokenReject = reject;
+    client.requestAccessToken({ prompt: 'consent' });
+  });
+
+  return activeTokenPromise;
 }
 
 export function driveLogout() {
@@ -90,30 +194,40 @@ export function driveLogout() {
       // ignore
     }
   }
-  token = null;
-  try {
-    sessionStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // ignore
-  }
+  clearSavedToken();
 }
 
-export async function call(url, options = {}) {
+export async function call(url, options = {}, isRetry = false) {
   if (!token) {
     throw new Error('Not signed in to Google. Please sign in first.');
   }
+
+  // Tự động làm mới token trong nền nếu token sắp hết hạn trong vòng 5 phút
+  if (tokenExpiresAt && Date.now() > (tokenExpiresAt - 5 * 60 * 1000) && !isRetry) {
+    try {
+      await refreshDriveTokenSilent();
+    } catch {
+      // Nếu silent refresh chưa kịp hoàn thành, tiếp tục thử với token hiện có
+    }
+  }
+
   const r = await fetch(url, {
     ...options,
     headers: { Authorization: `Bearer ${token}`, ...(options.headers || {}) },
   });
 
   if (r.status === 401) {
-    token = null;
-    try {
-      sessionStorage.removeItem(TOKEN_KEY);
-    } catch {
-      // ignore
+    // Nếu token vừa hết hạn, tự động làm mới trong nền 1 lần và thử lại
+    if (!isRetry) {
+      try {
+        await refreshDriveTokenSilent();
+        return await call(url, options, true);
+      } catch {
+        // Silent refresh thất bại (người dùng đã đăng xuất Google hoặc thu hồi quyền)
+      }
     }
+
+    clearSavedToken();
     throw new Error('Session expired, please sign in again.');
   }
 
@@ -129,12 +243,7 @@ export async function call(url, options = {}) {
     }
 
     if (r.status === 403 && (errDetail.toLowerCase().includes('insufficient') || errDetail.toLowerCase().includes('scope'))) {
-      token = null;
-      try {
-        sessionStorage.removeItem(TOKEN_KEY);
-      } catch {
-        // ignore
-      }
+      clearSavedToken();
       throw new Error(
         'Insufficient Drive permissions. Please sign in again and grant Google Drive permissions.'
       );
@@ -309,7 +418,7 @@ export async function driveSave(name, data, fileId = null, folderId = null) {
 
 export async function driveLoad(fileId) {
   const r = await call(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`);
-  return r.json(); // { nodes, wires }
+  return r.json(); // { nodes, wires, sheets, activeSheetId }
 }
 
 export async function driveGetEmail() {

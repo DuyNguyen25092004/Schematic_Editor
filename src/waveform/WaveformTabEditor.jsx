@@ -8,6 +8,7 @@ export default function WaveformTabEditor({
   sheet,
   onUpdateSheet,
   allSheets = [],
+  cloudControls = null,
 }) {
   const [code, setCode] = useState(() => sheet.waveJson || DEFAULT_WAVEJSON);
   const [skin, setSkin] = useState(() => sheet.skin || 'default');
@@ -30,12 +31,15 @@ export default function WaveformTabEditor({
     setTimeout(() => setToastMsg(null), 2500);
   }, []);
 
-  // Sync internal code when sheet.waveJson changes externally
+  // Sync internal code & skin when sheet.waveJson / skin changes externally
   useEffect(() => {
-    if (sheet.waveJson && sheet.waveJson !== code) {
+    if (sheet.waveJson !== undefined && sheet.waveJson !== code) {
       setCode(sheet.waveJson);
     }
-  }, [sheet.id]);
+    if (sheet.skin !== undefined && sheet.skin !== skin) {
+      setSkin(sheet.skin);
+    }
+  }, [sheet.id, sheet.waveJson, sheet.skin]);
 
   // Close context menu on window click or Escape key
   useEffect(() => {
@@ -305,6 +309,13 @@ export default function WaveformTabEditor({
             <span style={{ fontSize: 16 }}>📈</span>
             <span>WaveDrom Editor</span>
           </div>
+
+          {cloudControls && (
+            <>
+              <div style={{ width: 1, height: 20, background: '#cbd5e1', margin: '0 2px' }} />
+              {cloudControls}
+            </>
+          )}
 
           <div style={{ width: 1, height: 20, background: '#cbd5e1', margin: '0 4px' }} />
 

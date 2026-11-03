@@ -28,12 +28,18 @@ const stripWire = (w) => clean({
   labels: w.labels ?? null,
 });
 
-const stripSheet = (s) => clean({
-  id: s.id,
-  name: s.name,
-  nodes: (s.nodes || []).map(stripNode),
-  wires: (s.wires || []).map(stripWire),
-});
+const stripSheet = (s) => {
+  const isWave = s.type === 'waveform' || Boolean(s.waveJson) || /^waveform/i.test(s.name || '');
+  return clean({
+    id: s.id,
+    name: s.name,
+    type: isWave ? 'waveform' : (s.type || 'schematic'),
+    waveJson: s.waveJson || '',
+    skin: s.skin || 'default',
+    nodes: isWave ? [] : (s.nodes || []).map(stripNode),
+    wires: isWave ? [] : (s.wires || []).map(stripWire),
+  });
+};
 
 const computeSignature = (nodes, wires) => {
   const nSig = (nodes || []).map((n) => `${n.id}:${n.type}:${Math.round(n.position?.x ?? 0)},${Math.round(n.position?.y ?? 0)}:${JSON.stringify(n.data || {})}`).join(';');
@@ -41,8 +47,16 @@ const computeSignature = (nodes, wires) => {
   return `${nSig}||${wSig}`;
 };
 
+const isSheetValid = (s) => (
+  (s.nodes && s.nodes.length > 0) ||
+  (s.wires && s.wires.length > 0) ||
+  s.type === 'waveform' ||
+  Boolean(s.waveJson) ||
+  /^waveform/i.test(s.name || '')
+);
+
 const computeSheetsSignature = (sheets) => {
-  return (sheets || []).map((s) => `${s.id}:${s.name}:${computeSignature(s.nodes, s.wires)}`).join('|||');
+  return (sheets || []).map((s) => `${s.id}:${s.name}:${s.type || 'schematic'}:${s.waveJson || ''}:${s.skin || 'default'}:${computeSignature(s.nodes, s.wires)}`).join('|||');
 };
 
 export function useCircuitSync({
@@ -87,7 +101,7 @@ export function useCircuitSync({
       try {
         const curSheets = (sheetsRef.current || []).map((s) =>
           s.id === activeSheetIdRef.current
-            ? { ...s, nodes: nodesRef.current, wires: wiresRef.current }
+            ? (s.type === 'waveform' ? s : { ...s, nodes: nodesRef.current, wires: wiresRef.current })
             : s
         );
         localStorage.setItem(`schem_backup_${circuitId}`, JSON.stringify({
@@ -174,8 +188,7 @@ export function useCircuitSync({
           ].filter(
             (c) =>
               c.circuit &&
-              ((c.circuit.sheets && c.circuit.sheets.length > 0 && c.circuit.sheets.some((s) => (s.nodes?.length > 0 || s.wires?.length > 0))) ||
-                (c.circuit.nodes && c.circuit.nodes.length > 0))
+              ((c.circuit.sheets && c.circuit.sheets.length > 0 && c.circuit.sheets.some(isSheetValid)) || (c.circuit.nodes && c.circuit.nodes.length > 0))
           );
 
           candidates.sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -189,17 +202,23 @@ export function useCircuitSync({
 
             let loadedSheets = [];
             if (chosenCircuit.sheets && Array.isArray(chosenCircuit.sheets) && chosenCircuit.sheets.length > 0) {
-              loadedSheets = chosenCircuit.sheets.map((s) => ({
-                id: s.id,
-                name: s.name || 'Trang',
-                nodes: (s.nodes || []).map((n) => ({
-                  ...n,
-                  data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
-                  style: nodeBoxStyle({ type: n.type, data: n.data }),
-                  selected: false,
-                })),
-                wires: (s.wires || []).map((w) => ({ ...w, selected: false })),
-              }));
+              loadedSheets = chosenCircuit.sheets.map((s) => {
+                const isWave = s.type === 'waveform' || Boolean(s.waveJson) || /^waveform/i.test(s.name || '');
+                return {
+                  id: s.id,
+                  name: s.name || (isWave ? 'Waveform' : 'Trang'),
+                  type: isWave ? 'waveform' : (s.type || 'schematic'),
+                  waveJson: s.waveJson || '',
+                  skin: s.skin || 'default',
+                  nodes: isWave ? [] : (s.nodes || []).map((n) => ({
+                    ...n,
+                    data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+                    style: nodeBoxStyle({ type: n.type, data: n.data }),
+                    selected: false,
+                  })),
+                  wires: isWave ? [] : (s.wires || []).map((w) => ({ ...w, selected: false })),
+                };
+              });
             } else {
               // Định dạng file cũ chỉ có 1 trang
               const rootNodes = (chosenCircuit.nodes || []).map((n) => ({
@@ -246,7 +265,7 @@ export function useCircuitSync({
                 updatedAt: serverTimestamp(),
               }, { merge: true }).catch(console.error);
             }
-          } else if (sheetsRef.current && sheetsRef.current.length > 0 && (sheetsRef.current[0].nodes?.length > 0 || sheetsRef.current[0].wires?.length > 0)) {
+          } else if (sheetsRef.current && sheetsRef.current.length > 0 && sheetsRef.current.some(isSheetValid)) {
             // Mở từ Google Drive vào phòng
             const ts = Date.now();
             lastReceivedTs.current = ts;
@@ -254,8 +273,13 @@ export function useCircuitSync({
             lastSentSignature.current = computeSheetsSignature(currentSheets);
 
             const activeSheet = currentSheets.find((s) => s.id === activeSheetIdRef.current) || currentSheets[0];
-            setNodes(activeSheet?.nodes || []);
-            setWiresRaw(activeSheet?.wires || []);
+            if (activeSheet?.type !== 'waveform') {
+              setNodes(activeSheet?.nodes || []);
+              setWiresRaw(activeSheet?.wires || []);
+            } else {
+              setNodes([]);
+              setWiresRaw([]);
+            }
 
             update(ref(rtdb, `presence/${circuitId}/${user.uid}`), {
               circuitJson: JSON.stringify({
@@ -321,17 +345,23 @@ export function useCircuitSync({
           lastReceivedTs.current = newestPeerTs;
 
           if (newestPeerCircuit.sheets && Array.isArray(newestPeerCircuit.sheets)) {
-            const incomingSheets = newestPeerCircuit.sheets.map((s) => ({
-              id: s.id,
-              name: s.name,
-              nodes: (s.nodes || []).map((n) => ({
-                ...n,
-                data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
-                style: nodeBoxStyle({ type: n.type, data: n.data }),
-                selected: false,
-              })),
-              wires: (s.wires || []).map((w) => ({ ...w, selected: false })),
-            }));
+            const incomingSheets = newestPeerCircuit.sheets.map((s) => {
+              const isWave = s.type === 'waveform' || Boolean(s.waveJson) || /^waveform/i.test(s.name || '');
+              return {
+                id: s.id,
+                name: s.name,
+                type: isWave ? 'waveform' : (s.type || 'schematic'),
+                waveJson: s.waveJson || '',
+                skin: s.skin || 'default',
+                nodes: isWave ? [] : (s.nodes || []).map((n) => ({
+                  ...n,
+                  data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+                  style: nodeBoxStyle({ type: n.type, data: n.data }),
+                  selected: false,
+                })),
+                wires: isWave ? [] : (s.wires || []).map((w) => ({ ...w, selected: false })),
+              };
+            });
 
             setSheets(incomingSheets);
 
@@ -365,7 +395,7 @@ export function useCircuitSync({
     // Tổng hợp toàn bộ sheets với sheet hiện tại được cập nhật
     const latestSheets = (sheetsRef.current || []).map((s) =>
       s.id === activeSheetIdRef.current
-        ? { ...s, nodes: nodesRef.current, wires: wiresRef.current }
+        ? (s.type === 'waveform' ? s : { ...s, nodes: nodesRef.current, wires: wiresRef.current })
         : s
     );
 
@@ -383,7 +413,7 @@ export function useCircuitSync({
 
       const fullSheets = (sheetsRef.current || []).map((s) =>
         s.id === currentActiveId
-          ? { ...s, nodes: currentNodes, wires: currentWires }
+          ? (s.type === 'waveform' ? s : { ...s, nodes: currentNodes, wires: currentWires })
           : s
       );
 

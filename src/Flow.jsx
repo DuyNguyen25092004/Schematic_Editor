@@ -984,6 +984,20 @@ function Flow() {
             sheet={activeSheet}
             onUpdateSheet={handleUpdateActiveSheet}
             allSheets={sheets}
+            cloudControls={
+              <CloudPanel
+                nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
+                sheets={sheets} setSheets={setSheets}
+                activeSheetId={activeSheetId} setActiveSheetId={setActiveSheetId}
+                onOpenRoom={switchCircuitRoom}
+                onNewRoom={startNewCircuitRoom}
+                onResizeRect={handleResizeRect}
+                onTextChangeRect={handleRectTextChange}
+                onAuthChange={checkAuthAndAccess}
+                openTrigger={openCloudTrigger}
+                compact={true}
+              />
+            }
           />
         ) : (
           <>
@@ -1142,6 +1156,7 @@ function Flow() {
             onTextChangeRect={handleRectTextChange}
             onAuthChange={checkAuthAndAccess}
             openTrigger={openCloudTrigger}
+            compact={false}
           />
           <button
             type="button"

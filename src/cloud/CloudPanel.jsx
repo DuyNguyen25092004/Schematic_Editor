@@ -5,6 +5,7 @@ import {
   driveGetEmail, isLoggedIn, parseFolderIdFromUrl,
 } from './driveStorage';
 import { nodeBoxStyle } from '../constants';
+import { DEFAULT_WAVEJSON } from '../waveform/waveformPresets';
 import { db } from '../realtime/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -75,7 +76,7 @@ function formatDateTime(isoString) {
 export default function CloudPanel({
   nodes, wires, setNodes, setWires, onOpenRoom, onNewRoom,
   sheets, setSheets, activeSheetId, setActiveSheetId,
-  onAuthChange, openTrigger,
+  onAuthChange, openTrigger, compact = false,
 }) {
   const [open, setOpen] = useState(false);
 
@@ -88,7 +89,7 @@ export default function CloudPanel({
   // Thông tin file đang được mở trong editor
   const [activeFile, setActiveFile] = useState(() => {
     try {
-      const saved = sessionStorage.getItem('schem_active_file');
+      const saved = localStorage.getItem('schem_active_file') || sessionStorage.getItem('schem_active_file');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -221,6 +222,7 @@ export default function CloudPanel({
     setSaveStatus('idle');
     try {
       sessionStorage.removeItem('schem_active_file');
+    try { localStorage.removeItem('schem_active_file'); } catch {}
     } catch {
       // ignore
     }
@@ -311,15 +313,18 @@ export default function CloudPanel({
     let activeSheet = null;
 
     if (data.sheets && Array.isArray(data.sheets) && data.sheets.length > 0) {
-      loadedSheets = data.sheets.map((s) => ({
-        id: s.id,
-        name: s.name || 'Sheet',
-        type: s.type || 'schematic',
-        waveJson: s.waveJson || '',
-        skin: s.skin || 'default',
-        nodes: (s.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
-        wires: s.wires || [],
-      }));
+      loadedSheets = data.sheets.map((s) => {
+        const isWave = s.type === 'waveform' || Boolean(s.waveJson) || /^waveform/i.test(s.name || '');
+        return {
+          id: s.id,
+          name: s.name || (isWave ? 'Waveform' : 'Sheet'),
+          type: isWave ? 'waveform' : (s.type || 'schematic'),
+          waveJson: isWave ? (s.waveJson || DEFAULT_WAVEJSON) : '',
+          skin: s.skin || 'default',
+          nodes: isWave ? [] : (s.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
+          wires: isWave ? [] : (s.wires || []),
+        };
+      });
       const targetActiveId = data.activeSheetId && loadedSheets.some((s) => s.id === data.activeSheetId)
         ? data.activeSheetId
         : loadedSheets[0].id;
@@ -327,17 +332,29 @@ export default function CloudPanel({
       if (setSheets) setSheets(loadedSheets);
       if (setActiveSheetId) setActiveSheetId(targetActiveId);
     } else {
-      const loadedNodes = (data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) }));
-      const loadedWires = data.wires || [];
-      const singleSheet = [{ id: 'sheet_1', name: f.name.replace(SUFFIX, '') || 'Sheet 1', nodes: loadedNodes, wires: loadedWires }];
+      const isWaveFile = Boolean(data.waveJson) || /^waveform/i.test(f.name || '');
+      const singleSheet = [{
+        id: 'sheet_1',
+        name: f.name.replace(SUFFIX, '') || (isWaveFile ? 'Waveform 1' : 'Sheet 1'),
+        type: isWaveFile ? 'waveform' : 'schematic',
+        waveJson: isWaveFile ? (data.waveJson || DEFAULT_WAVEJSON) : '',
+        skin: isWaveFile ? (data.skin || 'default') : 'default',
+        nodes: isWaveFile ? [] : (data.nodes || []).map((n) => ({ ...n, style: nodeBoxStyle(n) })),
+        wires: isWaveFile ? [] : (data.wires || []),
+      }];
       loadedSheets = singleSheet;
       activeSheet = singleSheet[0];
       if (setSheets) setSheets(singleSheet);
       if (setActiveSheetId) setActiveSheetId('sheet_1');
     }
 
-    setNodes(activeSheet.nodes || []);
-    setWires(activeSheet.wires || []);
+    if (activeSheet?.type !== 'waveform') {
+      setNodes(activeSheet.nodes || []);
+      setWires(activeSheet.wires || []);
+    } else {
+      setNodes([]);
+      setWires([]);
+    }
 
     const cleanName = f.name.replace(SUFFIX, '');
     const fileMeta = {
@@ -353,6 +370,7 @@ export default function CloudPanel({
 
     try {
       sessionStorage.setItem('schem_active_file', JSON.stringify(fileMeta));
+    try { localStorage.setItem('schem_active_file', JSON.stringify(fileMeta)); } catch {}
     } catch {
       // ignore
     }
@@ -367,8 +385,11 @@ export default function CloudPanel({
       const strippedSheets = loadedSheets.map((s) => ({
         id: s.id,
         name: s.name,
-        nodes: (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
-        wires: (s.wires || []).map(({ selected, ...w }) => w),
+        type: s.type || 'schematic',
+        waveJson: s.waveJson || '',
+        skin: s.skin || 'default',
+        nodes: s.type === 'waveform' ? [] : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
+        wires: s.type === 'waveform' ? [] : (s.wires || []).map(({ selected, ...w }) => w),
       }));
       localStorage.setItem(`schem_backup_${f.id}`, JSON.stringify({
         sheets: strippedSheets,
@@ -394,13 +415,19 @@ export default function CloudPanel({
     const curWires = wiresRef.current.map(({ selected, ...w }) => w);
     const curActiveId = activeSheetIdRef.current;
 
-    // Lưu toàn bộ các sheet của project vào file Drive
-    const fullSheets = (sheetsRef.current || []).map((s) => ({
-      id: s.id,
-      name: s.name,
-      nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
-      wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
-    }));
+    // Lưu toàn bộ các sheet của project vào file Drive (giữ nguyên type, waveJson, skin)
+    const fullSheets = (sheetsRef.current || []).map((s) => {
+      const isWaveform = s.type === 'waveform';
+      return {
+        id: s.id,
+        name: s.name,
+        type: s.type || 'schematic',
+        waveJson: s.waveJson || '',
+        skin: s.skin || 'default',
+        nodes: isWaveform ? [] : (s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data }))),
+        wires: isWaveform ? [] : (s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w)),
+      };
+    });
 
     const payload = {
       sheets: fullSheets,
@@ -433,6 +460,7 @@ export default function CloudPanel({
 
     try {
       sessionStorage.setItem('schem_active_file', JSON.stringify(updatedFile));
+    try { localStorage.setItem('schem_active_file', JSON.stringify(updatedFile)); } catch {}
     } catch {
       // ignore
     }
@@ -525,6 +553,7 @@ export default function CloudPanel({
       setSaveStatus('idle');
       try {
         sessionStorage.removeItem('schem_active_file');
+    try { localStorage.removeItem('schem_active_file'); } catch {}
       } catch {
         // ignore
       }
@@ -550,6 +579,7 @@ export default function CloudPanel({
     setSaveStatus('idle');
     try {
       sessionStorage.removeItem('schem_active_file');
+    try { localStorage.removeItem('schem_active_file'); } catch {}
     } catch {
       // ignore
     }
@@ -599,15 +629,18 @@ export default function CloudPanel({
         const curNodes = nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data }));
         const curWires = wiresRef.current.map(({ selected, ...w }) => w);
         const curActiveId = activeSheetIdRef.current;
-        const currentFullSheets = (sheetsRef.current || []).map((s) => ({
-          id: s.id,
-          name: s.name,
-          type: s.type || 'schematic',
-          waveJson: s.waveJson || '',
-          skin: s.skin || 'default',
-          nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
-          wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
-        }));
+        const currentFullSheets = (sheetsRef.current || []).map((s) => {
+          const isWaveform = s.type === 'waveform';
+          return {
+            id: s.id,
+            name: s.name,
+            type: s.type || 'schematic',
+            waveJson: s.waveJson || '',
+            skin: s.skin || 'default',
+            nodes: isWaveform ? [] : (s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data }))),
+            wires: isWaveform ? [] : (s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w)),
+          };
+        });
 
         const payload = {
           sheets: currentFullSheets,
@@ -650,7 +683,7 @@ export default function CloudPanel({
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [nodes, wires, autoSaveEnabled, logged]);
+  }, [nodes, wires, sheets, autoSaveEnabled, logged]);
 
   // Phím tắt Ctrl+S / Cmd+S để lưu ngay lập tức
   useEffect(() => {
@@ -666,12 +699,18 @@ export default function CloudPanel({
           const curNodes = nodesRef.current.map(({ id, type, position, data }) => ({ id, type, position, data }));
           const curWires = wiresRef.current.map(({ selected, ...w }) => w);
           const curActiveId = activeSheetIdRef.current;
-          const currentFullSheets = (sheetsRef.current || []).map((s) => ({
-            id: s.id,
-            name: s.name,
-            nodes: s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data })),
-            wires: s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w),
-          }));
+          const currentFullSheets = (sheetsRef.current || []).map((s) => {
+            const isWaveform = s.type === 'waveform';
+            return {
+              id: s.id,
+              name: s.name,
+              type: s.type || 'schematic',
+              waveJson: s.waveJson || '',
+              skin: s.skin || 'default',
+              nodes: isWaveform ? [] : (s.id === curActiveId ? curNodes : (s.nodes || []).map(({ id, type, position, data }) => ({ id, type, position, data }))),
+              wires: isWaveform ? [] : (s.id === curActiveId ? curWires : (s.wires || []).map(({ selected, ...w }) => w)),
+            };
+          });
 
           const payload = {
             sheets: currentFullSheets,
@@ -767,9 +806,12 @@ export default function CloudPanel({
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        background: '#fff', border: '1px solid #ddd', borderRadius: 8,
-        padding: '3px 8px', boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+        background: '#fff', border: compact ? '1px solid #cbd5e1' : '1px solid #ddd',
+        borderRadius: compact ? 6 : 8,
+        padding: compact ? '2px 8px' : '3px 8px',
+        boxShadow: compact ? 'none' : '0 2px 6px rgba(0,0,0,0.08)',
         fontFamily: 'sans-serif', fontSize: 12,
+        height: compact ? 28 : undefined,
       }}>
         <button
           onClick={() => setOpen(true)}
