@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import LatexText from './LatexText';
+import { expandBusLabels } from '../utils/busLabelExpander';
 
-export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelete }) {
+export default function TextDialog({ mode, dialogType, initial, onConfirm, onCancel, onDelete }) {
+  const isWireLabel = dialogType === 'wire-label' || initial?.dialogType === 'wire-label' || initial?.attach;
   const [text, setText] = useState(initial?.text || '');
-  const [latex, setLatex] = useState(!!initial?.latex);
-  const [attach, setAttach] = useState(!!initial?.attach);
+  const [latex, setLatex] = useState(initial?.latex !== undefined ? !!initial.latex : (isWireLabel ? true : false));
+  const [attach, setAttach] = useState(isWireLabel ? true : !!initial?.attach);
   const ref = useRef(null);
 
-  const parsedLabels = attach ? text.trim().split(/\s+/).filter(Boolean) : [];
+  const parsedLabels = (isWireLabel || attach) ? expandBusLabels(text) : [];
 
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
 
-  const ok = () => { if (text.trim()) onConfirm({ text, latex, attach }); };
+  const ok = () => { if (text.trim()) onConfirm({ text, latex, attach: isWireLabel ? true : attach, dialogType: isWireLabel ? 'wire-label' : 'text' }); };
 
   const row = { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, cursor: 'pointer' };
   const btn = (bg, color = '#fff') => ({
@@ -21,6 +23,7 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
 
   return (
     <div
+      data-testid="text-dialog"
       style={{
         position: 'fixed', top: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
         width: 360, background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: 14,
@@ -34,7 +37,11 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
         else if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>{mode === 'edit' ? 'Edit Text' : 'Add Text'}</div>
+      <div data-testid="text-dialog-title" style={{ fontWeight: 700, marginBottom: 8 }}>
+        {isWireLabel
+          ? (mode === 'edit' ? 'Edit Wire Label' : 'Add Wire Label')
+          : (mode === 'edit' ? 'Edit Text' : 'Add Text')}
+      </div>
       <textarea
         ref={ref} rows={3} value={text}
         onChange={(e) => setText(e.target.value)}
@@ -44,27 +51,28 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
           else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ok(); }
         }}
         placeholder={
-          attach
-            ? 'Enter wire labels separated by space: e.g. A B C or IN OUT CLK'
+          isWireLabel
+            ? (parsedLabels.length > 1
+                ? 'Labels queue: e.g. a<1:10>, data[7:0], IN OUT'
+                : 'Enter wire label: e.g. a<1:10>, a[1:10], CLK, V_{in}...')
             : (latex ? 'e.g. V_{out} = \\frac{g_m}{C_L}' : 'Enter text... (Shift+Enter for newline)')
         }
         style={{
           width: '100%', boxSizing: 'border-box', padding: 8, marginBottom: 8, resize: 'vertical',
-          fontFamily: (latex || attach) ? 'monospace' : 'sans-serif', color: '#000', background: '#fff',
+          fontFamily: (latex || isWireLabel) ? 'monospace' : 'sans-serif', color: '#000', background: '#fff',
           borderRadius: 4, border: '1px solid #ccc', fontSize: 13,
         }}
       />
 
-      {attach && parsedLabels.length > 0 && (
+      {isWireLabel && parsedLabels.length > 1 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: '#666', width: '100%' }}>
-            {parsedLabels.length > 1
-              ? `Queue (${parsedLabels.length} labels will be placed sequentially):`
-              : 'Label to attach:'}
+            Queue ({parsedLabels.length} labels will be placed sequentially):
           </span>
           {parsedLabels.map((lbl, idx) => (
             <span
               key={idx}
+              data-testid="bus-label-badge"
               style={{
                 background: '#e6f4ff',
                 color: '#1677ff',
@@ -82,16 +90,10 @@ export default function TextDialog({ mode, initial, onConfirm, onCancel, onDelet
       )}
 
       <label style={row}>
-        <input type="checkbox" checked={latex} onChange={(e) => setLatex(e.target.checked)} />
+        <input type="checkbox" id="text-dialog-latex-checkbox" checked={latex} onChange={(e) => setLatex(e.target.checked)} />
         LaTeX
       </label>
-      {mode === 'create' && (
-        <label style={row}>
-          <input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} />
-          Attach to net (Wire Label)
-        </label>
-      )}
-      {text.trim() && !attach && (
+      {text.trim() && (
         <div style={{ margin: '6px 0 10px', padding: 8, border: '1px dashed #ccc', borderRadius: 6, minHeight: 24, overflowX: 'auto', background: '#fafafa' }}>
           <LatexText text={text} latex={latex} size={16} />
         </div>

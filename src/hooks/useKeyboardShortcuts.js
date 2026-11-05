@@ -5,6 +5,95 @@ import { resolvePoints } from '../routing/resolveWire';
 import { pointAtRatio } from '../geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from '../wires/snap';
 
+// Đảo dấu nhưng không sinh -0
+const neg = (v) => (v ? -v : 0);
+// Khoảng dịch cố định khi lật dọc theo trục dây mà nhãn đang ở chính giữa
+const NAME_FLIP_SHIFT = 30;
+
+function mirrorLabelObj(lbl, horizontal, mode) {
+  const off = lbl.offset || { x: 0, y: 0 };
+  const ratio = lbl.ratio ?? 0.5;
+  const flipRatio = Math.round((1 - ratio) * 100) / 100;
+  const centered = Math.abs(ratio - 0.5) < 0.005;
+
+  if (horizontal) {
+    if (mode === 'V') {
+      const curSide = lbl.side || 'above';
+      const nextSide = curSide === 'below' ? 'above' : 'below';
+      return { ...lbl, side: nextSide, offset: { x: off.x, y: neg(off.y) } };
+    }
+    // mode H: dọc theo dây ngang
+    if (centered) return { ...lbl, offset: { x: off.x ? neg(off.x) : NAME_FLIP_SHIFT, y: off.y } };
+    return { ...lbl, ratio: flipRatio, offset: { x: neg(off.x), y: off.y } };
+  }
+  // vertical
+  if (mode === 'H') {
+    const curSide = lbl.side || 'right';
+    const nextSide = curSide === 'left' ? 'right' : 'left';
+    return { ...lbl, side: nextSide, offset: { x: neg(off.x), y: off.y } };
+  }
+  // mode V: dọc theo dây dọc
+  if (centered) return { ...lbl, offset: { x: off.x, y: off.y ? neg(off.y) : NAME_FLIP_SHIFT } };
+  return { ...lbl, ratio: flipRatio, offset: { x: off.x, y: neg(off.y) } };
+}
+
+// Lật tên dây (wire name) theo phép đối xứng.
+// - Lật vuông góc với dây: đổi phía (above/below hoặc left/right) + đảo offset tương ứng.
+// - Lật dọc theo dây: đảo nameRatio (1 - r) + đảo offset; nếu nhãn đang ở giữa (0.5) thì
+//   dịch ±NAME_FLIP_SHIFT px dọc dây (lần sau lật lại) để nhãn luôn có chuyển động nhìn thấy được.
+function mirrorWireName(w, horizontal, mode) {
+  const off = w.labelOffset || { x: 0, y: 0 };
+  const ratio = w.nameRatio ?? 0.5;
+  const flipRatio = Math.round((1 - ratio) * 100) / 100;
+  const centered = Math.abs(ratio - 0.5) < 0.005;
+
+  // Lật luôn cả w.labels nếu có
+  const newLabels = (w.labels || []).map((l) => mirrorLabelObj(l, horizontal, mode));
+
+  let nextSide = w.nameSide;
+  let nextOffset = off;
+  let nextRatio = ratio;
+
+  if (horizontal) {
+    if (mode === 'V') {
+      const curSide = w.nameSide || 'above';
+      nextSide = curSide === 'below' ? 'above' : 'below';
+      nextOffset = { x: off.x, y: neg(off.y) };
+    } else {
+      // mode H: dọc theo dây ngang
+      if (centered) {
+        nextOffset = { x: off.x ? neg(off.x) : NAME_FLIP_SHIFT, y: off.y };
+      } else {
+        nextRatio = flipRatio;
+        nextOffset = { x: neg(off.x), y: off.y };
+      }
+    }
+  } else {
+    // vertical
+    if (mode === 'H') {
+      const curSide = w.nameSide || 'right';
+      nextSide = curSide === 'left' ? 'right' : 'left';
+      nextOffset = { x: neg(off.x), y: off.y };
+    } else {
+      // mode V: dọc theo dây dọc
+      if (centered) {
+        nextOffset = { x: off.x, y: off.y ? neg(off.y) : NAME_FLIP_SHIFT };
+      } else {
+        nextRatio = flipRatio;
+        nextOffset = { x: off.x, y: neg(off.y) };
+      }
+    }
+  }
+
+  return {
+    ...w,
+    nameSide: nextSide,
+    nameRatio: nextRatio,
+    labelOffset: nextOffset,
+    labels: newLabels,
+  };
+}
+
 export function useKeyboardShortcuts(ctx) {
 const {
     nodes, wires, selected, moveGroup, copyGroup, cursorNodeId,
@@ -15,8 +104,9 @@ const {
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
-    textTool, openTextDialog, cancelTextTool,
+    textTool, openWireLabelDialog, openTextNodeDialog, openTextDialog, cancelTextTool,
     onOpenNetlist,
+    onToggleSwitch,
     canEdit = true,
     isPropertyPanelOpen, setIsPropertyPanelOpen,
     disabled = false,
@@ -51,8 +141,10 @@ const {
         return;
       }
 
-      const activeNodes = nodes.filter((n) => n.selected);
-      const activeWires = wires.filter((w) => w.selected);
+      const currentNodes = nodesRef.current || nodes;
+      const currentWires = wiresRef.current || wires;
+      const activeNodes = currentNodes.filter((n) => n.selected);
+      const activeWires = currentWires.filter((w) => w.selected);
       
       // Phím Q: Bật/tắt bảng thuộc tính Property Panel cho đối tượng đang chọn
       if ((e.key === 'q' || e.key === 'Q') && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -74,12 +166,21 @@ const {
         }
       }
 
-      // Phím L: đặt tên cho dây đang chọn
+      // Phím L: đặt tên / nhãn cho dây (Wire Label)
       if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (e.repeat || moveGroup || copyGroup || cursorNodeId || placingType || textTool) return;
         e.preventDefault();
         setIsWiringMode(false); setIsMoveMode(false); setIsCopyMode(false);
-        openTextDialog?.();
+        (openWireLabelDialog || openTextDialog)?.();
+        return;
+      }
+
+      // Phím T: thêm văn bản tự do trên canvas (Text)
+      if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.repeat || moveGroup || copyGroup || cursorNodeId || placingType || textTool) return;
+        e.preventDefault();
+        setIsWiringMode(false); setIsMoveMode(false); setIsCopyMode(false);
+        (openTextNodeDialog || openTextDialog)?.();
         return;
       }
       
@@ -94,33 +195,59 @@ const {
         if (!isMirrorH && !isMirrorV && !isRotate) return;
         e.preventDefault();
 
-        const currentWires = wiresRef.current || wires;
-        // LẬT VỊ TRÍ TÊN DÂY: Ctrl+R (lật trên/dưới cho dây ngang), Shift+R (lật trái/phải cho dây dọc)
-        const singleWire = (selected?.kind === 'wire' || selected?.kind === 'wire-name')
-          ? currentWires.find((w) => w.id === (selected.kind === 'wire' ? selected.id : selected.wireId))
-          : (activeWires.length === 1 && activeNodes.length === 0 ? activeWires[0] : null);
+        const isWireNameSelected = selected?.kind === 'wire-name' || moveGroup?.labelItem?.kind === 'wire-name';
+        const isWireLabelSelected = selected?.kind === 'wire-label' || moveGroup?.labelItem?.kind === 'wire-label';
+        const singleWire = isWireNameSelected
+          ? currentWires.find((w) => w.id === (selected?.wireId || moveGroup?.labelItem?.wireId))
+          : isWireLabelSelected
+          ? currentWires.find((w) => w.id === (selected?.wireId || moveGroup?.labelItem?.wireId))
+          : (selected?.kind === 'wire' ? currentWires.find((w) => w.id === selected.id)
+          : (activeWires.length === 1 && activeNodes.length === 0 ? activeWires[0] : null));
 
-        if (singleWire && singleWire.name && (isMirrorV || isMirrorH)) {
+        // 1) Thao tác trực tiếp trên nhãn dây (wire-name / wire-label)
+        if (singleWire && (isWireNameSelected || isWireLabelSelected)) {
           const rp = resolvePoints(singleWire.points, nodesRef.current, singleWire.lockedVertical, wiresRef.current, singleWire.id, singleWire.routed);
-          const mid = pointAtRatio(rp, singleWire.nameRatio ?? 0.5);
-
+          const ratio = singleWire.nameRatio ?? (singleWire.labels?.[0]?.ratio ?? 0.5);
+          const mid = pointAtRatio(rp, ratio);
           e.stopPropagation();
 
           setWires((ws) => ws.map((w) => {
             if (w.id !== singleWire.id) return w;
-            let nextSide;
-            if (mid.horizontal) {
-              // Đoạn dây ngang: lật giữa 'above' và 'below'
-              const isBelow = w.nameSide === 'below';
-              nextSide = isBelow ? 'above' : 'below';
-            } else {
-              // Đoạn dây dọc: lật giữa 'right' và 'left'
-              const isLeft = w.nameSide === 'left';
-              nextSide = isLeft ? 'right' : 'left';
+            const curOffset = w.labelOffset || w.labels?.[0]?.offset || { x: 0, y: 0 };
+            if (isMirrorV) return mirrorWireName(w, mid.horizontal, 'V');
+            if (isMirrorH) return mirrorWireName(w, mid.horizontal, 'H');
+            if (isRotate) {
+              const nextOffset = { x: neg(curOffset.y), y: curOffset.x || 0 };
+              const curSide = w.nameSide || (mid.horizontal ? 'above' : 'right');
+              let nextSide;
+              if (mid.horizontal) {
+                nextSide = curSide === 'below' ? 'above' : 'below';
+              } else {
+                nextSide = curSide === 'left' ? 'right' : 'left';
+              }
+              return { ...w, nameSide: nextSide, labelOffset: nextOffset };
             }
-            return { ...w, nameSide: nextSide };
+            return w;
           }));
           return;
+        }
+
+        // 2) Chọn riêng đúng 1 dây (hoặc dây đang được chọn):
+        // Nếu là dây thẳng (dọc hoặc ngang), khi lật thì hình học dây giữ nguyên 100%, chỉ lật nhãn
+        if (singleWire && !moveGroup && !copyGroup && (isMirrorV || isMirrorH)) {
+          const rp = resolvePoints(singleWire.points, nodesRef.current, singleWire.lockedVertical, wiresRef.current, singleWire.id, singleWire.routed);
+          const isPureVertical = rp.every((p) => Math.abs(p.x - rp[0].x) < 1);
+          const isPureHorizontal = rp.every((p) => Math.abs(p.y - rp[0].y) < 1);
+
+          if (isPureVertical || isPureHorizontal) {
+            const ratio = singleWire.nameRatio ?? (singleWire.labels?.[0]?.ratio ?? 0.5);
+            const mid = pointAtRatio(rp, ratio);
+            e.stopPropagation();
+            setWires((ws) => ws.map((w) => (w.id === singleWire.id
+              ? mirrorWireName(w, isPureHorizontal, isMirrorV ? 'V' : 'H')
+              : w)));
+            return;
+          }
         }
 
         const targetIds = moveGroup ? moveGroup.items.map((i) => i.id)
@@ -205,20 +332,20 @@ const {
             cy = Math.round(((minY + maxY) / 2) / GRID) * GRID;
           }
 
-          // Phép biến đổi toạ độ quanh tâm (cx, cy):
+          // Phép biến đổi toạ độ quanh tâm (cx, cy) hoặc bounding box:
           const rotatePt = (x, y) => ({
             x: cx - (y - cy),
             y: cy + (x - cx),
           });
 
           const flipHPt = (x, y) => ({
-            x: 2 * cx - x,
+            x: isSingleNode ? (2 * cx - x) : ((minX + maxX) - x),
             y,
           });
 
           const flipVPt = (x, y) => ({
-            x,
-            y: 2 * cy - y,
+            x: isSingleNode ? (2 * cy - y) : ((minY + maxY) - y),
+            y,
           });
 
           const transformPt = (x, y) => {
@@ -242,8 +369,8 @@ const {
               return { ...n, position: { x: np.x, y: np.y } };
             }
 
-            // Hình chữ nhật: biến đổi vị trí và hoán đổi kích thước khi xoay
-            if (n.type === 'rect') {
+            // Hình chữ nhật / Box: biến đổi vị trí và hoán đổi kích thước khi xoay
+            if (n.type === 'rect' || n.type === 'box') {
               const rw = n.data?.width || 160;
               const rh = n.data?.height || 100;
               const rcx = n.position.x + rw / 2;
@@ -311,9 +438,38 @@ const {
               };
             });
 
+            const isHoriz = Math.abs(newPoints[newPoints.length - 1].y - newPoints[0].y) <= Math.abs(newPoints[newPoints.length - 1].x - newPoints[0].x);
+            let nextSide = w.nameSide;
+            let nextOffset = w.labelOffset ? { ...w.labelOffset } : { x: 0, y: 0 };
+            if (isMirrorV) {
+              const curSide = w.nameSide || (isHoriz ? 'above' : 'right');
+              nextSide = curSide === 'below' ? 'above' : 'below';
+              nextOffset.y = neg(nextOffset.y);
+            } else if (isMirrorH) {
+              const curSide = w.nameSide || (isHoriz ? 'above' : 'right');
+              nextSide = curSide === 'left' ? 'right' : 'left';
+              nextOffset.x = neg(nextOffset.x);
+            } else if (isRotate) {
+              const curSide = w.nameSide || (isHoriz ? 'above' : 'right');
+              if (curSide === 'above') nextSide = 'right';
+              else if (curSide === 'right') nextSide = 'below';
+              else if (curSide === 'below') nextSide = 'left';
+              else if (curSide === 'left') nextSide = 'above';
+              nextOffset = { x: neg(nextOffset.y), y: nextOffset.x };
+            }
+
+            const updatedLabels = (w.labels || []).map((l) => {
+              if (isMirrorV) return mirrorLabelObj(l, isHoriz, 'V');
+              if (isMirrorH) return mirrorLabelObj(l, isHoriz, 'H');
+              return l;
+            });
+
             return {
               ...w,
               points: newPoints,
+              ...(nextSide !== undefined ? { nameSide: nextSide } : {}),
+              labelOffset: nextOffset,
+              labels: updatedLabels,
               routed: false,
             };
           });
@@ -380,11 +536,11 @@ const {
             setWiresRaw((ws) => ws.map((w) => (w.id === labelItem.wireId
               ? {
                   ...w,
-                  labels: (w.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, ratio: labelItem.initialRatio } : lbl)),
+                  labels: (w.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, ratio: labelItem.initialRatio, offset: labelItem.initialOffset || { x: 0, y: 0 } } : lbl)),
                 }
               : w)));
           } else if (labelItem.kind === 'wire-name') {
-            setWiresRaw((ws) => ws.map((w) => (w.id === labelItem.wireId ? { ...w, nameRatio: labelItem.initialRatio } : w)));
+            setWiresRaw((ws) => ws.map((w) => (w.id === labelItem.wireId ? { ...w, nameRatio: labelItem.initialRatio, labelOffset: labelItem.initialOffset || { x: 0, y: 0 } } : w)));
           }
           setMoveGroup(null);
           setIsMoveMode(false);
@@ -444,7 +600,7 @@ const {
 
         if (selected?.kind === 'wire-label') {
           e.preventDefault();
-          const w = wires.find((x) => x.id === selected.wireId);
+          const w = (wiresRef.current || wires).find((x) => x.id === selected.wireId);
           const l = w?.labels?.find((x) => x.id === selected.labelId);
           if (!w || !l) return;
           const flowPos = screenToFlowPosition(lastMouse.current);
@@ -455,6 +611,7 @@ const {
               kind: 'wire-label',
               wireId: w.id,
               labelId: l.id,
+              initialOffset: l.offset || { x: 0, y: 0 },
               initialRatio: l.ratio ?? 0.5,
             },
           });
@@ -473,6 +630,7 @@ const {
             labelItem: {
               kind: 'wire-name',
               wireId: w.id,
+              initialOffset: w.labelOffset || { x: 0, y: 0 },
               initialRatio: w.nameRatio ?? 0.5,
             },
           });
@@ -659,6 +817,17 @@ const {
       }
       else if (e.key === 'w' || e.key === 'W') { setIsWiringMode(true); setIsMoveMode(false); setIsCopyMode(false); setSelected(null); }
       else if (e.key === 'i' || e.key === 'I') { e.preventDefault(); setQuickAddOpen(true); setSelected(null); }
+      else if (e.key === ' ' || e.code === 'Space') {
+        if (!isWiringMode && !placingType && !isMoveMode && !isCopyMode) {
+          if (selected?.kind === 'node') {
+            const targetNode = nodes.find((n) => n.id === selected.id);
+            if (targetNode && ['sw_open', 'sw_closed', 'sw_spdt', 'sw_sp3t', 'sw_sp4t'].includes(targetNode.type)) {
+              e.preventDefault();
+              onToggleSwitch?.(targetNode.id);
+            }
+          }
+        }
+      }
       else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (!isWiringMode && !placingType && (activeNodes.length > 0 || activeWires.length > 0 || selected)) {
           e.preventDefault();
@@ -668,5 +837,5 @@ const {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openTextDialog, cancelTextTool, canEdit, isPropertyPanelOpen, setIsPropertyPanelOpen]);
+}, [isWiringMode, isMoveMode, isCopyMode, placingType, selected, moveGroup, copyGroup, cursorNodeId, nodes, wires, deleteSelected, setNodes, setWiresRaw, screenToFlowPosition, fitView, undo, textTool, openWireLabelDialog, openTextNodeDialog, openTextDialog, cancelTextTool, canEdit, isPropertyPanelOpen, setIsPropertyPanelOpen, onToggleSwitch]);
 }

@@ -24,6 +24,7 @@ const LABELS = {
   sw_spdt:   { x: 40, y: 34, side: 'top' },
   sw_sp3t:   { x: 40, y: 24, side: 'top' },
   sw_sp4t:   { x: 40, y: 14, side: 'top' },
+  arrow:     { x: 40, y: 30, side: 'top' },
 };
 const SIDE_VEC = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] };
 const vecToSide = ([x, y]) => (x > 0 ? 'right' : x < 0 ? 'left' : y > 0 ? 'bottom' : 'top');
@@ -69,9 +70,18 @@ function SymbolNode({ id, data, selected, type }) {
     ? { x: box.x + box.w / 2, y: Math.min(35, box.y - 2), side: 'top' }
     : LABELS[type];
   if (cfg) {
-    const [rx, ry] = transformVec(cfg.x - 40, cfg.y - 50, flip, rot);
-    const side = vecToSide(transformVec(...SIDE_VEC[cfg.side], flip, rot));
-    label = { x: 40 + rx, y: 50 + ry, side };
+    if (type === 'arrow') {
+      const a = ((rot % 360) + 360) % 360;
+      if (a === 0 || a === 180) {
+        label = { x: 40, y: 30, side: 'top' };
+      } else {
+        label = { x: 60, y: 50, side: 'right' };
+      }
+    } else {
+      const [rx, ry] = transformVec(cfg.x - 40, cfg.y - 50, flip, rot);
+      const side = vecToSide(transformVec(...SIDE_VEC[cfg.side], flip, rot));
+      label = { x: 40 + rx, y: 50 + ry, side };
+    }
   }
   const labelTransform = label && {
     right:  'translate(0, -50%)',

@@ -18,7 +18,7 @@ import { usePresence } from './realtime/usePresence';
 import { GRID, COMPONENT_LIBRARY, nodeBoxStyle } from './constants';
 import { getSymbolBBox } from './geometry/ports';
 import { resolvePoints } from './routing/resolveWire';
-import { projectOnPath } from './geometry/pathUtils';
+import { projectOnPath, pointAtRatio } from './geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from './wires/snap';
 import { mergeTouchingWires } from './wires/wireOps';
 import { GhostIcon } from './symbols';
@@ -39,6 +39,7 @@ import RectNode from './nodes/RectNode';
 import TextNode from './nodes/TextNode';
 import TextDialog from './components/TextDialog';
 import LatexText, { formatLatexRef } from './components/LatexText';
+import { expandBusLabels } from './utils/busLabelExpander';
 import CircuitTabBar from './components/CircuitTabBar';
 import SpiceNetlistDialog from './components/SpiceNetlistDialog';
 import WaveformTabEditor from './waveform/WaveformTabEditor';
@@ -52,10 +53,11 @@ const nodeTypes = {
   vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode,
   inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
   nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
-  dff: SymbolNode, dff_sr: SymbolNode, mux: SymbolNode,
+  dff: SymbolNode, dff_sr: SymbolNode, dlatch: SymbolNode, mux: SymbolNode,
   sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
   sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
-  rect: RectNode, text: TextNode,
+  arrow: SymbolNode,
+  rect: RectNode, box: RectNode, text: TextNode,
 };
 
 const initialNodes = mockData.documents[0].instances.map((inst) => ({
@@ -280,6 +282,8 @@ function Flow() {
 
   const [contextMenu, setContextMenu] = useState(null);
   const [selected, setSelected] = useState(null);
+  const selectedRef = useRef(selected);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const selectedIds = [
     ...nodes.filter((n) => n.selected).map((n) => n.id),
@@ -346,16 +350,46 @@ function Flow() {
   });
 
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  const toggleSwitchNode = useCallback((nodeId) => {
+    if (!canEdit) return;
+    setNodes((ns) => ns.map((n) => {
+      if (n.id !== nodeId) return n;
+      if (n.type === 'sw_open' || n.type === 'sw_closed') {
+        const curr = n.data?.state || (n.type === 'sw_closed' ? 'closed' : 'open');
+        const next = curr === 'open' ? 'closed' : 'open';
+        return { ...n, data: { ...n.data, state: next } };
+      }
+      if (['sw_spdt', 'sw_sp3t', 'sw_sp4t'].includes(n.type)) {
+        const throws = n.type === 'sw_spdt'
+          ? ['out1', 'out2']
+          : n.type === 'sw_sp3t'
+          ? ['out1', 'out2', 'out3']
+          : ['out1', 'out2', 'out3', 'out4'];
+        const curr = n.data?.targetThrow || 'out1';
+        const nextIdx = (throws.indexOf(curr) + 1) % throws.length;
+        return { ...n, data: { ...n.data, targetThrow: throws[nextIdx] } };
+      }
+      return n;
+    }));
+  }, [canEdit, setNodes]);
+
   useEffect(() => {
     if (import.meta.env.DEV) {
       window.__devHooks = {
         setWires,
+        setNodes,
+        setSheets,
         setSelected,
+        setIsPropertyPanelOpen,
+        toggleSwitchNode,
         getWires: () => wiresRef.current || wires,
         getNodes: () => nodesRef.current || nodes,
+        getSelected: () => selectedRef.current,
+        getCanEdit: () => canEdit,
       };
     }
-  }, [setWires, setSelected, wires, nodes]);
+  }, [setWires, setNodes, setSheets, setSelected, setIsPropertyPanelOpen, toggleSwitchNode, wires, nodes, canEdit]);
   const [placingType, setPlacingType] = useState(null);
   const [ghostScreenPos, setGhostScreenPos] = useState(null);
   const [dragType, setDragType] = useState(null);
@@ -370,11 +404,59 @@ function Flow() {
   const [textTool, setTextTool] = useState(null);   // { phase: 'place'|'attach', text, latex }
   const [textGhost, setTextGhost] = useState(null);
 
-  const openTextDialog = useCallback(() => {
+  const openWireLabelDialog = useCallback(() => {
+    const sel = selectedRef.current;
+    if (sel?.kind === 'wire') {
+      const curWire = wiresRef.current.find((w) => w.id === sel.id);
+      if (curWire) {
+        setTextDialog({
+          mode: 'edit',
+          kind: 'wire',
+          dialogType: 'wire-label',
+          wireId: curWire.id,
+          initial: { text: curWire.name || (curWire.labels?.[0]?.text) || '', latex: true, attach: true },
+        });
+        return;
+      }
+    } else if (sel?.kind === 'wire-name' || sel?.kind === 'wire-label') {
+      const curWire = wiresRef.current.find((w) => w.id === sel.wireId);
+      if (curWire) {
+        setTextDialog({
+          mode: 'edit',
+          kind: 'wire',
+          dialogType: 'wire-label',
+          wireId: curWire.id,
+          initial: { text: curWire.name || (curWire.labels?.[0]?.text) || '', latex: true, attach: true },
+        });
+        return;
+      }
+    }
     setSelected(null);
     setTextTool(null);
-    setTextDialog({ mode: 'create' });
+    setTextDialog({ mode: 'create', dialogType: 'wire-label', initial: { text: '', latex: true, attach: true } });
   }, []);
+
+  const openTextNodeDialog = useCallback(() => {
+    const sel = selectedRef.current;
+    if (sel?.kind === 'node') {
+      const n = nodesRef.current.find((x) => x.id === sel.id);
+      if (n && n.type === 'text') {
+        setTextDialog({
+          mode: 'edit',
+          kind: 'node',
+          dialogType: 'text',
+          nodeId: n.id,
+          initial: n.data,
+        });
+        return;
+      }
+    }
+    setSelected(null);
+    setTextTool(null);
+    setTextDialog({ mode: 'create', dialogType: 'text', initial: { text: '', latex: false, attach: false } });
+  }, []);
+
+  const openTextDialog = openWireLabelDialog;
   const cancelTextTool = useCallback(() => {
     setTextDialog(null);
     setTextTool(null);
@@ -389,14 +471,28 @@ function Flow() {
       if (d.kind === 'node') {
         setNodes((ns) => ns.map((n) => (n.id === d.nodeId ? { ...n, data: { ...n.data, text, latex } } : n)));
       } else {
+        const queue = expandBusLabels(text);
+        if (queue.length > 1) {
+          setWires((ws) => ws.map((w) => (w.id === d.wireId
+            ? { ...w, name: queue[0] || undefined, labels: [] }
+            : w)));
+          setTextTool({
+            phase: 'attach',
+            queue,
+            index: 1,
+            text: queue[1],
+            latex,
+          });
+          return;
+        }
         setWires((ws) => ws.map((w) => (w.id === d.wireId
-          ? { ...w, labels: (w.labels || []).map((l) => (l.id === d.labelId ? { ...l, text, latex } : l)) }
+          ? { ...w, name: text || undefined, labels: [] }
           : w)));
       }
       return;
     }
     if (attach) {
-      const queue = text.trim().split(/\s+/).filter(Boolean);
+      const queue = expandBusLabels(text);
       if (queue.length > 0) {
         setTextTool({
           phase: 'attach',
@@ -420,19 +516,16 @@ function Flow() {
       setSelected(null);
     } else {
       setWires((ws) => ws.map((w) => (w.id === d.wireId
-        ? { ...w, labels: (w.labels || []).filter((l) => l.id !== d.labelId) }
+        ? { ...w, name: undefined, labels: [] }
         : w)));
+      setSelected(null);
     }
   }, [textDialog, setNodes, setWires]);
 
   const handleAttachLabel = useCallback((wireId, ratio) => {
     if (!textTool) return;
     const currentText = textTool.text || (textTool.queue ? textTool.queue[textTool.index || 0] : '');
-    const label = {
-      id: `lbl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      text: currentText, latex: textTool.latex, ratio,
-    };
-    setWires((ws) => ws.map((w) => (w.id === wireId ? { ...w, labels: [...(w.labels || []), label] } : w)));
+    setWires((ws) => ws.map((w) => (w.id === wireId ? { ...w, name: currentText || undefined, nameRatio: ratio, labels: [] } : w)));
 
     if (textTool.queue && textTool.index !== undefined) {
       const nextIndex = textTool.index + 1;
@@ -452,16 +545,38 @@ function Flow() {
     const onEdit = (e) => {
       if (textTool || moveGroup || copyGroup || cursorNodeId) return;
       const n = nodesRef.current.find((x) => x.id === e.detail?.id);
-      if (n && n.type === 'text') setTextDialog({ mode: 'edit', kind: 'node', nodeId: n.id, initial: n.data });
+      if (n && n.type === 'text') setTextDialog({ mode: 'edit', kind: 'node', dialogType: 'text', nodeId: n.id, initial: n.data });
     };
     window.addEventListener('text-node-edit', onEdit);
     return () => window.removeEventListener('text-node-edit', onEdit);
   }, [textTool, moveGroup, copyGroup, cursorNodeId]);
 
   const handleEditLabel = useCallback((wireId, labelId) => {
-    const label = wiresRef.current.find((w) => w.id === wireId)?.labels?.find((l) => l.id === labelId);
-    if (label) setTextDialog({ mode: 'edit', kind: 'wire', wireId, labelId, initial: label });
+    const w = wiresRef.current.find((x) => x.id === wireId);
+    if (w) {
+      const initialText = w.name || (w.labels?.find((l) => l.id === labelId)?.text) || '';
+      setTextDialog({ mode: 'edit', kind: 'wire', dialogType: 'wire-label', wireId, labelId, initial: { text: initialText, latex: true, attach: true } });
+    }
   }, []);
+
+  useEffect(() => {
+    const onWireNameEdit = (e) => {
+      if (textTool || moveGroup || copyGroup || cursorNodeId) return;
+      const { wireId } = e.detail || {};
+      const w = wiresRef.current.find((x) => x.id === wireId);
+      if (w) {
+        setTextDialog({
+          mode: 'edit',
+          kind: 'wire',
+          dialogType: 'wire-label',
+          wireId,
+          initial: { text: w.name || (w.labels?.[0]?.text) || '', latex: true, attach: true },
+        });
+      }
+    };
+    window.addEventListener('wire-name-edit', onWireNameEdit);
+    return () => window.removeEventListener('wire-name-edit', onWireNameEdit);
+  }, [textTool, moveGroup, copyGroup, cursorNodeId]);
 
   useEffect(() => {
     const onSelectNodeLabel = (e) => {
@@ -496,19 +611,22 @@ function Flow() {
 
     const onSelectWireName = (e) => {
       if (isWiringMode || placingType || textTool) return;
-      const { wireId } = e.detail;
+      const { wireId, clientX, clientY } = e.detail || {};
       const w = wiresRef.current.find((x) => x.id === wireId);
       if (!w) return;
 
       if (isMoveMode) {
         if (!canEdit) return;
-        const flowPos = screenToFlowPosition(lastMouse.current);
+        const mouseScreen = (clientX !== undefined) ? { x: clientX, y: clientY } : lastMouse.current;
+        lastMouse.current = mouseScreen;
+        const flowPos = screenToFlowPosition(mouseScreen);
         setMoveGroup({
           startX: Math.round(flowPos.x / GRID) * GRID,
           startY: Math.round(flowPos.y / GRID) * GRID,
           labelItem: {
             kind: 'wire-name',
             wireId: w.id,
+            initialOffset: w.labelOffset || { x: 0, y: 0 },
             initialRatio: w.nameRatio ?? 0.5,
           },
         });
@@ -520,26 +638,28 @@ function Flow() {
 
     const onSelectWireLabel = (e) => {
       if (isWiringMode || placingType || textTool) return;
-      const { wireId, labelId } = e.detail;
+      const { wireId, labelId, clientX, clientY } = e.detail || {};
       const w = wiresRef.current.find((x) => x.id === wireId);
       const l = w?.labels?.find((x) => x.id === labelId);
-      if (!w || !l) return;
+      if (!w) return;
 
       if (isMoveMode) {
         if (!canEdit) return;
-        const flowPos = screenToFlowPosition(lastMouse.current);
+        const mouseScreen = (clientX !== undefined) ? { x: clientX, y: clientY } : lastMouse.current;
+        lastMouse.current = mouseScreen;
+        const flowPos = screenToFlowPosition(mouseScreen);
         setMoveGroup({
           startX: Math.round(flowPos.x / GRID) * GRID,
           startY: Math.round(flowPos.y / GRID) * GRID,
           labelItem: {
-            kind: 'wire-label',
+            kind: 'wire-name',
             wireId: w.id,
-            labelId: l.id,
-            initialRatio: l.ratio ?? 0.5,
+            initialOffset: w.labelOffset || l?.offset || { x: 0, y: 0 },
+            initialRatio: w.nameRatio ?? l?.ratio ?? 0.5,
           },
         });
       }
-      setSelected({ kind: 'wire-label', wireId, labelId });
+      setSelected({ kind: 'wire-name', wireId });
       setWiresRaw((ws) => ws.map((x) => ({ ...x, selected: false })));
       setNodes((ns) => ns.map((x) => ({ ...x, selected: false, data: { ...x.data, isLabelSelected: false } })));
     };
@@ -685,26 +805,28 @@ function Flow() {
                 ? { ...n, data: { ...n.data, labelOffset: newOffset } }
                 : n)));
             } else if (labelItem.kind === 'wire-label') {
-              const w = wiresRef.current.find((x) => x.id === labelItem.wireId);
-              if (w) {
-                const rp = resolvePoints(w.points, nodesRef.current, w.lockedVertical, wiresRef.current, w.id, w.routed);
-                const proj = projectOnPath(rp, flowPos);
-                const newRatio = Math.round(proj.ratio * 100) / 100;
-                setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId
-                  ? {
-                      ...x,
-                      labels: (x.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, ratio: newRatio } : lbl)),
-                    }
-                  : x)));
-              }
+              const dx = Math.round((flowPos.x - moveGroup.startX) / GRID) * GRID;
+              const dy = Math.round((flowPos.y - moveGroup.startY) / GRID) * GRID;
+              const newOffset = {
+                x: (labelItem.initialOffset?.x || 0) + dx,
+                y: (labelItem.initialOffset?.y || 0) + dy,
+              };
+              setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId
+                ? {
+                    ...x,
+                    labels: (x.labels || []).map((lbl) => (lbl.id === labelItem.labelId ? { ...lbl, offset: newOffset } : lbl)),
+                  }
+                : x)));
             } else if (labelItem.kind === 'wire-name') {
-              const w = wiresRef.current.find((x) => x.id === labelItem.wireId);
-              if (w) {
-                const rp = resolvePoints(w.points, nodesRef.current, w.lockedVertical, wiresRef.current, w.id, w.routed);
-                const proj = projectOnPath(rp, flowPos);
-                const newRatio = Math.round(proj.ratio * 100) / 100;
-                setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId ? { ...x, nameRatio: newRatio } : x)));
-              }
+              const dx = Math.round((flowPos.x - moveGroup.startX) / GRID) * GRID;
+              const dy = Math.round((flowPos.y - moveGroup.startY) / GRID) * GRID;
+              const newOffset = {
+                x: (labelItem.initialOffset?.x || 0) + dx,
+                y: (labelItem.initialOffset?.y || 0) + dy,
+              };
+              setWiresRaw((ws) => ws.map((x) => (x.id === labelItem.wireId
+                ? { ...x, labelOffset: newOffset }
+                : x)));
             }
             return;
           }
@@ -895,8 +1017,9 @@ function Flow() {
     setIsMoveMode, setIsCopyMode, setIsWiringMode,
     setIsRotatingFlag, setQuickAddOpen,
     screenToFlowPosition, fitView, deleteSelected, undo,
-    textTool, openTextDialog, cancelTextTool,
+    textTool, openWireLabelDialog, openTextNodeDialog, openTextDialog, cancelTextTool,
     onOpenNetlist: () => setIsNetlistOpen(true),
+    onToggleSwitch: toggleSwitchNode,
     canEdit,
     isPropertyPanelOpen, setIsPropertyPanelOpen,
     disabled: isWaveformTab,
@@ -1041,6 +1164,11 @@ function Flow() {
           selectionMode="partial" 
           onlyRenderVisibleElements={true}
           zoomOnDoubleClick={false}
+          onNodeDoubleClick={(e, node) => {
+            if (['sw_open', 'sw_closed', 'sw_spdt', 'sw_sp3t', 'sw_sp4t'].includes(node?.type)) {
+              toggleSwitchNode(node.id);
+            }
+          }}
 
           elementsSelectable={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}
           selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}    
@@ -1303,6 +1431,7 @@ function Flow() {
             <TextDialog
               key={`${textDialog.mode}-${textDialog.nodeId || textDialog.labelId || 'new'}`}
               mode={textDialog.mode}
+              dialogType={textDialog.dialogType}
               initial={textDialog.initial}
               onConfirm={handleTextConfirm}
               onCancel={cancelTextTool}

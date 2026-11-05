@@ -129,14 +129,34 @@ export function VddSymbol({ strokeWidth = 1.5, data }) {
 }
 
 export function RectSymbol({ data }) {
-  const color = data?.color || '#1677ff';
-  const isNone = color === 'transparent';
+  const fillColor = data?.color || data?.fillColor || 'transparent';
+  const isNone = fillColor === 'transparent';
   const opacity = data?.opacity ?? 1;
-  const strokeColor = isNone ? '#555' : color;
+  const strokeColor = data?.borderColor || (isNone ? '#000000' : fillColor);
+  const strokeWidth = data?.borderWidth ?? 2;
+  const strokeDasharray = data?.borderStyle === 'dashed' ? '6 4' : data?.borderStyle === 'dotted' ? '2 3' : undefined;
   return (
     <rect x="6" y="6" width="148" height="88" rx="4"
-          fill={isNone ? 'transparent' : color} fillOpacity={isNone ? 1 : opacity}
-          stroke={strokeColor} strokeWidth="2" />
+          fill={isNone ? 'transparent' : fillColor} fillOpacity={isNone ? 1 : opacity}
+          stroke={strokeColor === 'transparent' ? 'none' : strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray} />
+  );
+}
+
+export function BoxSymbol({ data }) {
+  const fillColor = data?.color || data?.fillColor || 'transparent';
+  const isNone = fillColor === 'transparent';
+  const opacity = data?.opacity ?? 1;
+  const strokeColor = data?.borderColor || (isNone ? '#000000' : fillColor);
+  const strokeWidth = data?.borderWidth ?? 2;
+  const strokeDasharray = data?.borderStyle === 'dashed' ? '6 4' : data?.borderStyle === 'dotted' ? '2 3' : undefined;
+  return (
+    <rect x="6" y="6" width="148" height="88" rx="0"
+          fill={isNone ? 'transparent' : fillColor} fillOpacity={isNone ? 1 : opacity}
+          stroke={strokeColor === 'transparent' ? 'none' : strokeColor}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray} />
   );
 }
 
@@ -450,6 +470,25 @@ export function DffSrSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
+export function DLatchSymbol({ strokeWidth = 1.5 }) {
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1;
+  return (
+    <g fill="none" stroke="#000">
+      <rect x="15" y="20" width="50" height="60" strokeWidth={bodySw} strokeLinejoin="miter" />
+      {/* Set input on left */}
+      <line x1="10" y1="40" x2="15" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
+      <text x="19" y="43.5" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">SET</text>
+      {/* Reset input on left */}
+      <line x1="10" y1="60" x2="15" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
+      <text x="19" y="63.5" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">RST</text>
+      {/* Q output on right */}
+      <line x1="65" y1="50" x2="70" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
+      <text x="61" y="53.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+    </g>
+  );
+}
+
 export function MuxSymbol({ strokeWidth = 1.5 }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
@@ -467,42 +506,68 @@ export function MuxSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
-export function OpenSwitchSymbol({ strokeWidth = 1.5 }) {
+function getSwitchBlade(targetCy) {
+  const dx = 20;
+  const dy = targetCy;
+  const len = Math.hypot(dx, dy) || 1;
+  const r = 3;
+  return {
+    x1: -10 + (dx / len) * r,
+    y1: (dy / len) * r,
+    x2: 10 - (dx / len) * r,
+    y2: targetCy - (dy / len) * r,
+  };
+}
+
+export function OpenSwitchSymbol({ strokeWidth = 1.5, data = {} }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const isClosed = data.state === 'closed';
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
-      <line x1="-7.3" y1="-2.2" x2="7.5" y2="-12.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      {isClosed ? (
+        <line x1="-7.2" y1="-1.8" x2="13" y2="-3.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      ) : (
+        <line x1="-7.3" y1="-2.2" x2="7.5" y2="-12.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      )}
       <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function ClosedSwitchSymbol({ strokeWidth = 1.5 }) {
+export function ClosedSwitchSymbol({ strokeWidth = 1.5, data = {} }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const isOpen = data.state === 'open';
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
-      <line x1="-7.2" y1="-1.8" x2="13" y2="-3.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      {isOpen ? (
+        <line x1="-7.3" y1="-2.2" x2="7.5" y2="-12.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      ) : (
+        <line x1="-7.2" y1="-1.8" x2="13" y2="-3.5" strokeWidth={bodySw} strokeLinecap="butt" />
+      )}
       <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="0" x2="30" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
     </g>
   );
 }
 
-export function SpdtSwitchSymbol({ strokeWidth = 1.5 }) {
+export function SpdtSwitchSymbol({ strokeWidth = 1.5, data = {} }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const targetThrow = data.targetThrow || 'out1';
+  const targetCy = targetThrow === 'out2' ? 10 : -10;
+  const blade = getSwitchBlade(targetCy);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
-      <line x1="-7.32" y1="-1.34" x2="7.32" y2="-8.66" strokeWidth={bodySw} strokeLinecap="butt" />
+      <line x1={blade.x1} y1={blade.y1} x2={blade.x2} y2={blade.y2} strokeWidth={bodySw} strokeLinecap="butt" />
       <circle cx="10" cy="-10" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="-10" x2="30" y2="-10" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="10" cy="10" r="3" strokeWidth={bodySw} />
@@ -511,14 +576,18 @@ export function SpdtSwitchSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
-export function Sp3tSwitchSymbol({ strokeWidth = 1.5 }) {
+export function Sp3tSwitchSymbol({ strokeWidth = 1.5, data = {} }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const targetThrow = data.targetThrow || 'out1';
+  const cyMap = { out1: -20, out2: 0, out3: 20 };
+  const targetCy = cyMap[targetThrow] ?? -20;
+  const blade = getSwitchBlade(targetCy);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
-      <line x1="-7.88" y1="-2.12" x2="7.88" y2="-17.88" strokeWidth={bodySw} strokeLinecap="butt" />
+      <line x1={blade.x1} y1={blade.y1} x2={blade.x2} y2={blade.y2} strokeWidth={bodySw} strokeLinecap="butt" />
       <circle cx="10" cy="-20" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="-20" x2="30" y2="-20" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="10" cy="0" r="3" strokeWidth={bodySw} />
@@ -529,14 +598,18 @@ export function Sp3tSwitchSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
-export function Sp4tSwitchSymbol({ strokeWidth = 1.5 }) {
+export function Sp4tSwitchSymbol({ strokeWidth = 1.5, data = {} }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
+  const targetThrow = data.targetThrow || 'out1';
+  const cyMap = { out1: -30, out2: -10, out3: 10, out4: 30 };
+  const targetCy = cyMap[targetThrow] ?? -30;
+  const blade = getSwitchBlade(targetCy);
   return (
     <g transform="translate(40, 50)" fill="none" stroke="#000">
       <line x1="-30" y1="0" x2="-13" y2="0" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="-10" cy="0" r="3" strokeWidth={bodySw} />
-      <line x1="-7.32" y1="-1.34" x2="7.32" y2="-8.66" strokeWidth={bodySw} strokeLinecap="butt" />
+      <line x1={blade.x1} y1={blade.y1} x2={blade.x2} y2={blade.y2} strokeWidth={bodySw} strokeLinecap="butt" />
       <circle cx="10" cy="-30" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="-30" x2="30" y2="-30" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="10" cy="-10" r="3" strokeWidth={bodySw} />
@@ -545,6 +618,29 @@ export function Sp4tSwitchSymbol({ strokeWidth = 1.5 }) {
       <line x1="13" y1="10" x2="30" y2="10" strokeWidth={leadSw} strokeLinecap="butt" />
       <circle cx="10" cy="30" r="3" strokeWidth={bodySw} />
       <line x1="13" y1="30" x2="30" y2="30" strokeWidth={leadSw} strokeLinecap="butt" />
+    </g>
+  );
+}
+
+export function ArrowSymbol({ strokeWidth = 1.5, data = {} }) {
+  const lineStyle = data?.lineStyle || 'solid';
+  const color = data?.color || '#000';
+  const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  return (
+    <g transform="translate(40, 50)" stroke={color} fill="none">
+      {/* Shaft */}
+      <line
+        x1="-30" y1="0" x2="22" y2="0"
+        strokeWidth={strokeWidth}
+        strokeDasharray={dashArray}
+        strokeLinecap={lineStyle === 'dotted' ? 'round' : 'square'}
+      />
+      {/* Arrowhead */}
+      <polygon
+        points="30,0 21.5,-4 21.5,4"
+        fill={color}
+        stroke="none"
+      />
     </g>
   );
 }
@@ -573,13 +669,16 @@ export const SYMBOLS = {
   xnor: XnorGateSymbol,
   dff: DffSymbol,
   dff_sr: DffSrSymbol,
+  dlatch: DLatchSymbol,
   mux: MuxSymbol,
   sw_open: OpenSwitchSymbol,
   sw_closed: ClosedSwitchSymbol,
   sw_spdt: SpdtSwitchSymbol,
   sw_sp3t: Sp3tSwitchSymbol,
   sw_sp4t: Sp4tSwitchSymbol,
+  arrow: ArrowSymbol,
   rect: RectSymbol,
+  box: BoxSymbol,
 };
 
 // Icon nhỏ trong sidebar / menu nhanh — CHỈ để hiển thị, không dùng làm ảnh kéo.

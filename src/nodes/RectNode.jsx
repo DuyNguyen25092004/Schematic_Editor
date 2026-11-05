@@ -11,12 +11,16 @@ function contrastText(hex) {
   return brightness > 150 ? '#222' : '#fff';
 }
 
-export default function RectNode({ id, data, selected }) {
-  const color = data.color || '#1677ff';
-  const isNone = color === 'transparent';
+export default function RectNode({ id, data, selected, type }) {
+  const isBox = type === 'box' || data.type === 'box' || data.shape === 'box' || data.rounded === false;
+  const radius = isBox ? 0 : (data.radius ?? (data.rx ?? 4));
+  const fillColor = data.color || data.fillColor || 'transparent';
+  const isNone = fillColor === 'transparent';
   const opacity = data.opacity ?? 1;
-  const borderColor = isNone ? '#555' : color;
-  const textColor = isNone ? '#222' : contrastText(color);
+  const borderColor = data.borderColor || (isNone ? '#000000' : (data.color || '#000000'));
+  const borderWidth = data.borderWidth ?? 2;
+  const borderStyle = data.borderStyle || 'solid';
+  const textColor = isNone ? '#222' : contrastText(fillColor);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.text || '');
@@ -57,12 +61,13 @@ export default function RectNode({ id, data, selected }) {
       />
       <div onDoubleClick={startEditing} style={{ position: 'relative', width: '100%', height: '100%' }}>
         <div
+          data-rect-body="true"
           style={{
             position: 'absolute', inset: 0, boxSizing: 'border-box',
-            borderRadius: 4,
-            background: isNone ? 'transparent' : color,
+            borderRadius: radius,
+            background: isNone ? 'transparent' : fillColor,
             opacity: isNone ? 1 : opacity,
-            border: `2px solid ${borderColor}`,
+            border: borderColor === 'transparent' ? 'none' : `${borderWidth}px ${borderStyle} ${borderColor}`,
           }}
         />
         {editing ? (

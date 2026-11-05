@@ -26,6 +26,11 @@ const stripWire = (w) => clean({
   name: w.name ?? null,
   color: w.color ?? null,
   labels: w.labels ?? null,
+  lineStyle: w.lineStyle ?? null,
+  nameSide: w.nameSide ?? null,
+  nameRatio: w.nameRatio ?? null,
+  arrow: w.arrow ?? null,
+  labelOffset: w.labelOffset ?? null,
 });
 
 const stripSheet = (s) => {
@@ -43,7 +48,7 @@ const stripSheet = (s) => {
 
 const computeSignature = (nodes, wires) => {
   const nSig = (nodes || []).map((n) => `${n.id}:${n.type}:${Math.round(n.position?.x ?? 0)},${Math.round(n.position?.y ?? 0)}:${JSON.stringify(n.data || {})}`).join(';');
-  const wSig = (wires || []).map((w) => `${w.id}:${(w.points || []).map((p) => `${Math.round(p.x)},${Math.round(p.y)},${p.nodeId || ''},${p.portId || ''},${p.onWireId || ''}`).join('/')}:${w.name || ''}:${w.net || ''}:${w.color || ''}:${JSON.stringify(w.labels || null)}`).join(';');
+  const wSig = (wires || []).map((w) => `${w.id}:${(w.points || []).map((p) => `${Math.round(p.x)},${Math.round(p.y)},${p.nodeId || ''},${p.portId || ''},${p.onWireId || ''}`).join('/')}:${w.name || ''}:${w.net || ''}:${w.color || ''}:${w.lineStyle || ''}:${w.nameSide || ''}:${w.nameRatio || ''}:${w.arrow || ''}:${JSON.stringify(w.labelOffset || null)}:${JSON.stringify(w.labels || null)}`).join(';');
   return `${nSig}||${wSig}`;
 };
 
@@ -125,6 +130,7 @@ export function useCircuitSync({
     lastReceivedTs.current = 0;
     lastSentSignature.current = '';
 
+    if (!circuitId) return;
     ensureSignedIn().then(async (user) => {
       if (cancelled) return;
       myUidRef.current = user.uid;

@@ -39,6 +39,12 @@ function makeCircuitSnapshot(nodes, wires, sheets) {
         name: w.name ?? null,
         color: w.color ?? null,
         labels: w.labels ?? null,
+        lineStyle: w.lineStyle ?? null,
+        nameSide: w.nameSide ?? null,
+        nameRatio: w.nameRatio ?? null,
+        arrow: w.arrow ?? null,
+      labelOffset: w.labelOffset ?? null,
+        labelOffset: w.labelOffset ?? null,
       })),
     })));
   }
@@ -62,6 +68,11 @@ function makeCircuitSnapshot(nodes, wires, sheets) {
       name: w.name ?? null,
       color: w.color ?? null,
       labels: w.labels ?? null,
+      lineStyle: w.lineStyle ?? null,
+      nameSide: w.nameSide ?? null,
+      nameRatio: w.nameRatio ?? null,
+      arrow: w.arrow ?? null,
+      labelOffset: w.labelOffset ?? null,
     })),
   });
 }
@@ -405,7 +416,7 @@ export default function CloudPanel({
     } catch {}
 
     onOpenRoom?.(f.id, fileMeta); // chuyển phòng realtime
-    setMsg(`Đã mở: ${f.name} ✔`);
+    setMsg(`Opened: ${f.name} ✔`);
     setOpen(false); // Đóng modal để người dùng vẽ
   });
 

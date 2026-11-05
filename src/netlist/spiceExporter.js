@@ -634,10 +634,36 @@ export function generateSpiceNetlist(nodes = [], wires = [], options = {}) {
       case 'sw_closed': {
         const inPin = getPortNet(n.id, 'in');
         const outPin = getPortNet(n.id, 'out');
-        const val = n.type === 'sw_closed' ? '1m' : '100Meg';
+        const isClosed = n.data?.state ? n.data.state === 'closed' : (n.type === 'sw_closed');
+        const val = isClosed ? '1m' : '100Meg';
         const rName = ref.startsWith('R') ? ref : `RSW_${ref}`;
         usedInstanceNames.add(rName);
-        passives.push(`${rName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} ${val} ; Switch (${n.type})`);
+        passives.push(`${rName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} ${val} ; Switch (${n.type} - ${isClosed ? 'CLOSED' : 'OPEN'})`);
+        break;
+      }
+      case 'sw_spdt':
+      case 'sw_sp3t':
+      case 'sw_sp4t': {
+        const inPin = getPortNet(n.id, 'in');
+        const targetThrow = n.data?.targetThrow || 'out1';
+        const ports = getPorts(n.type, n.data);
+        const outPorts = ports.filter((p) => p.id !== 'in');
+        outPorts.forEach((p, idx) => {
+          const outPin = getPortNet(n.id, p.id);
+          const isConnected = p.id === targetThrow;
+          const val = isConnected ? '1m' : '100Meg';
+          const rName = `RSW_${ref}_${idx + 1}`;
+          usedInstanceNames.add(rName);
+          passives.push(`${rName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} ${val} ; Switch (${n.type} ${p.id} ${isConnected ? 'CLOSED' : 'OPEN'})`);
+        });
+        break;
+      }
+      case 'arrow': {
+        const inPin = getPortNet(n.id, 'in');
+        const outPin = getPortNet(n.id, 'out');
+        const vName = `VARR_${ref}`;
+        usedInstanceNames.add(vName);
+        vSources.push(`${vName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} DC 0 ; Signal Arrow (${ref})`);
         break;
       }
       default: {

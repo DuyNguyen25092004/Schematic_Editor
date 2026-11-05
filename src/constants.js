@@ -67,7 +67,7 @@ export const parseVddPort = (id) => {
 // Loại linh kiện mà dây nối vào KHÔNG hiện chấm tròn giao điểm
 export const NO_JUNCTION_DOT_TYPES = new Set(['vdd']);
 // Tên chân cũ (file đã lưu trước khi đổi VDD sang dạng thanh) -> chân mới
-const PORT_ALIASES = { vdd: { p: 'r4' }, dff_sr: { s: 'set', r: 'rst' } };
+const PORT_ALIASES = { vdd: { p: 'r4' }, dff_sr: { s: 'set', r: 'rst' }, dlatch: { s: 'set', r: 'rst', reset: 'rst' } };
 
 export const GND_PORTS = [{ id: 'p', x: 50, y: 30, dir: { x: 0, y: -1 } }];
 export const OPAMP_PORTS = [
@@ -112,6 +112,11 @@ export const DFF_SR_PORTS = [
   { id: 'q',   x: 70, y: 40, dir: { x: 1, y: 0 } },
   { id: 'qn',  x: 70, y: 60, dir: { x: 1, y: 0 } },
 ];
+export const DLATCH_PORTS = [
+  { id: 'set', x: 10, y: 40, dir: { x: -1, y: 0 } },
+  { id: 'rst', x: 10, y: 60, dir: { x: -1, y: 0 } },
+  { id: 'q',   x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
 
 export const MUX_PORTS = [
   { id: 'in0', x: 10, y: 40, dir: { x: -1, y: 0 } },
@@ -146,6 +151,10 @@ export const SW_SP4T_PORTS = [
   { id: 'out3', x: 70, y: 60, dir: { x: 1, y: 0 } },
   { id: 'out4', x: 70, y: 80, dir: { x: 1, y: 0 } },
 ];
+export const ARROW_PORTS = [
+  { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+];
 
 export const PORTS_BY_TYPE = {
   pmos: PMOS_PORTS,
@@ -155,13 +164,15 @@ export const PORTS_BY_TYPE = {
   inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
   xor: LOGIC_2_PORTS, xnor: XNOR_PORTS,
-  dff: DFF_PORTS, dff_sr: DFF_SR_PORTS, mux: MUX_PORTS,
+  dff: DFF_PORTS, dff_sr: DFF_SR_PORTS, dlatch: DLATCH_PORTS, mux: MUX_PORTS,
   sw_open: SW_OPEN_PORTS,
   sw_closed: SW_CLOSED_PORTS,
   sw_spdt: SW_SPDT_PORTS,
   sw_sp3t: SW_SP3T_PORTS,
   sw_sp4t: SW_SP4T_PORTS,
+  arrow: ARROW_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
+  box: [],  // hình chữ nhật vuông góc (boundary box)
   text: [], // văn bản tự do không có chân nối dây
 };
 
@@ -236,19 +247,21 @@ export const SYMBOL_BOX_BY_TYPE = {
   xnor:     { x: 10, y: 30, w: 70, h: 40 },
   dff:      { x: 10, y: 10, w: 60, h: 80 },
   dff_sr:   { x: 10, y: 10, w: 60, h: 80 },
+  dlatch:   { x: 10, y: 10, w: 60, h: 80 },
   mux:      { x: 10, y: 24, w: 60, h: 58 },
   sw_open:   { x: 10, y: 35, w: 60, h: 25 },
   sw_closed: { x: 10, y: 44, w: 60, h: 16 },
   sw_spdt:   { x: 10, y: 36, w: 60, h: 28 },
   sw_sp3t:   { x: 10, y: 26, w: 60, h: 48 },
   sw_sp4t:   { x: 10, y: 16, w: 60, h: 68 },
+  arrow:     { x: 10, y: 35, w: 60, h: 30 },
 };
 export const getSymbolBox = (type, data) => {
   if (type === 'vdd') {
     const { left, right } = getVddSpan(data);
     return { x: 6 - left * GRID, y: 42, w: (left + right) * GRID + 8, h: 16 };
   }
-  if (type === 'rect') {
+  if (type === 'rect' || type === 'box') {
     return { x: 0, y: 0, w: data?.width ?? 160, h: data?.height ?? 100 };
   }
   if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
@@ -264,7 +277,7 @@ export const getSymbolBox = (type, data) => {
 export const nodeBoxStyle = (n) => ({
   ...(n.type === 'text' ? {} : { width: n.data?.width || 160, height: n.data?.height || 100 }),
   background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
-  zIndex: n.type === 'rect' ? 0 : 10,
+  zIndex: (n.type === 'rect' || n.type === 'box') ? 0 : 10,
 });
 
 export const MID_WIRE_SNAP_RADIUS = 5; // chỉ hút vào GIỮA dây khi click rất sát (nửa ô lưới)
@@ -291,11 +304,11 @@ export const COMPONENT_LIBRARY = [
   { type: 'pnp',      category: 'transistors', short: 'PNP',     label: 'BJT PNP',       refPrefix: 'Q_',  defaultData: { model: 'PNP', m: 1 } },
   { type: 'res',      category: 'passives',    short: 'Res',     label: 'Resistor',      refPrefix: 'R_',  defaultData: { resMode: 'value', value: '1k', w: '1u', l: '10u', m: 1, model: '' } },
   { type: 'cap',      category: 'passives',    short: 'Cap',     label: 'Capacitor',     refPrefix: 'C_',  defaultData: { capMode: 'value', value: '1p', w: '10u', l: '10u', fingers: 10, bot_layer: 'M2', top_layer: 'M5', m: 1, model: '' } },
-  { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Normally Open)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Normally Closed)', refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'SPDT Switch',   refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_sp3t',   category: 'switches',    short: 'SP3T',    label: 'SP3T Switch',   refPrefix: 'SW_', defaultData: {} },
-  { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'SP4T Switch',   refPrefix: 'SW_', defaultData: {} },
+  { type: 'sw_open',   category: 'switches',    short: 'Open',    label: 'Switch (Normally Open)', refPrefix: 'SW_', defaultData: { state: 'open' } },
+  { type: 'sw_closed', category: 'switches',    short: 'Closed',  label: 'Switch (Normally Closed)', refPrefix: 'SW_', defaultData: { state: 'closed' } },
+  { type: 'sw_spdt',   category: 'switches',    short: 'SPDT',    label: 'SPDT Switch',   refPrefix: 'SW_', defaultData: { targetThrow: 'out1' } },
+  { type: 'sw_sp3t',   category: 'switches',    short: 'SP3T',    label: 'SP3T Switch',   refPrefix: 'SW_', defaultData: { targetThrow: 'out1' } },
+  { type: 'sw_sp4t',   category: 'switches',    short: 'SP4T',    label: 'SP4T Switch',   refPrefix: 'SW_', defaultData: { targetThrow: 'out1' } },
   { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
   { type: 'vsource',  category: 'power',       short: 'Vsource', label: 'Voltage Source (Vdc/Vpulse/Vsin/Vpwl)', refPrefix: 'V_',  defaultData: { sourceType: 'dc', value: '1V', pulse_v1: '0', pulse_v2: '1.8V', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n', sin_vo: '0', sin_va: '1V', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0', pwl_pairs: [{ t: '0', v: '0' }, { t: '1n', v: '1.8V' }, { t: '5n', v: '1.8V' }, { t: '6n', v: '0' }] } },
@@ -312,6 +325,9 @@ export const COMPONENT_LIBRARY = [
   { type: 'xnor',     category: 'logic',       short: 'XNOR',    label: 'XNOR Gate',      refPrefix: 'U_', defaultData: { model: 'XNOR_2' } },
   { type: 'dff',      category: 'logic',       short: 'DFF (EN)',  label: 'D Flip-Flop (EN, RST)', refPrefix: 'U_', defaultData: { model: 'DFF' } },
   { type: 'dff_sr',   category: 'logic',       short: 'DFF (SET)', label: 'D Flip-Flop (SET, RST)', refPrefix: 'U_', defaultData: { model: 'DFF_SR' } },
+  { type: 'dlatch',   category: 'logic',       short: 'D-Latch',   label: 'D-Latch (SET, RST, Q)', refPrefix: 'U_', defaultData: { model: 'DLATCH' } },
   { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: { model: 'MUX' } },
-  { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rectangle',     refPrefix: 'RECT', defaultData: { color: 'transparent', opacity: 1, width: 160, height: 100 } },
+  { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rounded Rectangle', refPrefix: 'RECT', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
+  { type: 'box',      category: 'shapes',      short: 'Box',     label: 'Rectangle Box (90°)', refPrefix: 'BOX', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
+  { type: 'arrow',    category: 'shapes',      short: 'Arrow',   label: 'Signal Arrow',  refPrefix: 'ARR_', defaultData: { lineStyle: 'solid', color: '#000' } },
 ];
