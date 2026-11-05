@@ -15,8 +15,8 @@ import { useCircuitSync } from './realtime/useCircuitSync';
 import { getCircuitId, setCircuitId as persistCircuitId, newCircuitId } from './realtime/circuitId';
 import { usePresence } from './realtime/usePresence';
 
-import { GRID, COMPONENT_LIBRARY, nodeBoxStyle } from './constants';
-import { getSymbolBBox } from './geometry/ports';
+import { GRID, COMPONENT_LIBRARY, nodeBoxStyle, findPort } from './constants';
+import { getSymbolBBox, getTransformedPort } from './geometry/ports';
 import { resolvePoints } from './routing/resolveWire';
 import { projectOnPath, pointAtRatio } from './geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from './wires/snap';
@@ -1007,14 +1007,46 @@ function Flow() {
     const activeNodes = nodes.filter((n) => n.selected).map((n) => n.id);
     const activeWires = wires.filter((w) => w.selected).map((w) => w.id); // Lấy các dây đang bôi đen
 
-    setNodes((ns) => ns.filter((n) => !activeNodes.includes(n.id) && !(selected?.kind === 'node' && selected.id === n.id)));
+    const deletedNodeIds = new Set(activeNodes);
+    if (selected?.kind === 'node' && selected.id) {
+      deletedNodeIds.add(selected.id);
+    }
+
+    const deletedWireIds = new Set(activeWires);
+    if (selected?.kind === 'wire' && selected.id) {
+      deletedWireIds.add(selected.id);
+    }
+
+    setNodes((ns) => ns.filter((n) => !deletedNodeIds.has(n.id)));
     
-    setWires((ws) => ws.filter((w) => {
-      if (activeWires.includes(w.id)) return false; // Xóa dây quét khối
-      if (selected?.kind === 'wire' && selected.id === w.id) return false; // Xóa dây click thủ công
-      if (w.points.some((p) => activeNodes.includes(p.nodeId) || (selected?.kind === 'node' && selected.id === p.nodeId))) return false;
-      return true;
-    }));
+    // Khi xóa linh kiện (device): chỉ xóa linh kiện, BẢO TOÀN toàn bộ các đường dây điện!
+    // Các đầu mút của dây đang nối vào chân linh kiện bị xóa sẽ được giải phóng thành đầu mút tự do
+    // và cố định tại chính xác toạ độ của chân linh kiện đó.
+    setWires((ws) => ws
+      .filter((w) => !deletedWireIds.has(w.id))
+      .map((w) => {
+        const touchesDeletedNode = w.points.some((p) => p.nodeId && deletedNodeIds.has(p.nodeId));
+        if (!touchesDeletedNode) return w;
+
+        const newPoints = w.points.map((p) => {
+          if (!p.nodeId || !deletedNodeIds.has(p.nodeId)) return p;
+          const n = nodes.find((node) => node.id === p.nodeId);
+          let px = p.x;
+          let py = p.y;
+          if (n) {
+            const port = findPort(n.type, p.portId, n.data);
+            if (port) {
+              const tPort = getTransformedPort(port, n);
+              px = Math.round((Math.round(n.position.x) + tPort.x) / GRID) * GRID;
+              py = Math.round((Math.round(n.position.y) + tPort.y) / GRID) * GRID;
+            }
+          }
+          return { x: px, y: py };
+        });
+
+        return { ...w, points: newPoints };
+      })
+    );
     
     setSelected(null);
     setIsPropertyPanelOpen(false);
