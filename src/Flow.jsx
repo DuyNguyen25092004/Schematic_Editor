@@ -897,23 +897,39 @@ function Flow() {
     const maxY = Math.max(selectionStart.current.y, endPos.y);
 
     if (maxX - minX > 5 && maxY - minY > 5) {
-      // --- Chọn NODE: bounding box của node phải nằm TRỌN trong vùng kéo ---
-      setNodes((ns) => ns.map((n) => {
-        const box = getSymbolBBox(n);
-        const fullyInside = box.x1 >= minX && box.x2 <= maxX && box.y1 >= minY && box.y2 <= maxY;
-        return { ...n, selected: fullyInside };
-      }));
+      if (e.shiftKey) {
+        // --- Shift + Quét chọn: Cộng dồn vào tập đang chọn ---
+        setNodes((ns) => ns.map((n) => {
+          const box = getSymbolBBox(n);
+          const fullyInside = box.x1 >= minX && box.x2 <= maxX && box.y1 >= minY && box.y2 <= maxY;
+          return { ...n, selected: n.selected || fullyInside };
+        }));
 
-      // --- Chọn WIRE: TẤT CẢ các điểm của dây phải nằm trong vùng kéo ---
-      setWiresRaw((ws) => ws.map((w) => {
-        const pts = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
-        const fullyInside = pts.every(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
-        return { ...w, selected: fullyInside };
-      }));
+        setWiresRaw((ws) => ws.map((w) => {
+          const pts = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
+          const fullyInside = pts.every(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
+          return { ...w, selected: w.selected || fullyInside };
+        }));
+      } else {
+        // --- Quét chọn thường: Chọn chính xác các phần tử trong vùng kéo ---
+        setNodes((ns) => ns.map((n) => {
+          const box = getSymbolBBox(n);
+          const fullyInside = box.x1 >= minX && box.x2 <= maxX && box.y1 >= minY && box.y2 <= maxY;
+          return { ...n, selected: fullyInside };
+        }));
+
+        setWiresRaw((ws) => ws.map((w) => {
+          const pts = resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed);
+          const fullyInside = pts.every(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY);
+          return { ...w, selected: fullyInside };
+        }));
+      }
     } else {
-      // Kéo quá nhỏ (gần như click) -> bỏ chọn hết, tránh chọn nhầm khi chỉ lỡ tay rê nhẹ
-      setNodes((ns) => ns.map((n) => (n.selected || n.data?.isLabelSelected ? { ...n, selected: false, data: { ...n.data, isLabelSelected: false } } : n)));
-      setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
+      if (!e.shiftKey) {
+        // Kéo quá nhỏ (gần như click) và không giữ Shift -> bỏ chọn hết
+        setNodes((ns) => ns.map((n) => (n.selected || n.data?.isLabelSelected ? { ...n, selected: false, data: { ...n.data, isLabelSelected: false } } : n)));
+        setWiresRaw((ws) => ws.map((w) => ({ ...w, selected: false })));
+      }
     }
     selectionStart.current = null;
   }
@@ -1218,9 +1234,21 @@ function Flow() {
               setNodes((ns) => [...ns, newNode]);
               setCursorNodeId(newId); 
             } else if (!isWiringMode && !placingType) {
-              setSelected({ kind: 'node', id: node.id });
-              setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === node.id, data: { ...n.data, isLabelSelected: false } })));
-              setWiresRaw(ws => ws.map(w => ({ ...w, selected: false })));
+              if (e.shiftKey) {
+                const curInRef = nodesRef.current.find((n) => n.id === node.id);
+                const isCurrentlySelected = !!curInRef?.selected;
+                const nextSelected = !isCurrentlySelected;
+                setNodes((ns) => ns.map((n) => n.id === node.id ? { ...n, selected: nextSelected, data: { ...n.data, isLabelSelected: false } } : n));
+                if (nextSelected) {
+                  setSelected({ kind: 'node', id: node.id });
+                } else {
+                  setSelected((prev) => (prev?.kind === 'node' && prev.id === node.id ? null : prev));
+                }
+              } else {
+                setSelected({ kind: 'node', id: node.id });
+                setNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === node.id, data: { ...n.data, isLabelSelected: false } })));
+                setWiresRaw(ws => ws.map(w => ({ ...w, selected: false })));
+              }
             }
           }}
           onPaneClick={handlePaneClick}

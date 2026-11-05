@@ -252,6 +252,7 @@ const {
 
         const targetIds = moveGroup ? moveGroup.items.map((i) => i.id)
           : copyGroup ? copyGroup.items.map((i) => i.id)
+          : cursorNodeId ? [cursorNodeId]
           : activeNodes.map((n) => n.id);
         if (targetIds.length === 0 && selected?.kind === 'node') targetIds.push(selected.id);
 
@@ -286,15 +287,18 @@ const {
           // Nếu chỉ chọn đúng 1 linh kiện và không có dây -> xoay quanh tâm (40, 50) của chính nó
           // Nếu bôi đen cả cụm (nhiều linh kiện hoặc có dây) -> xoay quanh tâm bounding box của toàn bộ cụm!
           let cx, cy;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
           const isSingleNode = targetNodesArr.length === 1 && wireSet.size === 0;
 
           if (isSingleNode) {
             const n = targetNodesArr[0];
             cx = n.position.x + 40;
             cy = n.position.y + 50;
+            minX = n.position.x;
+            maxX = n.position.x + 80;
+            minY = n.position.y;
+            maxY = n.position.y + 100;
           } else {
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
             targetNodesArr.forEach((n) => {
               if (n.type === 'text') {
                 minX = Math.min(minX, n.position.x);

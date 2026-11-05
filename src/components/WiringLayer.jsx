@@ -23,6 +23,7 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
   onAttachLabel,
   setSelected,
   setWires,
+  setNodes,
   onEditLabel,
 }) {
   return (
@@ -78,8 +79,20 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
                     onAttachLabel?.(w.id, projectOnPath(rp, fp).ratio);
                     return;
                   }
-                  setSelected({ kind: 'wire', id: w.id });
-                  setWires(ws => ws.map(wire => ({ ...wire, selected: wire.id === w.id })));
+                  if (e.shiftKey) {
+                    const isCurrentlySelected = w.selected || (selected?.kind === 'wire' && selected.id === w.id);
+                    const nextSelected = !isCurrentlySelected;
+                    setWires((ws) => ws.map((wire) => (wire.id === w.id ? { ...wire, selected: nextSelected } : wire)));
+                    if (nextSelected) {
+                      setSelected({ kind: 'wire', id: w.id });
+                    } else {
+                      setSelected((prev) => (prev?.kind === 'wire' && prev.id === w.id ? null : prev));
+                    }
+                  } else {
+                    setSelected({ kind: 'wire', id: w.id });
+                    setWires((ws) => ws.map((wire) => ({ ...wire, selected: wire.id === w.id })));
+                    setNodes?.((ns) => ns.map((n) => (n.selected || n.data?.isLabelSelected ? { ...n, selected: false, data: { ...n.data, isLabelSelected: false } } : n)));
+                  }
                 }}
                 onDoubleClick={(e) => {
                   e.stopPropagation();
@@ -504,6 +517,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
           onAttachLabel={onAttachLabel}
           setSelected={setSelected}
           setWires={setWires}
+          setNodes={setNodes}
           onEditLabel={onEditLabel}
         />
 
