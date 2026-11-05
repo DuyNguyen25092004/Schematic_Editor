@@ -424,7 +424,14 @@ export function XnorGateSymbol({ strokeWidth = 1.5, data }) {
   );
 }
 
-export function DffSymbol({ strokeWidth = 1.5 }) {
+function getCounterTransform(cx, cy, rot = 0, flip = false) {
+  if (!rot && !flip) return undefined;
+  return `translate(${cx} ${cy}) scale(${flip ? -1 : 1} 1) rotate(${-rot}) translate(${-cx} ${-cy})`;
+}
+
+export function DffSymbol({ strokeWidth = 1.5, rot, flip, data }) {
+  const r = rot ?? data?.rot ?? 0;
+  const f = flip ?? data?.flip ?? false;
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1;
   return (
@@ -437,17 +444,21 @@ export function DffSymbol({ strokeWidth = 1.5 }) {
       <line x1="65" y1="40" x2="70" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
       <line x1="65" y1="60" x2="70" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
       <polyline points="15,52 26,60 15,68" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" />
-      <text x="19" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">D</text>
-      <text x="40" y="29" fontSize="9.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">EN</text>
-      <text x="40" y="77" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">RST</text>
-      <text x="61" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
-      <text x="61" y="63.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
-      <line x1="53" y1="54" x2="61" y2="54" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+      <text x="22.5" y="40" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(22.5, 40, r, f)}>D</text>
+      <text x="40" y="27" fontSize="9.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(40, 27, r, f)}>EN</text>
+      <text x="40" y="73" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(40, 73, r, f)}>RST</text>
+      <text x="57.5" y="40" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(57.5, 40, r, f)}>Q</text>
+      <g transform={getCounterTransform(57.5, 60, r, f)}>
+        <text x="57.5" y="60" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central">Q</text>
+        <line x1="53.5" y1="53" x2="61.5" y2="53" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+      </g>
     </g>
   );
 }
 
-export function DffSrSymbol({ strokeWidth = 1.5 }) {
+export function DffSrSymbol({ strokeWidth = 1.5, rot, flip, data }) {
+  const r = rot ?? data?.rot ?? 0;
+  const f = flip ?? data?.flip ?? false;
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1;
   return (
@@ -460,17 +471,21 @@ export function DffSrSymbol({ strokeWidth = 1.5 }) {
       <line x1="65" y1="40" x2="70" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
       <line x1="65" y1="60" x2="70" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
       <polyline points="15,52 26,60 15,68" strokeWidth={bodySw} strokeLinecap="butt" strokeLinejoin="miter" />
-      <text x="19" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">D</text>
-      <text x="40" y="29" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">SET</text>
-      <text x="40" y="77" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle">RST</text>
-      <text x="61" y="43.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
-      <text x="61" y="63.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
-      <line x1="53" y1="54" x2="61" y2="54" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+      <text x="22.5" y="40" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(22.5, 40, r, f)}>D</text>
+      <text x="40" y="27" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(40, 27, r, f)}>SET</text>
+      <text x="40" y="73" fontSize="9" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(40, 73, r, f)}>RST</text>
+      <text x="57.5" y="40" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(57.5, 40, r, f)}>Q</text>
+      <g transform={getCounterTransform(57.5, 60, r, f)}>
+        <text x="57.5" y="60" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central">Q</text>
+        <line x1="53.5" y1="53" x2="61.5" y2="53" stroke="#000" strokeWidth={strokeWidth * 0.9} />
+      </g>
     </g>
   );
 }
 
-export function DLatchSymbol({ strokeWidth = 1.5 }) {
+export function DLatchSymbol({ strokeWidth = 1.5, rot, flip, data }) {
+  const r = rot ?? data?.rot ?? 0;
+  const f = flip ?? data?.flip ?? false;
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1;
   return (
@@ -478,13 +493,13 @@ export function DLatchSymbol({ strokeWidth = 1.5 }) {
       <rect x="15" y="20" width="50" height="60" strokeWidth={bodySw} strokeLinejoin="miter" />
       {/* Set input on left */}
       <line x1="10" y1="40" x2="15" y2="40" strokeWidth={leadSw} strokeLinecap="butt" />
-      <text x="19" y="43.5" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">SET</text>
+      <text x="24" y="40" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(24, 40, r, f)}>SET</text>
       {/* Reset input on left */}
       <line x1="10" y1="60" x2="15" y2="60" strokeWidth={leadSw} strokeLinecap="butt" />
-      <text x="19" y="63.5" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none">RST</text>
+      <text x="24" y="60" fontSize="8.5" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(24, 60, r, f)}>RST</text>
       {/* Q output on right */}
       <line x1="65" y1="50" x2="70" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
-      <text x="61" y="53.5" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="end">Q</text>
+      <text x="57.5" y="50" fontSize="10" fontWeight="bold" fontFamily="sans-serif" fill="#000" stroke="none" textAnchor="middle" dominantBaseline="central" transform={getCounterTransform(57.5, 50, r, f)}>Q</text>
     </g>
   );
 }

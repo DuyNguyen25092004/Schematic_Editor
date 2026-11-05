@@ -122,7 +122,7 @@ function SymbolNode({ id, data, selected, type }) {
         <div style={{ position: 'absolute', left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px`, pointerEvents: 'all' }} />
         <svg width={svgW} height="100" viewBox={`${svgX0} 0 ${svgW} 100`}
             style={{ position: 'absolute', left: svgX0, top: 0, pointerEvents: 'none', overflow: 'visible' }}>
-          <Symbol strokeWidth={sw} data={data} />
+          <Symbol strokeWidth={sw} data={data} {...data} rot={rot} flip={flip} />
         </svg>
       </div>
 
