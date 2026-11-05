@@ -348,8 +348,8 @@ const {
           });
 
           const flipVPt = (x, y) => ({
-            x: isSingleNode ? (2 * cy - y) : ((minY + maxY) - y),
-            y,
+            x,
+            y: isSingleNode ? (2 * cy - y) : ((minY + maxY) - y),
           });
 
           const transformPt = (x, y) => {
