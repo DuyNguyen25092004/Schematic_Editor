@@ -32,6 +32,26 @@
 
 .katex, .katex * {
   color: inherit !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, KaTeX_Main, KaTeX_Math !important;
+}
+
+.katex .mathnormal,
+.katex .mord,
+.katex .mbin,
+.katex .mrel,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, KaTeX_Main, KaTeX_Math !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+}
+
+.katex .msupsub .vlist-t .vlist-r,
+.katex .msupsub * {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, KaTeX_Main, KaTeX_Math !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
 }
 
 input, textarea, select {

@@ -162,7 +162,7 @@ function LatexText({ text = '', latex, size = 14, color = '#000', style }) {
   const base = {
     display: 'inline-block',
     fontSize: size, color: textColor, lineHeight: 1.3, whiteSpace: 'nowrap',
-    fontFamily: isLatex ? undefined : 'sans-serif', fontWeight: isLatex ? 400 : 600,
+    fontFamily: 'sans-serif', fontWeight: 600,
     ...style,
   };
   if (isLatex) return <div style={base} dangerouslySetInnerHTML={{ __html: html }} />;
