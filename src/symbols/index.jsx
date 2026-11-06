@@ -712,6 +712,56 @@ export function ArrowSymbol({ strokeWidth = 1.5, data = {} }) {
   );
 }
 
+export function PulseWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
+  const lineStyle = data?.lineStyle || 'solid';
+  const color = data?.color || '#000';
+  const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  return (
+    <g transform="translate(40, 50)" stroke={color} fill="none">
+      <path
+        d="M -30,0 L -22,0 L -22,-12 L -8,-12 L -8,12 L 8,12 L 8,-12 L 22,-12 L 22,0 L 30,0"
+        strokeWidth={strokeWidth}
+        strokeDasharray={dashArray}
+        strokeLinecap="round"
+        strokeLinejoin="miter"
+      />
+    </g>
+  );
+}
+
+export function SineWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
+  const lineStyle = data?.lineStyle || 'solid';
+  const color = data?.color || '#000';
+  const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  return (
+    <g transform="translate(40, 50)" stroke={color} fill="none">
+      <path
+        d="M -30,0 C -26.25,-18 -18.75,-18 -15,0 C -11.25,18 -3.75,18 0,0 C 3.75,-18 11.25,-18 15,0 C 18.75,18 26.25,18 30,0"
+        strokeWidth={strokeWidth}
+        strokeDasharray={dashArray}
+        strokeLinecap="round"
+      />
+    </g>
+  );
+}
+
+export function NoiseWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
+  const lineStyle = data?.lineStyle || 'solid';
+  const color = data?.color || '#000';
+  const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  return (
+    <g transform="translate(40, 50)" stroke={color} fill="none">
+      <polyline
+        points="-30,0 -26,-7 -23,10 -19,-13 -16,8 -12,-5 -9,12 -5,-14 -1,7 3,-10 7,13 11,-8 15,11 19,-12 23,6 26,-9 30,0"
+        strokeWidth={strokeWidth}
+        strokeDasharray={dashArray}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  );
+}
+
 // Đăng ký symbol theo type — muốn thêm linh kiện mới (điện trở, tụ, ...) chỉ cần thêm 1 dòng ở đây
 export const SYMBOLS = {
   nmos: NmosSymbol,
@@ -747,6 +797,9 @@ export const SYMBOLS = {
   sw_sp3t: Sp3tSwitchSymbol,
   sw_sp4t: Sp4tSwitchSymbol,
   arrow: ArrowSymbol,
+  wave_pulse: PulseWaveShapeSymbol,
+  wave_sine: SineWaveShapeSymbol,
+  wave_noise: NoiseWaveShapeSymbol,
   rect: RectSymbol,
   box: BoxSymbol,
 };

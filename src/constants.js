@@ -159,7 +159,7 @@ export const ARROW_PORTS = [
 export const PORTS_BY_TYPE = {
   pmos: PMOS_PORTS,
   npn: NPN_PORTS, pnp: PNP_PORTS, res: TWO_TERM_PORTS, cap: TWO_TERM_PORTS,
-  vsource: TWO_TERM_PORTS, vpulse: TWO_TERM_PORTS, vsin: TWO_TERM_PORTS, vnoise: TWO_TERM_PORTS, isource: TWO_TERM_PORTS,
+  vsource: TWO_TERM_PORTS, isource: TWO_TERM_PORTS,
   vdd: VDD_PORTS, gnd: GND_PORTS, opamp: OPAMP_PORTS, fdopamp: FD_OPAMP_PORTS,
   inverter: LOGIC_1_PORTS, buffer: LOGIC_1_PORTS,
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
@@ -171,6 +171,9 @@ export const PORTS_BY_TYPE = {
   sw_sp3t: SW_SP3T_PORTS,
   sw_sp4t: SW_SP4T_PORTS,
   arrow: ARROW_PORTS,
+  wave_pulse: ARROW_PORTS,
+  wave_sine: ARROW_PORTS,
+  wave_noise: ARROW_PORTS,
   rect: [], // hình chữ nhật không có chân nối dây
   box: [],  // hình chữ nhật vuông góc (boundary box)
   text: [], // văn bản tự do không có chân nối dây
@@ -232,9 +235,6 @@ export const SYMBOL_BOX_BY_TYPE = {
   res: { x: 40, y: 27, w: 20, h: 46 },
   cap: { x: 40, y: 27, w: 20, h: 46 },
   vsource: { x: 38, y: 28, w: 24, h: 44 },
-  vpulse: { x: 38, y: 28, w: 24, h: 44 },
-  vsin: { x: 38, y: 28, w: 24, h: 44 },
-  vnoise: { x: 38, y: 28, w: 24, h: 44 },
   isource: { x: 38, y: 28, w: 24, h: 44 },
   vdd: { x: 6, y: 42, w: 108, h: 16 },
   gnd: { x: 40, y: 27, w: 20, h: 28 },
@@ -258,6 +258,9 @@ export const SYMBOL_BOX_BY_TYPE = {
   sw_sp3t:   { x: 10, y: 26, w: 60, h: 48 },
   sw_sp4t:   { x: 10, y: 16, w: 60, h: 68 },
   arrow:     { x: 10, y: 35, w: 60, h: 30 },
+  wave_pulse: { x: 10, y: 32, w: 60, h: 36 },
+  wave_sine:  { x: 10, y: 32, w: 60, h: 36 },
+  wave_noise: { x: 10, y: 32, w: 60, h: 36 },
 };
 export const getSymbolBox = (type, data) => {
   if (type === 'vdd') {
@@ -315,9 +318,6 @@ export const COMPONENT_LIBRARY = [
   { type: 'vdd',      category: 'power',       short: 'VDD',     label: 'VDD rail',      refPrefix: 'VDD', defaultData: { reference: 'VDD' } },
   { type: 'gnd',      category: 'power',       short: 'Ground',  label: 'Ground',        refPrefix: 'GND', defaultData: {} },
   { type: 'vsource',  category: 'power',       short: 'Vsource', label: 'Voltage Source (Vdc/Vpulse/Vsin/Vpwl)', refPrefix: 'V_',  defaultData: { sourceType: 'dc', value: '1V', pulse_v1: '0', pulse_v2: '1.8V', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n', sin_vo: '0', sin_va: '1V', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0', pwl_pairs: [{ t: '0', v: '0' }, { t: '1n', v: '1.8V' }, { t: '5n', v: '1.8V' }, { t: '6n', v: '0' }] } },
-  { type: 'vpulse',   category: 'power',       short: 'Pulse',   label: 'Pulse Wave Voltage Source', refPrefix: 'V_',  defaultData: { sourceType: 'pulse', pulse_v1: '0', pulse_v2: '1.8V', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n' } },
-  { type: 'vsin',     category: 'power',       short: 'Sine',    label: 'Sine Wave Voltage Source',  refPrefix: 'V_',  defaultData: { sourceType: 'sin', sin_vo: '0', sin_va: '1V', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0' } },
-  { type: 'vnoise',   category: 'power',       short: 'Noise',   label: 'Noise Wave Voltage Source', refPrefix: 'V_',  defaultData: { sourceType: 'noise', noise_val: '1uV/sqrt(Hz)', value: '0V' } },
   { type: 'isource',  category: 'power',       short: 'Isource', label: 'Current Source (Idc/Ipulse/Isin/Ipwl)', refPrefix: 'I_', defaultData: { sourceType: 'dc', value: '1mA', pulse_v1: '0', pulse_v2: '1mA', pulse_td: '0', pulse_tr: '1n', pulse_tf: '1n', pulse_pw: '5n', pulse_per: '10n', sin_vo: '0', sin_va: '1mA', sin_freq: '1k', sin_td: '0', sin_theta: '0', sin_phase: '0', pwl_pairs: [{ t: '0', v: '0' }, { t: '1n', v: '1mA' }, { t: '5n', v: '1mA' }, { t: '6n', v: '0' }] } },
   { type: 'opamp',    category: 'analog',      short: 'Opamp',   label: 'Opamp',         refPrefix: 'U_',  defaultData: { model: 'OPAMP' } },
   { type: 'fdopamp',  category: 'analog',      short: 'FD Opamp', label: 'FD opamp',     refPrefix: 'U_',  defaultData: { model: 'FD_OPAMP' } },
@@ -336,4 +336,7 @@ export const COMPONENT_LIBRARY = [
   { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rounded Rectangle', refPrefix: 'RECT', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'box',      category: 'shapes',      short: 'Box',     label: 'Rectangle Box (90°)', refPrefix: 'BOX', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'arrow',    category: 'shapes',      short: 'Arrow',   label: 'Signal Arrow',  refPrefix: 'ARR_', defaultData: { lineStyle: 'solid', color: '#000' } },
+  { type: 'wave_pulse', category: 'shapes',    short: 'Pulse Wave', label: 'Pulse Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
+  { type: 'wave_sine',  category: 'shapes',    short: 'Sine Wave',  label: 'Sine Wave Shape',  refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
+  { type: 'wave_noise', category: 'shapes',    short: 'Noise Wave', label: 'Noise Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
 ];

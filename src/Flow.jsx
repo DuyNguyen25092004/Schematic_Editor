@@ -50,14 +50,14 @@ import { DEFAULT_WAVEJSON } from './waveform/waveformPresets';
 
 const nodeTypes = {
   nmos: NmosNode, pmos: PmosNode, npn: NpnNode, pnp: NpnNode,
-  res: TwoTerminalNode, cap: TwoTerminalNode, vsource: TwoTerminalNode, vpulse: TwoTerminalNode, vsin: TwoTerminalNode, vnoise: TwoTerminalNode, isource: TwoTerminalNode,
+  res: TwoTerminalNode, cap: TwoTerminalNode, vsource: TwoTerminalNode, isource: TwoTerminalNode,
   vdd: SymbolNode, gnd: SymbolNode, opamp: SymbolNode, fdopamp: SymbolNode,
   inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
   nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
   dff: SymbolNode, dff_sr: SymbolNode, dlatch: SymbolNode, mux: SymbolNode,
   sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
   sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
-  arrow: SymbolNode,
+  arrow: SymbolNode, wave_pulse: SymbolNode, wave_sine: SymbolNode, wave_noise: SymbolNode,
   rect: RectNode, box: RectNode, text: TextNode,
 };
 

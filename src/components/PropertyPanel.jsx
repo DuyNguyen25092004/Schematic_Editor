@@ -77,6 +77,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     const isRect = node.type === 'rect' || node.type === 'box';
     const isText = node.type === 'text';
     const isArrow = node.type === 'arrow';
+    const isWaveShape = ['wave_pulse', 'wave_sine', 'wave_noise'].includes(node.type);
     const is1TSwitch = node.type === 'sw_open' || node.type === 'sw_closed';
     const isMultiThrowSwitch = ['sw_spdt', 'sw_sp3t', 'sw_sp4t'].includes(node.type);
     const currentSwitchState = node.data?.state || (node.type === 'sw_closed' ? 'closed' : 'open');
@@ -116,7 +117,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     };
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
-      res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', vpulse: 'Pulse Voltage Source', vsin: 'Sine Voltage Source', vnoise: 'Noise Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
+      res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
       opamp: 'Opamp', fdopamp: 'FD Opamp',
       inverter: 'Inverter', buffer: 'Buffer',
       and: 'AND Gate', or: 'OR Gate', nand: 'NAND Gate', nor: 'NOR Gate',
@@ -131,18 +132,21 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       sw_sp3t: 'SP3T Switch',
       sw_sp4t: 'SP4T Switch',
       arrow: 'Signal Arrow',
+      wave_pulse: 'Pulse Wave Shape',
+      wave_sine: 'Sine Wave Shape',
+      wave_noise: 'Noise Wave Shape',
       rect: 'Rounded Rectangle',
       box: 'Rectangle Box (90°)',
       text: 'Text',
     }[node.type] || String(node.type).toUpperCase();
     const isPassive = node.type === 'res' || node.type === 'cap';
-    const isSource = ['vsource', 'isource', 'vpulse', 'vsin', 'vnoise'].includes(node.type);
+    const isSource = node.type === 'vsource' || node.type === 'isource';
     const hasMultiplier = isMos || isBjt || isPassive;
     return (
       <div style={box}>
         <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span>{title}</span>
+            <span className="property-panel-title">{title}</span>
             {!isRect && !isText && node.data?.reference && (
               <>
                 <span style={{ color: '#888' }}>—</span>
@@ -512,7 +516,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           </>
         )}
 
-        {isArrow && (
+        {(isArrow || isWaveShape) && (
           <>
             <label style={label}>Line Style</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>

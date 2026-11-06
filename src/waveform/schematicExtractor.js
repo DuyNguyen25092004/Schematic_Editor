@@ -37,11 +37,14 @@ export function extractSignalsFromSheet(sheet) {
     const ref = n.data?.reference || n.id;
     const type = n.type;
 
-    if (['vsource', 'isource', 'vpulse', 'vsin', 'vnoise'].includes(type)) {
+    if (type === 'vsource' || type === 'isource') {
       if (n.data?.sourceType === 'pulse') {
         signalSet.add(ref || 'CLK_SRC');
         hasClock = true;
       }
+    } else if (type === 'wave_pulse') {
+      signalSet.add(ref || 'CLK_PULSE');
+      hasClock = true;
     } else if (type === 'dff' || type === 'dff_sr') {
       signalSet.add(`${ref}_Q`);
     } else if (['and', 'or', 'nand', 'nor', 'xor', 'xnor', 'inverter'].includes(type)) {

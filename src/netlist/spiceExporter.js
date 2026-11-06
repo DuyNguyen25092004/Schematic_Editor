@@ -483,10 +483,7 @@ export function generateSpiceNetlist(nodes = [], wires = [], options = {}) {
         }
         break;
       }
-      case 'vsource':
-      case 'vpulse':
-      case 'vsin':
-      case 'vnoise': {
+      case 'vsource': {
         const p1 = getPortNet(n.id, 'p1');
         const p2 = getPortNet(n.id, 'p2');
         const vName = ref.startsWith('V') ? ref : `V_${ref}`;
@@ -665,12 +662,15 @@ export function generateSpiceNetlist(nodes = [], wires = [], options = {}) {
         });
         break;
       }
-      case 'arrow': {
+      case 'arrow':
+      case 'wave_pulse':
+      case 'wave_sine':
+      case 'wave_noise': {
         const inPin = getPortNet(n.id, 'in');
         const outPin = getPortNet(n.id, 'out');
-        const vName = `VARR_${ref}`;
+        const vName = n.type === 'arrow' ? `VARR_${ref}` : `VWAVE_${ref}`;
         usedInstanceNames.add(vName);
-        vSources.push(`${vName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} DC 0 ; Signal Arrow (${ref})`);
+        vSources.push(`${vName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} DC 0 ; ${n.type} (${ref})`);
         break;
       }
       default: {
