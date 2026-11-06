@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import ReactFlow, { Background, useNodesState, useEdgesState, useReactFlow, useStore } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -17,6 +17,7 @@ import { usePresence } from './realtime/usePresence';
 
 import { GRID, COMPONENT_LIBRARY, nodeBoxStyle, findPort } from './constants';
 import { getSymbolBBox, getTransformedPort } from './geometry/ports';
+import { computeAlignmentGuides } from './geometry/alignment';
 import { resolvePoints } from './routing/resolveWire';
 import { projectOnPath, pointAtRatio } from './geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from './wires/snap';
@@ -374,6 +375,8 @@ function Flow() {
     }));
   }, [canEdit, setNodes]);
 
+  const alignmentGuidesRef = useRef([]);
+
   useEffect(() => {
     if (import.meta.env.DEV) {
       window.__devHooks = {
@@ -387,11 +390,13 @@ function Flow() {
         getNodes: () => nodesRef.current || nodes,
         getSelected: () => selectedRef.current,
         getCanEdit: () => canEdit,
+        getAlignmentGuides: () => alignmentGuidesRef.current,
       };
     }
   }, [setWires, setNodes, setSheets, setSelected, setIsPropertyPanelOpen, toggleSwitchNode, wires, nodes, canEdit]);
   const [placingType, setPlacingType] = useState(null);
   const [ghostScreenPos, setGhostScreenPos] = useState(null);
+  const [ghostFlowPos, setGhostFlowPos] = useState(null);
   const [dragType, setDragType] = useState(null);
   const [dragGhostPos, setDragGhostPos] = useState(null);
 
@@ -941,13 +946,19 @@ function Flow() {
   const onDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    setGhostFlowPos({
+      x: Math.round((flowPos.x - 80) / GRID) * GRID,
+      y: Math.round((flowPos.y - 50) / GRID) * GRID,
+    });
     setDragGhostPos(snappedGhostScreenPos(e.clientX, e.clientY));
-  }, [snappedGhostScreenPos]);
+  }, [screenToFlowPosition, snappedGhostScreenPos]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
     setDragGhostPos(null);
     setDragType(null);
+    setGhostFlowPos(null);
     if (!canEdit) return;
     const type = e.dataTransfer.getData('application/reactflow');
     const comp = COMPONENT_LIBRARY.find((c) => c.type === type);
@@ -956,19 +967,34 @@ function Flow() {
     addNodeAt(comp, { x: flowPos.x - 80, y: flowPos.y - 50 });
   }, [screenToFlowPosition, addNodeAt, canEdit]);
 
-  const onDragLeave = useCallback(() => setDragGhostPos(null), []);
+  const onDragLeave = useCallback(() => {
+    setDragGhostPos(null);
+    setGhostFlowPos(null);
+  }, []);
 
   useEffect(() => {
     if (!placingType) return;
-    const onMove = (e) => setGhostScreenPos(snappedGhostScreenPos(e.clientX, e.clientY));
+    const onMove = (e) => {
+      const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      setGhostFlowPos({
+        x: Math.round((flowPos.x - 80) / GRID) * GRID,
+        y: Math.round((flowPos.y - 50) / GRID) * GRID,
+      });
+      setGhostScreenPos(snappedGhostScreenPos(e.clientX, e.clientY));
+    };
     const onClick = (e) => {
       const flowPos = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       addNodeAt(placingType, { x: flowPos.x - 80, y: flowPos.y - 50 });
       setPlacingType(null);
       setGhostScreenPos(null);
+      setGhostFlowPos(null);
     };
     const onKey = (e) => {
-      if (e.key === 'Escape') { setPlacingType(null); setGhostScreenPos(null); }
+      if (e.key === 'Escape') {
+        setPlacingType(null);
+        setGhostScreenPos(null);
+        setGhostFlowPos(null);
+      }
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('click', onClick);
@@ -1052,6 +1078,22 @@ function Flow() {
     setIsPropertyPanelOpen(false);
   }, [nodes, wires, selected, setNodes, setWires, canEdit]);
   // -------------------------------------------------------
+
+  // Tính toán vạch căn chỉnh thẳng hàng (Alignment Guidelines) khi di chuyển/đặt linh kiện
+  const alignmentGuides = useMemo(() => {
+    return computeAlignmentGuides({
+      nodes,
+      moveGroup,
+      copyGroup,
+      cursorNodeId,
+      placingType,
+      ghostFlowPos,
+    });
+  }, [nodes, moveGroup, copyGroup, cursorNodeId, placingType, ghostFlowPos]);
+
+  useEffect(() => {
+    alignmentGuidesRef.current = alignmentGuides;
+  }, [alignmentGuides]);
 
   const activeSheet = sheets.find((s) => s.id === activeSheetId);
   const isWaveformTab = activeSheet?.type === 'waveform';
@@ -1309,6 +1351,7 @@ function Flow() {
                 attachTool={canEdit && textTool?.phase === 'attach' ? textTool : null}
                 onAttachLabel={handleAttachLabel}
                 onEditLabel={handleEditLabel}
+                alignmentGuides={alignmentGuides}
             />
         </div>
         <PresenceLayer others={others} nodes={nodes} wires={wires} activeSheetId={activeSheetId} />

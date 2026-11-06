@@ -270,7 +270,7 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
   );
 });
 
-function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected, attachTool, onAttachLabel, onEditLabel }) {
+function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, setNodes, selected, setSelected, attachTool, onAttachLabel, onEditLabel, alignmentGuides = [] }) {
   const { screenToFlowPosition, setViewport, getViewport } = useReactFlow();
   const [draft, setDraft] = useState(null);
   const [cursor, setCursor] = useState(null);
@@ -562,6 +562,48 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
               r={(cursor.portId || cursor.onWireId ? 4 : 2.5) / strokeScale}
               fill={cursor.portId ? '#ff4d4f' : (cursor.onWireId ? '#000' : '#888')} 
             />
+          )}
+
+          {/* 4. Vạch căn chỉnh chân linh kiện (Terminal Alignment Guidelines) */}
+          {alignmentGuides && alignmentGuides.length > 0 && (
+            <g className="alignment-guidelines" stroke="#1890ff" opacity="0.65" pointerEvents="none">
+              {alignmentGuides.map((g, idx) => (
+                <g key={`guide-${idx}`}>
+                  {g.orientation === 'H' ? (
+                    <line
+                      x1={g.from}
+                      y1={g.coord}
+                      x2={g.to}
+                      y2={g.coord}
+                      stroke="#1890ff"
+                      strokeWidth={1 / strokeScale}
+                      strokeDasharray={`${4 / strokeScale} ${3 / strokeScale}`}
+                    />
+                  ) : (
+                    <line
+                      x1={g.coord}
+                      y1={g.from}
+                      x2={g.coord}
+                      y2={g.to}
+                      stroke="#1890ff"
+                      strokeWidth={1 / strokeScale}
+                      strokeDasharray={`${4 / strokeScale} ${3 / strokeScale}`}
+                    />
+                  )}
+                  {g.points.map((p, pIdx) => (
+                    <circle
+                      key={`guide-pt-${pIdx}`}
+                      cx={p.x}
+                      cy={p.y}
+                      r={3.5 / strokeScale}
+                      fill="none"
+                      stroke="#1890ff"
+                      strokeWidth={1.2 / strokeScale}
+                    />
+                  ))}
+                </g>
+              ))}
+            </g>
           )}
         </svg>
       </div>
