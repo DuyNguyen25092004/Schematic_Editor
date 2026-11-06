@@ -466,7 +466,7 @@ function Flow() {
     }
     setSelected(null);
     setTextTool(null);
-    setTextDialog({ mode: 'create', dialogType: 'text', initial: { text: '', latex: false, attach: false } });
+    setTextDialog({ mode: 'create', dialogType: 'text', initial: { text: '', latex: false, color: '#000000', attach: false } });
   }, []);
 
   const openTextDialog = openWireLabelDialog;
@@ -476,13 +476,13 @@ function Flow() {
     setTextGhost(null);
   }, []);
 
-  const handleTextConfirm = useCallback(({ text, latex, attach }) => {
+  const handleTextConfirm = useCallback(({ text, latex, color, attach }) => {
     const d = textDialog;
     setTextDialog(null);
     if (!d) return;
     if (d.mode === 'edit') {
       if (d.kind === 'node') {
-        setNodes((ns) => ns.map((n) => (n.id === d.nodeId ? { ...n, data: { ...n.data, text, latex } } : n)));
+        setNodes((ns) => ns.map((n) => (n.id === d.nodeId ? { ...n, data: { ...n.data, text, latex, color: color ?? n.data?.color ?? '#000000' } } : n)));
       } else {
         const queue = expandBusLabels(text);
         if (queue.length > 1) {
@@ -517,7 +517,7 @@ function Flow() {
       }
       return;
     }
-    setTextTool({ phase: 'place', text, latex });
+    setTextTool({ phase: 'place', text, latex, color: color || '#000000' });
   }, [textDialog, setNodes, setWires]);
 
   const handleTextDelete = useCallback(() => {
@@ -749,7 +749,7 @@ function Flow() {
       const id = nextId('TXT');
       setNodes((ns) => [...ns, {
         id, type: 'text', position: p,
-        data: { text: textTool.text, latex: textTool.latex, size: 14 },
+        data: { text: textTool.text, latex: textTool.latex, size: 14, color: textTool.color || '#000000' },
         style: nodeBoxStyle({ type: 'text' }),
       }]);
       setTextTool(null);

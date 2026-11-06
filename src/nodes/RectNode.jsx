@@ -20,7 +20,7 @@ export default function RectNode({ id, data, selected, type }) {
   const borderColor = data.borderColor || (isNone ? '#000000' : (data.color || '#000000'));
   const borderWidth = data.borderWidth ?? 2;
   const borderStyle = data.borderStyle || 'solid';
-  const textColor = isNone ? '#222' : contrastText(fillColor);
+  const textColor = data.textColor || (isNone ? '#222' : contrastText(fillColor));
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.text || '');

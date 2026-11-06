@@ -209,9 +209,10 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
                       position: 'absolute',
                       left: mid.x + ox,
                       top: mid.y + oy,
+                      transformOrigin: 'center center',
                       transform: mid.horizontal
                         ? (side === 'below' ? 'translate(-50%, 6px)' : 'translate(-50%, calc(-100% - 3px))')
-                        : (side === 'left' ? 'translate(calc(-100% - 6px), -50%)' : 'translate(6px, -50%)'),
+                        : (side === 'left' ? 'translate(calc(-50% - 10px), -50%) rotate(-90deg)' : 'translate(calc(-50% + 10px), -50%) rotate(-90deg)'),
                       pointerEvents: (!isWiringMode && !isBoxSelecting && !attachTool) ? 'auto' : 'none',
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -245,7 +246,10 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
                       position: 'absolute',
                       left: pt.x,
                       top: pt.y,
-                      transform: pt.horizontal ? 'translate(-50%, calc(-100% - 3px))' : 'translate(6px, -50%)',
+                      transformOrigin: 'center center',
+                      transform: pt.horizontal
+                        ? 'translate(-50%, calc(-100% - 3px))'
+                        : 'translate(calc(-50% + 10px), -50%) rotate(-90deg)',
                       pointerEvents: 'none',
                       userSelect: 'none',
                       opacity: 0.6,

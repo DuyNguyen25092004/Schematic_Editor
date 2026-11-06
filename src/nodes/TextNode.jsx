@@ -15,7 +15,7 @@ export default function TextNode({ id, data, selected }) {
         background: selected ? 'rgba(22, 119, 255, 0.08)' : 'transparent',
       }}
     >
-      <LatexText text={data.text} latex={data.latex} size={data.size || 14} />
+      <LatexText text={data.text} latex={data.latex} size={data.size || 14} color={data.color || '#000000'} />
     </div>
   );
 }

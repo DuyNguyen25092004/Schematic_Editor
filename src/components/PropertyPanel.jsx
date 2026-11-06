@@ -27,6 +27,17 @@ const BORDER_COLORS = [
   { name: 'None (No Border)', value: 'transparent' },
 ];
 
+const TEXT_COLORS = [
+  { name: 'Black', value: '#000000' },
+  { name: 'Blue', value: '#1677ff' },
+  { name: 'Red', value: '#e53935' },
+  { name: 'Green', value: '#43a047' },
+  { name: 'Orange', value: '#fb8c00' },
+  { name: 'Purple', value: '#8e24aa' },
+  { name: 'Teal', value: '#00acc1' },
+  { name: 'Gray', value: '#757575' },
+];
+
 const FILL_COLORS = [
   { name: 'None (Transparent)', value: 'transparent' },
   { name: 'White', value: '#ffffff' },
@@ -490,6 +501,41 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
               value={node.data.text || ''}
               onChange={(e) => patch('text', e.target.value)}
             />
+            {node.data.text && (
+              <>
+                <label style={label}>Text Color</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+                  {TEXT_COLORS.map((c) => {
+                    const active = (node.data?.textColor || '#000000') === c.value;
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        title={c.name}
+                        disabled={readOnly}
+                        onClick={() => patch('textColor', c.value)}
+                        style={{
+                          width: 24, height: 24, padding: 0, cursor: readOnly ? 'default' : 'pointer', borderRadius: '50%',
+                          background: c.value,
+                          border: active ? '2px solid #1677ff' : '1px solid #bbb',
+                          boxShadow: active ? '0 0 0 2px rgba(22,119,255,.25)' : 'none',
+                          opacity: readOnly ? 0.7 : 1,
+                        }}
+                      />
+                    );
+                  })}
+                  <label title="Custom Color" style={{ display: 'flex', alignItems: 'center', cursor: readOnly ? 'default' : 'pointer' }}>
+                    <input
+                      type="color"
+                      disabled={readOnly}
+                      value={node.data?.textColor || '#000000'}
+                      onChange={(e) => patch('textColor', e.target.value)}
+                      style={{ width: 26, height: 26, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -513,6 +559,39 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
                   disabled={readOnly}
                   value={node.data.size || 14}
                   onChange={(e) => patch('size', Number(e.target.value))} />
+
+            <label style={label}>Text Color</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+              {TEXT_COLORS.map((c) => {
+                const active = (node.data?.color || '#000000') === c.value;
+                return (
+                  <button
+                    key={c.name}
+                    type="button"
+                    title={c.name}
+                    disabled={readOnly}
+                    onClick={() => patch('color', c.value)}
+                    style={{
+                      width: 24, height: 24, padding: 0, cursor: readOnly ? 'default' : 'pointer', borderRadius: '50%',
+                      background: c.value,
+                      border: active ? '2px solid #1677ff' : '1px solid #bbb',
+                      boxShadow: active ? '0 0 0 2px rgba(22,119,255,.25)' : 'none',
+                      opacity: readOnly ? 0.7 : 1,
+                    }}
+                  />
+                );
+              })}
+              <label title="Custom Color" style={{ display: 'flex', alignItems: 'center', cursor: readOnly ? 'default' : 'pointer' }}>
+                <input
+                  id="text-color-picker"
+                  type="color"
+                  disabled={readOnly}
+                  value={node.data?.color || '#000000'}
+                  onChange={(e) => patch('color', e.target.value)}
+                  style={{ width: 26, height: 26, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                />
+              </label>
+            </div>
           </>
         )}
 

@@ -6,6 +6,7 @@ export default function TextDialog({ mode, dialogType, initial, onConfirm, onCan
   const isWireLabel = dialogType === 'wire-label' || initial?.dialogType === 'wire-label' || initial?.attach;
   const [text, setText] = useState(initial?.text || '');
   const [latex, setLatex] = useState(initial?.latex !== undefined ? !!initial.latex : (isWireLabel ? true : false));
+  const [color, setColor] = useState(initial?.color || '#000000');
   const [attach, setAttach] = useState(isWireLabel ? true : !!initial?.attach);
   const ref = useRef(null);
 
@@ -13,7 +14,7 @@ export default function TextDialog({ mode, dialogType, initial, onConfirm, onCan
 
   useEffect(() => { ref.current?.focus(); ref.current?.select(); }, []);
 
-  const ok = () => { if (text.trim()) onConfirm({ text, latex, attach: isWireLabel ? true : attach, dialogType: isWireLabel ? 'wire-label' : 'text' }); };
+  const ok = () => { if (text.trim()) onConfirm({ text, latex, color, attach: isWireLabel ? true : attach, dialogType: isWireLabel ? 'wire-label' : 'text' }); };
 
   const row = { display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, cursor: 'pointer' };
   const btn = (bg, color = '#fff') => ({
@@ -93,9 +94,46 @@ export default function TextDialog({ mode, dialogType, initial, onConfirm, onCan
         <input type="checkbox" id="text-dialog-latex-checkbox" checked={latex} onChange={(e) => setLatex(e.target.checked)} />
         LaTeX
       </label>
+
+      {!isWireLabel && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#555', fontWeight: 500 }}>Color:</span>
+          {[
+            { name: 'Black', value: '#000000' },
+            { name: 'Blue', value: '#1677ff' },
+            { name: 'Red', value: '#e53935' },
+            { name: 'Green', value: '#43a047' },
+            { name: 'Orange', value: '#fb8c00' },
+            { name: 'Purple', value: '#8e24aa' },
+            { name: 'Gray', value: '#757575' },
+          ].map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              title={c.name}
+              onClick={() => setColor(c.value)}
+              style={{
+                width: 20, height: 20, padding: 0, borderRadius: '50%', background: c.value,
+                border: color === c.value ? '2px solid #1677ff' : '1px solid #bbb',
+                boxShadow: color === c.value ? '0 0 0 2px rgba(22,119,255,.25)' : 'none',
+                cursor: 'pointer',
+              }}
+            />
+          ))}
+          <input
+            id="text-dialog-color-picker"
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            title="Custom Color"
+            style={{ width: 22, height: 22, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+          />
+        </div>
+      )}
+
       {text.trim() && (
         <div style={{ margin: '6px 0 10px', padding: 8, border: '1px dashed #ccc', borderRadius: 6, minHeight: 24, overflowX: 'auto', background: '#fafafa' }}>
-          <LatexText text={text} latex={latex} size={16} />
+          <LatexText text={text} latex={latex} color={color} size={16} />
         </div>
       )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
