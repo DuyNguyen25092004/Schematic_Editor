@@ -125,6 +125,13 @@ export const MUX_PORTS = [
   { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
 ];
 
+export const TGATE_PORTS = [
+  { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
+  { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
+  { id: 'enb', x: 40, y: 20, dir: { x: 0, y: -1 } },
+  { id: 'en',  x: 40, y: 80, dir: { x: 0, y: 1 } },
+];
+
 export const SW_OPEN_PORTS = [
   { id: 'in',  x: 10, y: 50, dir: { x: -1, y: 0 } },
   { id: 'out', x: 70, y: 50, dir: { x: 1, y: 0 } },
@@ -165,6 +172,7 @@ export const PORTS_BY_TYPE = {
   and: LOGIC_2_PORTS, or: LOGIC_2_PORTS, nand: LOGIC_2_PORTS, nor: LOGIC_2_PORTS,
   xor: LOGIC_2_PORTS, xnor: XNOR_PORTS,
   dff: DFF_PORTS, dff_sr: DFF_SR_PORTS, dlatch: DLATCH_PORTS, mux: MUX_PORTS,
+  tgate: TGATE_PORTS,
   sw_open: SW_OPEN_PORTS,
   sw_closed: SW_CLOSED_PORTS,
   sw_spdt: SW_SPDT_PORTS,
@@ -260,6 +268,7 @@ export const SYMBOL_BOX_BY_TYPE = {
   dff_sr:   { x: 10, y: 10, w: 60, h: 80 },
   dlatch:   { x: 10, y: 10, w: 60, h: 80 },
   mux:      { x: 10, y: 24, w: 60, h: 58 },
+  tgate:    { x: 10, y: 30, w: 60, h: 40 },
   sw_open:   { x: 10, y: 35, w: 60, h: 25 },
   sw_closed: { x: 10, y: 44, w: 60, h: 16 },
   sw_spdt:   { x: 10, y: 36, w: 60, h: 28 },
@@ -341,6 +350,7 @@ export const COMPONENT_LIBRARY = [
   { type: 'dff_sr',   category: 'logic',       short: 'DFF (SET)', label: 'D Flip-Flop (SET, RST)', refPrefix: 'U_', defaultData: { model: 'DFF_SR' } },
   { type: 'dlatch',   category: 'logic',       short: 'D-Latch',   label: 'D-Latch (SET, RST, Q)', refPrefix: 'U_', defaultData: { model: 'DLATCH' } },
   { type: 'mux',      category: 'logic',       short: 'MUX',     label: 'MUX 2:1',        refPrefix: 'U_', defaultData: { model: 'MUX' } },
+  { type: 'tgate',    category: 'logic',       short: 'TG',      label: 'Transmission Gate', refPrefix: 'TG_', defaultData: { model: 'TG' } },
   { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rounded Rectangle', refPrefix: 'RECT', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'box',      category: 'shapes',      short: 'Box',     label: 'Rectangle Box (90°)', refPrefix: 'BOX', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'arrow',    category: 'shapes',      short: 'Arrow',   label: 'Signal Arrow',  refPrefix: 'ARR_', defaultData: { lineStyle: 'solid', color: '#000' } },

@@ -573,6 +573,72 @@ export function MuxSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
+export function TransmissionGateSymbol({ strokeWidth = 1.5, rot, flip, data }) {
+  const r = rot ?? data?.rot ?? 0;
+  const f = flip ?? data?.flip ?? false;
+  const leadSw = strokeWidth;
+  const bodySw = strokeWidth * 1.35;
+  return (
+    <g fill="none" stroke="#000">
+      {/* 2 Overlapping Triangles with height matching Inverter (y: 34 to 66) */}
+      <polygon points="26,34 54,50 26,66" strokeWidth={bodySw} strokeLinejoin="miter" />
+      <polygon points="54,34 26,50 54,66" strokeWidth={bodySw} strokeLinejoin="miter" />
+
+      {/* Top Bubble (circle resting at V-notch intersection y=42) */}
+      <circle cx="40" cy="38.5" r="3.5" fill="#fff" stroke="#000" strokeWidth={bodySw} />
+
+      {/* Top control lead (enb) */}
+      <line x1="40" y1="20" x2="40" y2="35" strokeWidth={leadSw} strokeLinecap="butt" />
+
+      {/* Bottom control lead (en) */}
+      <line x1="40" y1="58" x2="40" y2="80" strokeWidth={leadSw} strokeLinecap="butt" />
+
+      {/* Input / Output leads */}
+      <line x1="10" y1="50" x2="26" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
+      <line x1="54" y1="50" x2="70" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
+
+      {/* Top label \bar{C} */}
+      <g transform={getCounterTransform(40, 11, r, f)}>
+        <text
+          x="40"
+          y="13"
+          fontSize="9.5"
+          fontWeight="bold"
+          fontFamily="sans-serif"
+          fill="#000"
+          stroke="#fff"
+          strokeWidth="2"
+          paintOrder="stroke"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          C
+        </text>
+        <line x1="36" y1="6" x2="44" y2="6" stroke="#000" strokeWidth={leadSw * 0.9} />
+      </g>
+
+      {/* Bottom label C */}
+      <g transform={getCounterTransform(40, 89, r, f)}>
+        <text
+          x="40"
+          y="89"
+          fontSize="9.5"
+          fontWeight="bold"
+          fontFamily="sans-serif"
+          fill="#000"
+          stroke="#fff"
+          strokeWidth="2"
+          paintOrder="stroke"
+          textAnchor="middle"
+          dominantBaseline="central"
+        >
+          C
+        </text>
+      </g>
+    </g>
+  );
+}
+
 function getSwitchBlade(targetCy) {
   const dx = 20;
   const dy = targetCy;
@@ -819,6 +885,7 @@ export const SYMBOLS = {
   dff_sr: DffSrSymbol,
   dlatch: DLatchSymbol,
   mux: MuxSymbol,
+  tgate: TransmissionGateSymbol,
   sw_open: OpenSwitchSymbol,
   sw_closed: ClosedSwitchSymbol,
   sw_spdt: SpdtSwitchSymbol,

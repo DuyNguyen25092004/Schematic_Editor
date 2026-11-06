@@ -634,6 +634,16 @@ export function generateSpiceNetlist(nodes = [], wires = [], options = {}) {
         subcircuits.push(`${xName.padEnd(8)} ${in0.padEnd(8)} ${in1.padEnd(8)} ${sel.padEnd(8)} ${out.padEnd(8)} ${vddNetName} 0 ${model}`);
         break;
       }
+      case 'tgate': {
+        const inPin = getPortNet(n.id, 'in');
+        const outPin = getPortNet(n.id, 'out');
+        const en = getPortNet(n.id, 'en');
+        const enb = getPortNet(n.id, 'enb');
+        const model = cleanSpiceName(n.data?.model) || 'TG';
+        const xName = formatSubcktRef(ref, usedInstanceNames);
+        subcircuits.push(`${xName.padEnd(8)} ${inPin.padEnd(8)} ${outPin.padEnd(8)} ${en.padEnd(8)} ${enb.padEnd(8)} ${vddNetName} 0 ${model}`);
+        break;
+      }
       case 'sw_open':
       case 'sw_closed': {
         const inPin = getPortNet(n.id, 'in');

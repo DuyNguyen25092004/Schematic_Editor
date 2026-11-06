@@ -44,6 +44,7 @@ import LatexText, { formatLatexRef } from './components/LatexText';
 import { expandBusLabels } from './utils/busLabelExpander';
 import CircuitTabBar from './components/CircuitTabBar';
 import SpiceNetlistDialog from './components/SpiceNetlistDialog';
+import { generateSpiceNetlist } from './netlist/spiceExporter';
 import WaveformTabEditor from './waveform/WaveformTabEditor';
 import { DEFAULT_WAVEJSON } from './waveform/waveformPresets';
 
@@ -56,6 +57,7 @@ const nodeTypes = {
   inverter: SymbolNode, buffer: SymbolNode, and: SymbolNode, or: SymbolNode,
   nand: SymbolNode, nor: SymbolNode, xor: SymbolNode, xnor: SymbolNode,
   dff: SymbolNode, dff_sr: SymbolNode, dlatch: SymbolNode, mux: SymbolNode,
+  tgate: SymbolNode,
   sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
   sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
   arrow: SymbolNode,
@@ -399,6 +401,7 @@ function Flow() {
         getSelected: () => selectedRef.current,
         getCanEdit: () => canEdit,
         getAlignmentGuides: () => alignmentGuidesRef.current,
+        generateSpiceNetlist,
       };
     }
   }, [setWires, setNodes, setSheets, setSelected, setIsPropertyPanelOpen, toggleSwitchNode, wires, nodes, canEdit]);

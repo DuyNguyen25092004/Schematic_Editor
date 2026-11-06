@@ -101,7 +101,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     const isLogicGate = MULTI_INPUT_LOGIC_TYPES.has(node.type);
     const isAnalog = node.type === 'opamp' || node.type === 'fdopamp';
     const defaultAnalogModel = node.type === 'fdopamp' ? 'FD_OPAMP' : 'OPAMP';
-    const isLogic = isLogicGate || ['inverter', 'buffer', 'dff', 'dff_sr', 'dlatch', 'mux'].includes(node.type);
+    const isLogic = isLogicGate || ['inverter', 'buffer', 'dff', 'dff_sr', 'dlatch', 'mux', 'tgate'].includes(node.type);
     const defaultLogicModel = isLogicGate
       ? `${node.type.toUpperCase()}_${node.data?.inputs || 2}`
       : ({
@@ -111,6 +111,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
           dff_sr: 'DFF_SR',
           dlatch: 'DLATCH',
           mux: 'MUX',
+          tgate: 'TG',
         }[node.type] || node.type?.toUpperCase() || '');
 
     const setLogicInputs = (newInputs) => {
@@ -137,6 +138,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       dff_sr: 'D Flip-Flop (SET, RST)',
       dlatch: 'D-Latch (SET, RST, Q)',
       mux: 'MUX 2:1',
+      tgate: 'Transmission Gate',
       sw_open: 'Open Switch',
       sw_closed: 'Closed Switch',
       sw_spdt: 'SPDT Switch',

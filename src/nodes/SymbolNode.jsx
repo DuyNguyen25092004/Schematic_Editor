@@ -19,6 +19,7 @@ const LABELS = {
   dff:      { x: 60, y: 20, side: 'top' },
   dff_sr:   { x: 60, y: 20, side: 'top' },
   mux:      { x: 40, y: 30, side: 'top' },
+  tgate:    { x: 55, y: 20, side: 'top' },
   sw_open:   { x: 40, y: 34, side: 'top' },
   sw_closed: { x: 40, y: 40, side: 'top' },
   sw_spdt:   { x: 40, y: 34, side: 'top' },
