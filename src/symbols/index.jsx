@@ -719,7 +719,7 @@ export function PulseWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
   return (
     <g transform="translate(40, 50)" stroke={color} fill="none">
       <path
-        d="M -30,0 L -22,0 L -22,-12 L -8,-12 L -8,12 L 8,12 L 8,-12 L 22,-12 L 22,0 L 30,0"
+        d="M -30,0 L -22,0 L -22,-14 L 0,-14 L 0,14 L 22,14 L 22,0 L 30,0"
         strokeWidth={strokeWidth}
         strokeDasharray={dashArray}
         strokeLinecap="round"
@@ -736,7 +736,7 @@ export function SineWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
   return (
     <g transform="translate(40, 50)" stroke={color} fill="none">
       <path
-        d="M -30,0 C -26.25,-18 -18.75,-18 -15,0 C -11.25,18 -3.75,18 0,0 C 3.75,-18 11.25,-18 15,0 C 18.75,18 26.25,18 30,0"
+        d="M -30,0 C -20,-22 -10,-22 0,0 C 10,22 20,22 30,0"
         strokeWidth={strokeWidth}
         strokeDasharray={dashArray}
         strokeLinecap="round"
