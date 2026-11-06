@@ -142,6 +142,10 @@ function formatSourceValue(data, isVoltage) {
     const phase = data?.sin_phase ?? '0';
     return `SIN(${vo} ${va} ${freq} ${td} ${theta} ${phase})`;
   }
+  if (sType === 'noise') {
+    const nVal = data?.noise_val ?? (isVoltage ? '1uV/sqrt(Hz)' : '1pA/sqrt(Hz)');
+    return `NOISE(${nVal})`;
+  }
   if (sType === 'pwl') {
     if (Array.isArray(data?.pwl_pairs) && data.pwl_pairs.length > 0) {
       const pts = data.pwl_pairs
@@ -479,7 +483,10 @@ export function generateSpiceNetlist(nodes = [], wires = [], options = {}) {
         }
         break;
       }
-      case 'vsource': {
+      case 'vsource':
+      case 'vpulse':
+      case 'vsin':
+      case 'vnoise': {
         const p1 = getPortNet(n.id, 'p1');
         const p2 = getPortNet(n.id, 'p2');
         const vName = ref.startsWith('V') ? ref : `V_${ref}`;

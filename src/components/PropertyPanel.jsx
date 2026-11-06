@@ -116,7 +116,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
     };
     const title = {
       nmos: 'MOSFET', pmos: 'MOSFET', npn: 'BJT NPN', pnp: 'BJT PNP',
-      res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
+      res: 'Resistor', cap: 'Capacitor', vsource: 'Voltage Source', vpulse: 'Pulse Voltage Source', vsin: 'Sine Voltage Source', vnoise: 'Noise Voltage Source', isource: 'Current Source', vdd: 'VDD Rail', gnd: 'Ground',
       opamp: 'Opamp', fdopamp: 'FD Opamp',
       inverter: 'Inverter', buffer: 'Buffer',
       and: 'AND Gate', or: 'OR Gate', nand: 'NAND Gate', nor: 'NOR Gate',
@@ -136,7 +136,7 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
       text: 'Text',
     }[node.type] || String(node.type).toUpperCase();
     const isPassive = node.type === 'res' || node.type === 'cap';
-    const isSource = node.type === 'vsource' || node.type === 'isource';
+    const isSource = ['vsource', 'isource', 'vpulse', 'vsin', 'vnoise'].includes(node.type);
     const hasMultiplier = isMos || isBjt || isPassive;
     return (
       <div style={box}>
@@ -858,14 +858,14 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
         })()}
 
         {isSource && (() => {
-          const sType = node.data?.sourceType || 'dc';
-          const isV = node.type === 'vsource';
+          const sType = node.data?.sourceType || (node.type === 'vpulse' ? 'pulse' : node.type === 'vsin' ? 'sin' : node.type === 'vnoise' ? 'noise' : 'dc');
+          const isV = node.type !== 'isource';
           const unit = isV ? 'V' : 'A';
           return (
             <>
               <label style={label}>Source Mode</label>
               <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
-                {['dc', 'pulse', 'sin', 'pwl'].map((t) => (
+                {['dc', 'pulse', 'sin', 'noise', 'pwl'].map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -899,6 +899,20 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
                     disabled={readOnly}
                     readOnly={readOnly}
                     onChange={(e) => patch('value', e.target.value)}
+                  />
+                </>
+              )}
+
+              {sType === 'noise' && (
+                <>
+                  <label style={label}>Noise Density ({unit}/√Hz)</label>
+                  <input
+                    style={input}
+                    value={node.data?.noise_val ?? (isV ? '1uV/sqrt(Hz)' : '1pA/sqrt(Hz)')}
+                    placeholder={isV ? '1uV/sqrt(Hz)' : '1pA/sqrt(Hz)'}
+                    disabled={readOnly}
+                    readOnly={readOnly}
+                    onChange={(e) => patch('noise_val', e.target.value)}
                   />
                 </>
               )}

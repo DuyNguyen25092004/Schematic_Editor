@@ -37,7 +37,7 @@ export function extractSignalsFromSheet(sheet) {
     const ref = n.data?.reference || n.id;
     const type = n.type;
 
-    if (type === 'vsource' || type === 'isource') {
+    if (['vsource', 'isource', 'vpulse', 'vsin', 'vnoise'].includes(type)) {
       if (n.data?.sourceType === 'pulse') {
         signalSet.add(ref || 'CLK_SRC');
         hasClock = true;

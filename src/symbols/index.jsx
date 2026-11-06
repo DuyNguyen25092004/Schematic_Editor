@@ -95,14 +95,58 @@ function Minus({ x, y, sw, cap = 'round' }) {
   return <line x1={x - 3} y1={y} x2={x + 3} y2={y} stroke="#000" strokeWidth={sw} strokeLinecap={cap} />;
 }
 
-export function VoltageSourceSymbol({ strokeWidth = 1.5 }) {
+export function VoltageSourceSymbol({ strokeWidth = 1.5, data }) {
+  const sType = data?.sourceType || 'dc';
   return (
     <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
       <circle cx="50" cy="50" r="10.76" />
       <line x1="50" y1="30" x2="50" y2="39.24" />
       <line x1="50" y1="60.76" x2="50" y2="70" />
-      <Plus x={50} y={44.5} sw={strokeWidth} cap="butt" />
-      <Minus x={50} y={55.5} sw={strokeWidth} cap="butt" />
+      {sType === 'pulse' ? (
+        <path d="M 43,53.5 L 46.5,53.5 L 46.5,46.5 L 53.5,46.5 L 53.5,53.5 L 57,53.5" />
+      ) : sType === 'sin' ? (
+        <path d="M 43,50 C 45,43 47.5,43 50,50 C 52.5,57 55,57 57,50" />
+      ) : sType === 'noise' ? (
+        <polyline points="43,50 45,46 47,53.5 49,45 51,54.5 53,46.5 55,52.5 57,50" />
+      ) : (
+        <>
+          <Plus x={50} y={44.5} sw={strokeWidth} cap="butt" />
+          <Minus x={50} y={55.5} sw={strokeWidth} cap="butt" />
+        </>
+      )}
+    </g>
+  );
+}
+
+export function PulseWaveSymbol({ strokeWidth = 1.5 }) {
+  return (
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
+      <circle cx="50" cy="50" r="10.76" />
+      <line x1="50" y1="30" x2="50" y2="39.24" />
+      <line x1="50" y1="60.76" x2="50" y2="70" />
+      <path d="M 43,53.5 L 46.5,53.5 L 46.5,46.5 L 53.5,46.5 L 53.5,53.5 L 57,53.5" />
+    </g>
+  );
+}
+
+export function SineWaveSymbol({ strokeWidth = 1.5 }) {
+  return (
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
+      <circle cx="50" cy="50" r="10.76" />
+      <line x1="50" y1="30" x2="50" y2="39.24" />
+      <line x1="50" y1="60.76" x2="50" y2="70" />
+      <path d="M 43,50 C 45,43 47.5,43 50,50 C 52.5,57 55,57 57,50" />
+    </g>
+  );
+}
+
+export function NoiseWaveSymbol({ strokeWidth = 1.5 }) {
+  return (
+    <g stroke="#000" strokeWidth={strokeWidth} strokeLinecap="butt" strokeLinejoin="miter" fill="none">
+      <circle cx="50" cy="50" r="10.76" />
+      <line x1="50" y1="30" x2="50" y2="39.24" />
+      <line x1="50" y1="60.76" x2="50" y2="70" />
+      <polyline points="43,50 45,46 47,53.5 49,45 51,54.5 53,46.5 55,52.5 57,50" />
     </g>
   );
 }
@@ -677,6 +721,9 @@ export const SYMBOLS = {
   res: ResistorSymbol,
   cap: CapacitorSymbol,
   vsource: VoltageSourceSymbol,
+  vpulse: PulseWaveSymbol,
+  vsin: SineWaveSymbol,
+  vnoise: NoiseWaveSymbol,
   isource: CurrentSourceSymbol,
   vdd: VddSymbol,
   gnd: GroundSymbol,

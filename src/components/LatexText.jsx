@@ -118,8 +118,8 @@ export function formatLatexPassiveValue(val, type = 'res') {
     return `${str}\\,\\text{F}`;
   }
 
-  // Nguồn áp (vsource)
-  if (type === 'vsource') {
+  // Nguồn áp (vsource, vpulse, vsin, vnoise)
+  if (type === 'vsource' || type === 'vpulse' || type === 'vsin' || type === 'vnoise') {
     str = str.replace(/\s*v$/i, '');
     if (/^[0-9.]+\s*m$/i.test(str)) {
       return str.replace(/^([0-9.]+)\s*m$/i, '$1\\,\\text{mV}');
