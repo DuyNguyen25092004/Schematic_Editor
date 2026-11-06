@@ -36,6 +36,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { useUndo } from './hooks/useUndo';
 import RectNode from './nodes/RectNode';
+import WaveNode from './nodes/WaveNode';
 
 import TextNode from './nodes/TextNode';
 import TextDialog from './components/TextDialog';
@@ -57,7 +58,8 @@ const nodeTypes = {
   dff: SymbolNode, dff_sr: SymbolNode, dlatch: SymbolNode, mux: SymbolNode,
   sw_open: SymbolNode, sw_closed: SymbolNode, sw_spdt: SymbolNode,
   sw_sp3t: SymbolNode, sw_sp4t: SymbolNode,
-  arrow: SymbolNode, wave_pulse: SymbolNode, wave_sine: SymbolNode, wave_noise: SymbolNode,
+  arrow: SymbolNode,
+  wave_pulse: WaveNode, wave_sine: WaveNode, wave_noise: WaveNode,
   rect: RectNode, box: RectNode, text: TextNode,
 };
 
@@ -270,9 +272,15 @@ function Flow() {
     // Undo: theo dõi nodes/wires; dữ liệu từ xa đi qua remoteSet* để không bị tính là thao tác của mình
   const { undo, remoteSetNodes, remoteSetWiresRaw } = useUndo({ nodes, wires, setNodes, setWiresRaw, circuitId });
 
-  // Ghi lại kích thước sau khi kéo cạnh/góc RectNode (chỉ khi thả tay) và chữ trong hình
+  // Ghi lại kích thước sau khi kéo cạnh/góc RectNode/WaveNode (chỉ khi thả tay) và chữ trong hình
   const handleResizeRect = useCallback((id, { width, height }) => {
-    setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, width, height } } : n)));
+    setNodes((ns) => ns.map((n) => (n.id === id ? {
+      ...n,
+      width,
+      height,
+      style: { ...n.style, width, height },
+      data: { ...n.data, width, height }
+    } : n)));
   }, [setNodes]);
 
   const handleRectTextChange = useCallback((id, text) => {

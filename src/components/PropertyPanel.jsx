@@ -518,6 +518,50 @@ function PropertyPanel({ selected, nodes, setNodes, wires, setWires, onDelete, r
 
         {(isArrow || isWaveShape) && (
           <>
+            {isWaveShape && (
+              <>
+                <label style={label}>Dimensions (W × H)</label>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11, color: '#666' }}>W:</span>
+                    <input
+                      id="wave-width-input"
+                      type="number"
+                      min={30}
+                      max={500}
+                      step={10}
+                      style={{ ...input, padding: '3px 6px', margin: 0 }}
+                      disabled={readOnly}
+                      value={node.data?.width ?? 80}
+                      onChange={(e) => {
+                        const val = Math.max(30, Number(e.target.value) || 30);
+                        patch('width', val);
+                        setNodes((nds) => nds.map((n) => n.id === node.id ? { ...n, width: val, style: { ...n.style, width: val }, data: { ...n.data, width: val } } : n));
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11, color: '#666' }}>H:</span>
+                    <input
+                      id="wave-height-input"
+                      type="number"
+                      min={20}
+                      max={400}
+                      step={10}
+                      style={{ ...input, padding: '3px 6px', margin: 0 }}
+                      disabled={readOnly}
+                      value={node.data?.height ?? 40}
+                      onChange={(e) => {
+                        const val = Math.max(20, Number(e.target.value) || 20);
+                        patch('height', val);
+                        setNodes((nds) => nds.map((n) => n.id === node.id ? { ...n, height: val, style: { ...n.style, height: val }, data: { ...n.data, height: val } } : n));
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
             <label style={label}>Line Style</label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               {[

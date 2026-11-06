@@ -12,6 +12,40 @@ export function getSymbolBBox(node) {
     const h = node.height ?? lines.length * size * 1.3 + 8;
     return { x1: node.position.x, y1: node.position.y, x2: node.position.x + w, y2: node.position.y + h };
   }
+  if (node.type === 'rect' || node.type === 'box') {
+    const w = node.data?.width ?? 160;
+    const h = node.data?.height ?? 100;
+    return { x1: node.position.x, y1: node.position.y, x2: node.position.x + w, y2: node.position.y + h };
+  }
+  if (typeof node.type === 'string' && node.type.startsWith('wave_')) {
+    const w = node.data?.width ?? 80;
+    const h = node.data?.height ?? 40;
+    const rot = node.data?.rot || 0;
+    const flip = node.data?.flip || false;
+    const cx = w / 2, cy = h / 2;
+    const corners = [
+      { x: 0, y: 0 }, { x: w, y: 0 },
+      { x: w, y: h }, { x: 0, y: h },
+    ];
+    const angle = ((rot % 360) + 360) % 360;
+    const transformed = corners.map(({ x, y }) => {
+      let dx = x - cx, dy = y - cy;
+      if (flip) dx = -dx;
+      let rx = dx, ry = dy;
+      if (angle === 90) { rx = -dy; ry = dx; }
+      else if (angle === 180) { rx = -dx; ry = -dy; }
+      else if (angle === 270) { rx = dy; ry = -dx; }
+      return { x: cx + rx, y: cy + ry };
+    });
+    const xs = transformed.map((p) => p.x);
+    const ys = transformed.map((p) => p.y);
+    return {
+      x1: node.position.x + Math.min(...xs),
+      y1: node.position.y + Math.min(...ys),
+      x2: node.position.x + Math.max(...xs),
+      y2: node.position.y + Math.max(...ys),
+    };
+  }
   const rot = node.data.rot || 0;
   const flip = node.data.flip || false;
   const cx = 40, cy = 50;

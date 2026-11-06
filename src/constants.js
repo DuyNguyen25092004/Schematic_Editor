@@ -211,6 +211,14 @@ export const getPorts = (type, data) => {
   if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
     return getLogicPorts(type, data?.inputs);
   }
+  if (type === 'wave_pulse' || type === 'wave_sine' || type === 'wave_noise') {
+    const w = data?.width || 80;
+    const h = data?.height || 40;
+    return [
+      { id: 'in', x: 0, y: Math.round(h / 2), dir: { x: -1, y: 0 } },
+      { id: 'out', x: w, y: Math.round(h / 2), dir: { x: 1, y: 0 } },
+    ];
+  }
   return PORTS_BY_TYPE[type] || PORTS;
 };
 
@@ -267,8 +275,8 @@ export const getSymbolBox = (type, data) => {
     const { left, right } = getVddSpan(data);
     return { x: 6 - left * GRID, y: 42, w: (left + right) * GRID + 8, h: 16 };
   }
-  if (type === 'rect' || type === 'box') {
-    return { x: 0, y: 0, w: data?.width ?? 160, h: data?.height ?? 100 };
+  if (type === 'rect' || type === 'box' || type === 'wave_pulse' || type === 'wave_sine' || type === 'wave_noise') {
+    return { x: 0, y: 0, w: data?.width ?? (type.startsWith('wave_') ? 80 : 160), h: data?.height ?? (type.startsWith('wave_') ? 40 : 100) };
   }
   if (MULTI_INPUT_LOGIC_TYPES.has(type)) {
     const n = Math.max(2, Math.min(16, Math.round(Number(data?.inputs) || 2)));
@@ -281,7 +289,7 @@ export const getSymbolBox = (type, data) => {
 };
 
 export const nodeBoxStyle = (n) => ({
-  ...(n.type === 'text' ? {} : { width: n.data?.width || 160, height: n.data?.height || 100 }),
+  ...(n.type === 'text' ? {} : { width: n.data?.width || (n.type?.startsWith?.('wave_') ? 80 : 160), height: n.data?.height || (n.type?.startsWith?.('wave_') ? 40 : 100) }),
   background: 'transparent', border: 'none', padding: 0, boxShadow: 'none',
   zIndex: (n.type === 'rect' || n.type === 'box') ? 0 : 10,
 });
@@ -336,7 +344,7 @@ export const COMPONENT_LIBRARY = [
   { type: 'rect',     category: 'shapes',      short: 'Rect',    label: 'Rounded Rectangle', refPrefix: 'RECT', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'box',      category: 'shapes',      short: 'Box',     label: 'Rectangle Box (90°)', refPrefix: 'BOX', defaultData: { color: 'transparent', borderColor: '#000000', borderWidth: 2, borderStyle: 'solid', opacity: 1, width: 160, height: 100 } },
   { type: 'arrow',    category: 'shapes',      short: 'Arrow',   label: 'Signal Arrow',  refPrefix: 'ARR_', defaultData: { lineStyle: 'solid', color: '#000' } },
-  { type: 'wave_pulse', category: 'shapes',    short: 'Pulse Wave', label: 'Pulse Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
-  { type: 'wave_sine',  category: 'shapes',    short: 'Sine Wave',  label: 'Sine Wave Shape',  refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
-  { type: 'wave_noise', category: 'shapes',    short: 'Noise Wave', label: 'Noise Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid' } },
+  { type: 'wave_pulse', category: 'shapes',    short: 'Pulse Wave', label: 'Pulse Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid', width: 80, height: 40 } },
+  { type: 'wave_sine',  category: 'shapes',    short: 'Sine Wave',  label: 'Sine Wave Shape',  refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid', width: 80, height: 40 } },
+  { type: 'wave_noise', category: 'shapes',    short: 'Noise Wave', label: 'Noise Wave Shape', refPrefix: 'WAVE_', defaultData: { color: '#000000', lineStyle: 'solid', width: 80, height: 40 } },
 ];

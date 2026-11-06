@@ -5,6 +5,7 @@ import { db, rtdb, ensureSignedIn } from './firebase';
 import { nodeBoxStyle } from '../constants';
 
 const clean = (o) => JSON.parse(JSON.stringify(o));
+const isResizableNode = (t) => t === 'rect' || t === 'box' || (typeof t === 'string' && t.startsWith('wave_'));
 
 const stripNode = (n) => clean({
   id: n.id,
@@ -218,7 +219,7 @@ export function useCircuitSync({
                   skin: s.skin || 'default',
                   nodes: isWave ? [] : (s.nodes || []).map((n) => ({
                     ...n,
-                    data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+                    data: isResizableNode(n.type) ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
                     style: nodeBoxStyle({ type: n.type, data: n.data }),
                     selected: false,
                   })),
@@ -229,7 +230,7 @@ export function useCircuitSync({
               // Định dạng file cũ chỉ có 1 trang
               const rootNodes = (chosenCircuit.nodes || []).map((n) => ({
                 ...n,
-                data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+                data: isResizableNode(n.type) ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
                 style: nodeBoxStyle({ type: n.type, data: n.data }),
                 selected: false,
               }));
@@ -305,7 +306,7 @@ export function useCircuitSync({
             // Phòng mới hoàn toàn lần đầu mở -> seed dữ liệu mẫu vào Trang 1
             const seededNodes = seedNodes.map((n) => ({
               ...n,
-              data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+              data: isResizableNode(n.type) ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
               style: nodeBoxStyle({ type: n.type, data: n.data }),
               selected: false,
             }));
@@ -361,7 +362,7 @@ export function useCircuitSync({
                 skin: s.skin || 'default',
                 nodes: isWave ? [] : (s.nodes || []).map((n) => ({
                   ...n,
-                  data: n.type === 'rect' ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
+                  data: isResizableNode(n.type) ? { ...n.data, onResize: onResizeRectRef.current, onTextChange: onTextChangeRectRef.current } : n.data,
                   style: nodeBoxStyle({ type: n.type, data: n.data }),
                   selected: false,
                 })),

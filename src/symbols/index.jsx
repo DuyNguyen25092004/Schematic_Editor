@@ -716,10 +716,16 @@ export function PulseWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
   const lineStyle = data?.lineStyle || 'solid';
   const color = data?.color || '#000';
   const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  const w = data?.width ?? 80;
+  const h = data?.height ?? 40;
+  const cx = data?.cx ?? (data?.width !== undefined ? w / 2 : 40);
+  const cy = data?.cy ?? (data?.height !== undefined ? h / 2 : 50);
+  const hw = Math.max(10, w / 2 - 6);
+  const hh = Math.max(6, h / 2 - 6);
   return (
-    <g transform="translate(40, 50)" stroke={color} fill="none">
+    <g transform={`translate(${cx}, ${cy})`} stroke={color} fill="none">
       <path
-        d="M -30,0 L -22,0 L -22,-14 L 0,-14 L 0,14 L 22,14 L 22,0 L 30,0"
+        d={`M ${-hw},${hh} L ${-hw / 2},${hh} L ${-hw / 2},${-hh} L ${hw / 2},${-hh} L ${hw / 2},${hh} L ${hw},${hh}`}
         strokeWidth={strokeWidth}
         strokeDasharray={dashArray}
         strokeLinecap="round"
@@ -733,10 +739,20 @@ export function SineWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
   const lineStyle = data?.lineStyle || 'solid';
   const color = data?.color || '#000';
   const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  const w = data?.width ?? 80;
+  const h = data?.height ?? 40;
+  const cx = data?.cx ?? (data?.width !== undefined ? w / 2 : 40);
+  const cy = data?.cy ?? (data?.height !== undefined ? h / 2 : 50);
+  const hw = Math.max(10, w / 2 - 6);
+  const hh = Math.max(6, h / 2 - 6);
+  const cp1x = -hw * (2 / 3);
+  const cp2x = -hw * (1 / 3);
+  const cp3x = hw * (1 / 3);
+  const cp4x = hw * (2 / 3);
   return (
-    <g transform="translate(40, 50)" stroke={color} fill="none">
+    <g transform={`translate(${cx}, ${cy})`} stroke={color} fill="none">
       <path
-        d="M -30,0 C -20,-22 -10,-22 0,0 C 10,22 20,22 30,0"
+        d={`M ${-hw},0 C ${cp1x},${-hh * 1.5} ${cp2x},${-hh * 1.5} 0,0 C ${cp3x},${hh * 1.5} ${cp4x},${hh * 1.5} ${hw},0`}
         strokeWidth={strokeWidth}
         strokeDasharray={dashArray}
         strokeLinecap="round"
@@ -749,10 +765,22 @@ export function NoiseWaveShapeSymbol({ strokeWidth = 1.5, data = {} }) {
   const lineStyle = data?.lineStyle || 'solid';
   const color = data?.color || '#000';
   const dashArray = lineStyle === 'dashed' ? '6 4' : lineStyle === 'dotted' ? '2 3' : undefined;
+  const w = data?.width ?? 80;
+  const h = data?.height ?? 40;
+  const cx = data?.cx ?? (data?.width !== undefined ? w / 2 : 40);
+  const cy = data?.cy ?? (data?.height !== undefined ? h / 2 : 50);
+  const hw = Math.max(10, w / 2 - 6);
+  const hh = Math.max(6, h / 2 - 6);
+  const basePoints = [
+    [-30, 0], [-26, -7], [-23, 10], [-19, -13], [-16, 8], [-12, -5],
+    [-9, 12], [-5, -14], [-1, 7], [3, -10], [7, 13], [11, -8],
+    [15, 11], [19, -12], [23, 6], [26, -9], [30, 0]
+  ];
+  const points = basePoints.map(([x, y]) => `${Math.round(((x / 30) * hw) * 10) / 10},${Math.round(((y / 14) * hh) * 10) / 10}`).join(' ');
   return (
-    <g transform="translate(40, 50)" stroke={color} fill="none">
+    <g transform={`translate(${cx}, ${cy})`} stroke={color} fill="none">
       <polyline
-        points="-30,0 -26,-7 -23,10 -19,-13 -16,8 -12,-5 -9,12 -5,-14 -1,7 3,-10 7,13 11,-8 15,11 19,-12 23,6 26,-9 30,0"
+        points={points}
         strokeWidth={strokeWidth}
         strokeDasharray={dashArray}
         strokeLinecap="round"
