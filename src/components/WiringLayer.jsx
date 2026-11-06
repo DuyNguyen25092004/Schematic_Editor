@@ -7,6 +7,7 @@ import WireHandles from './WireHandles';
 import { orthoPath, pointsToPolyline, pointAtRatio, projectOnPath } from '../geometry/pathUtils';
 import LatexText, { formatLatexRef } from './LatexText';
 import VddHandles from './VddHandles';
+import { computeAlignmentGuides } from '../geometry/alignment';
 
 // Tách riêng phần hiển thị dây & nhãn tĩnh thành React.memo để không bị re-render khi pan canvas
 const StaticWiresContent = React.memo(function StaticWiresContent({
@@ -477,6 +478,21 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
   // Làm tròn strokeScale thành các nấc 0.2 để tránh re-render liên tục trên mỗi frame zoom
   const strokeScale = Math.round(Math.max(0.2, Math.min(1, zoom || 1)) * 5) / 5;
 
+  const wiringAlignmentGuides = useMemo(() => {
+    if (!isWiringMode || !cursor) return [];
+    return computeAlignmentGuides({
+      nodes,
+      wires,
+      isWiringMode: true,
+      wiringCursor: cursor,
+      wiringDraft: draft,
+    });
+  }, [isWiringMode, cursor, draft, nodes, wires]);
+
+  const activeGuides = useMemo(() => {
+    return [...(alignmentGuides || []), ...wiringAlignmentGuides];
+  }, [alignmentGuides, wiringAlignmentGuides]);
+
   return (
     <>
       <div
@@ -564,10 +580,10 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
             />
           )}
 
-          {/* 4. Vạch căn chỉnh chân linh kiện (Terminal Alignment Guidelines) */}
-          {alignmentGuides && alignmentGuides.length > 0 && (
+          {/* 4. Vạch căn chỉnh chân linh kiện & dây (Alignment Guidelines) */}
+          {activeGuides && activeGuides.length > 0 && (
             <g className="alignment-guidelines" stroke="#1890ff" opacity="0.65" pointerEvents="none">
-              {alignmentGuides.map((g, idx) => (
+              {activeGuides.map((g, idx) => (
                 <g key={`guide-${idx}`}>
                   {g.orientation === 'H' ? (
                     <line

@@ -1079,17 +1079,18 @@ function Flow() {
   }, [nodes, wires, selected, setNodes, setWires, canEdit]);
   // -------------------------------------------------------
 
-  // Tính toán vạch căn chỉnh thẳng hàng (Alignment Guidelines) khi di chuyển/đặt linh kiện
+  // Tính toán vạch căn chỉnh thẳng hàng (Alignment Guidelines) khi di chuyển/đặt linh kiện hoặc dây
   const alignmentGuides = useMemo(() => {
     return computeAlignmentGuides({
       nodes,
+      wires,
       moveGroup,
       copyGroup,
       cursorNodeId,
       placingType,
       ghostFlowPos,
     });
-  }, [nodes, moveGroup, copyGroup, cursorNodeId, placingType, ghostFlowPos]);
+  }, [nodes, wires, moveGroup, copyGroup, cursorNodeId, placingType, ghostFlowPos]);
 
   useEffect(() => {
     alignmentGuidesRef.current = alignmentGuides;
