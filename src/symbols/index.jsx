@@ -573,9 +573,7 @@ export function MuxSymbol({ strokeWidth = 1.5 }) {
   );
 }
 
-export function TransmissionGateSymbol({ strokeWidth = 1.5, rot, flip, data }) {
-  const r = rot ?? data?.rot ?? 0;
-  const f = flip ?? data?.flip ?? false;
+export function TransmissionGateSymbol({ strokeWidth = 1.5 }) {
   const leadSw = strokeWidth;
   const bodySw = strokeWidth * 1.35;
   return (
@@ -596,45 +594,6 @@ export function TransmissionGateSymbol({ strokeWidth = 1.5, rot, flip, data }) {
       {/* Input / Output leads */}
       <line x1="10" y1="50" x2="26" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
       <line x1="54" y1="50" x2="70" y2="50" strokeWidth={leadSw} strokeLinecap="butt" />
-
-      {/* Top label \bar{C} */}
-      <g transform={getCounterTransform(40, 11, r, f)}>
-        <text
-          x="40"
-          y="13"
-          fontSize="9.5"
-          fontWeight="bold"
-          fontFamily="sans-serif"
-          fill="#000"
-          stroke="#fff"
-          strokeWidth="2"
-          paintOrder="stroke"
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          C
-        </text>
-        <line x1="36" y1="6" x2="44" y2="6" stroke="#000" strokeWidth={leadSw * 0.9} />
-      </g>
-
-      {/* Bottom label C */}
-      <g transform={getCounterTransform(40, 89, r, f)}>
-        <text
-          x="40"
-          y="89"
-          fontSize="9.5"
-          fontWeight="bold"
-          fontFamily="sans-serif"
-          fill="#000"
-          stroke="#fff"
-          strokeWidth="2"
-          paintOrder="stroke"
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          C
-        </text>
-      </g>
     </g>
   );
 }
