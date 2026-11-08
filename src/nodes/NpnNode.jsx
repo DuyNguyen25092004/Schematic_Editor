@@ -35,8 +35,7 @@ function NpnNode({ id, data, selected, type }) {
   const labelOffsetX = data.labelOffset?.x || 0;
   const labelOffsetY = data.labelOffset?.y || 0;
   const isLabelSelected = !!data?.isLabelSelected;
-  const strokeScale = useStore((s) => Math.round(Math.max(0.2, Math.min(1, s.transform[2] || 1)) * 5) / 5);
-  const sw = 1.5 / strokeScale;
+  const sw = 1.5;
   const Symbol = SYMBOLS[type] || NpnSymbol;
   const rot = data.rot || 0;
   const flip = data.flip || false;

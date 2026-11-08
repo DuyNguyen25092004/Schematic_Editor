@@ -6,7 +6,7 @@ import { MiniIcon } from '../symbols/index.jsx';
 // Nhóm theo category, mỗi nhóm thu gọn/mở được, linh kiện xếp lưới 3 cột.
 const EMPTY_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBTAA7';
 
-function ComponentPalette({ onComponentDragStart }) {
+function ComponentPalette({ onComponentDragStart, onToggleCollapse }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
 
   const toggle = (id) =>
@@ -51,6 +51,54 @@ function ComponentPalette({ onComponentDragStart }) {
           </span>
         </div>
       </div>
+
+      {/* Nút tab thu gọn đặt tại mép phải của ComponentPalette (cùng hàng Y = 90px với nút mở lại) */}
+      {onToggleCollapse && (
+        <button
+          id="btn-toggle-device-list"
+          type="button"
+          onClick={onToggleCollapse}
+          title="Hide Device List (Ctrl+B)"
+          style={{
+            position: 'absolute',
+            top: 90,
+            right: -16,
+            zIndex: 40,
+            width: 16,
+            height: 40,
+            borderTopRightRadius: 6,
+            borderBottomRightRadius: 6,
+            background: '#fff',
+            border: '1px solid #d9d9d9',
+            borderLeft: 'none',
+            boxShadow: '2px 0 6px rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 10,
+            color: '#666',
+            padding: 0,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.width = '20px';
+            e.currentTarget.style.right = '-20px';
+            e.currentTarget.style.background = '#e6f4ff';
+            e.currentTarget.style.borderColor = '#1677ff';
+            e.currentTarget.style.color = '#1677ff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.width = '16px';
+            e.currentTarget.style.right = '-16px';
+            e.currentTarget.style.background = '#fff';
+            e.currentTarget.style.borderColor = '#d9d9d9';
+            e.currentTarget.style.color = '#666';
+          }}
+        >
+          ◀
+        </button>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 12px' }}>
         {COMPONENT_CATEGORIES.map((cat) => {

@@ -4,6 +4,7 @@ import { getSymbolBBox } from '../geometry/ports';
 import { resolvePoints } from '../routing/resolveWire';
 import { pointAtRatio } from '../geometry/pathUtils';
 import { attachFreeEndpointsToPorts } from '../wires/snap';
+import { instantiateClonedBlock } from '../utils/cloneUtils';
 
 // Đảo dấu nhưng không sinh -0
 const neg = (v) => (v ? -v : 0);
@@ -727,86 +728,24 @@ const {
 
         if (targetNodes.length > 0 || targetWires.length > 0) {
           // --- Copy cả khối: nhân bản node + wire đã bôi đen, gắn vào con trỏ ---
-          const existingIds = new Set(nodes.map((n) => n.id));
-          const existingRefs = new Set(nodes.map((n) => n.data?.reference).filter(Boolean));
-          const reserved = new Set();
-          const genId = (prefix) => {
-            let i = 1;
-            const cleanPrefix = prefix.replace(/_$/, '');
-            const isDevicePrefix = ['M', 'Q', 'R', 'C', 'U', 'V', 'I'].includes(cleanPrefix) || prefix.endsWith('_');
-            const checkExists = (num) => {
-              const v1 = `${cleanPrefix}_{${num}}`;
-              const v2 = `${cleanPrefix}_${num}`;
-              const v3 = `${cleanPrefix}${num}`;
-              const v4 = `${prefix}${num}`;
-              return existingIds.has(v1) || existingIds.has(v2) || existingIds.has(v3) || existingIds.has(v4) ||
-                     existingRefs.has(v1) || existingRefs.has(v2) || existingRefs.has(v3) || existingRefs.has(v4) ||
-                     reserved.has(v1) || reserved.has(v2) || reserved.has(v3) || reserved.has(v4);
-            };
-            while (checkExists(i)) {
-              i++;
-            }
-            const id = isDevicePrefix ? `${cleanPrefix}_{${i}}` : `${prefix}${i}`;
-            reserved.add(id);
-            return id;
+          const flowPos = screenToFlowPosition(lastMouse.current);
+          const startPt = {
+            x: Math.round(flowPos.x / GRID) * GRID,
+            y: Math.round(flowPos.y / GRID) * GRID,
           };
 
-          const idMap = new Map(); // old nodeId -> new nodeId
-          const newNodes = targetNodes.map((n) => {
-            const rawPrefix = n.type === 'text' ? 'TXT' : ((n.data?.reference || 'U').replace(/[0-9{}]/g, '') || 'U');
-            const prefix = (['M', 'Q', 'R', 'C', 'U', 'V', 'I'].includes(rawPrefix.replace(/_$/, '')))
-              ? `${rawPrefix.replace(/_$/, '')}_`
-              : rawPrefix;
-            const newId = genId(prefix);
-            idMap.set(n.id, newId);
-            return {
-              ...n,
-              id: newId,
-              data: n.type === 'text' ? { ...n.data } : { ...n.data, reference: n.type === 'vdd' ? n.data.reference : newId },
-              position: { ...n.position },
-              selected: false,
-            };
-          });
-
-          const targetWireIdSet = new Set(targetWires.map((w) => w.id));
-          const wireIdMap = new Map(); // old wireId -> new wireId
-          const resolvedMap = new Map(
-            targetWires.map((w) => [w.id, resolvePoints(w.points, nodes, w.lockedVertical, wires, w.id, w.routed)])
-          );
-
-          targetWires.forEach((w) => {
-            wireIdMap.set(w.id, `wire-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
-          });
-
-          const newWires = targetWires.map((w) => {
-            const rp = resolvedMap.get(w.id);
-            const li = w.points.length - 1;
-            const points = w.points.map((p, i) => {
-              if (p.nodeId) {
-                if (idMap.has(p.nodeId)) return { ...p, nodeId: idMap.get(p.nodeId) };
-                // đầu bám vào node NGOÀI khối -> gỡ, giữ nguyên toạ độ hiện tại
-                const q = i === 0 ? rp[0] : rp[rp.length - 1];
-                return { x: q.x, y: q.y };
-              }
-              if (p.onWireId) {
-                if (targetWireIdSet.has(p.onWireId)) return { ...p, onWireId: wireIdMap.get(p.onWireId) };
-                return { x: p.x, y: p.y }; // bám dây ngoài khối -> gỡ
-              }
-              return { ...p };
-            });
-            return { id: wireIdMap.get(w.id), points, net: w.net, name: w.name, color: w.color, labels: (w.labels || []).map((l) => ({ ...l })), selected: false };
+          const { newNodes, newWires, copyGroup: cg } = instantiateClonedBlock({
+            templateNodes: targetNodes,
+            templateWires: targetWires,
+            anchor: startPt,
+            targetFlowPos: startPt,
+            destNodes: nodes,
+            destWires: wires,
           });
 
           setNodes((ns) => [...ns, ...newNodes]);
           setWiresRaw((ws) => [...ws, ...newWires]);
-
-          const flowPos = screenToFlowPosition(lastMouse.current);
-          setCopyGroup({
-            startX: Math.round(flowPos.x / GRID) * GRID,
-            startY: Math.round(flowPos.y / GRID) * GRID,
-            items: newNodes.map((n) => ({ id: n.id, initialX: n.position.x, initialY: n.position.y })),
-            wireItems: newWires.map((w) => ({ id: w.id, initialPoints: w.points.map((p) => ({ ...p })) })),
-          });
+          setCopyGroup(cg);
           setIsCopyMode(true);
           setIsMoveMode(false);
           setIsWiringMode(false);

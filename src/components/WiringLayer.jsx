@@ -59,7 +59,7 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
           }
 
           return (
-            <g key={w.id}>
+            <g key={w.id} data-wire-id={w.id}>
               <polyline
                 points={pts} fill="none" stroke="transparent" strokeWidth={attachTool ? 14 : 10}
                 style={{
@@ -67,7 +67,9 @@ const StaticWiresContent = React.memo(function StaticWiresContent({
                   cursor: attachTool ? 'copy' : 'pointer',
                   userSelect: 'none',
                 }}
-                onMouseDown={(e) => { e.preventDefault(); }}
+                onMouseDown={(e) => {
+                  if (e.button === 0) e.stopPropagation();
+                }}
                 onMouseMove={attachTool ? (e) => {
                   const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
                   setAttachHover({ wireId: w.id, ratio: projectOnPath(rp, fp).ratio });
@@ -364,7 +366,7 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
 
   const handleMouseDown = (e) => {
     if (!isWiringMode) return;
-    const isPanBtn = e.button === 1 || e.button === 2 || (e.button === 0 && isSpacePressed);
+    const isPanBtn = e.button === 1 || (e.button === 0 && isSpacePressed);
     if (isPanBtn) {
       e.preventDefault();
       e.stopPropagation();
@@ -479,8 +481,8 @@ function WiringLayer({ isWiringMode, isBoxSelecting, nodes, wires, setWires, set
   };
 
   const preview = draft && cursor ? orthoPath(draft[draft.length - 1], cursor) : null;
-  // Làm tròn strokeScale thành các nấc 0.2 để tránh re-render liên tục trên mỗi frame zoom
-  const strokeScale = Math.round(Math.max(0.2, Math.min(1, zoom || 1)) * 5) / 5;
+  // Giữ strokeScale = 1 để kích thước dấu chấm (solder dots) và nét vẽ luôn ở chuẩn 1:1, không bị phóng to dị dạng khi zoom xa
+  const strokeScale = 1;
 
   const wiringAlignmentGuides = useMemo(() => {
     if (!isWiringMode || !cursor) return [];

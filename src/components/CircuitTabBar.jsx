@@ -57,6 +57,8 @@ export default function CircuitTabBar({
 
   return (
     <div
+      id="circuit-tab-bar"
+      className="circuit-tab-bar"
       style={{
         position: 'absolute',
         bottom: 0,

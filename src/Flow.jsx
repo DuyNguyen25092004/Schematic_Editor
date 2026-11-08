@@ -43,6 +43,8 @@ import TextDialog from './components/TextDialog';
 import LatexText, { formatLatexRef } from './components/LatexText';
 import { expandBusLabels } from './utils/busLabelExpander';
 import CircuitTabBar from './components/CircuitTabBar';
+import ConfirmDeleteTabDialog from './components/ConfirmDeleteTabDialog';
+import { instantiateClonedBlock } from './utils/cloneUtils';
 import SpiceNetlistDialog from './components/SpiceNetlistDialog';
 import { generateSpiceNetlist } from './netlist/spiceExporter';
 import WaveformTabEditor from './waveform/WaveformTabEditor';
@@ -127,6 +129,10 @@ function Flow() {
   const [isWiringMode, setIsWiringMode] = useState(false);
   const [isMoveMode, setIsMoveMode] = useState(false);
   const [isCopyMode, setIsCopyMode] = useState(false);
+  const { screenToFlowPosition, flowToScreenPosition, fitView, fitBounds, setViewport } = useReactFlow();
+  const [rightZoomBox, setRightZoomBox] = useState(null);
+  const rightDragStartRef = useRef(null);
+  const didRightDragRef = useRef(false);
   
   const [moveGroup, setMoveGroup] = useState(null); 
   const [copyGroup, setCopyGroup] = useState(null);   // <-- thêm
@@ -139,6 +145,27 @@ function Flow() {
   const [activeSheetId, setActiveSheetId] = useState('sheet_1');
   const [circuitId, setCircuitIdState] = useState(() => getCircuitId());
   const [isNetlistOpen, setIsNetlistOpen] = useState(false);
+  const [confirmCloseTab, setConfirmCloseTab] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('schematic_sidebar_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('schematic_sidebar_open', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
 
   const switchCircuitRoom = useCallback((id) => {
     persistCircuitId(id);
@@ -170,28 +197,79 @@ function Flow() {
     // 1. Lưu nodes/wires của sheet hiện tại nếu là schematic
     const curNodes = nodesRef.current;
     const curWires = wiresRef.current;
+
+    // NẾU ĐANG CÓ copyGroup: loại bỏ các node và wire tạm thời của copyGroup khỏi sheet hiện tại trước khi lưu!
+    let nodesToSave = curNodes;
+    let wiresToSave = curWires;
+    if (copyGroup) {
+      const copyNodeIds = new Set((copyGroup.items || []).map((i) => i.id));
+      const copyWireIds = new Set((copyGroup.wireItems || []).map((i) => i.id));
+      nodesToSave = curNodes.filter((n) => !copyNodeIds.has(n.id));
+      wiresToSave = curWires.filter((w) => !copyWireIds.has(w.id));
+    }
+
     setSheets((prev) =>
       prev.map((s) => {
         if (s.id !== activeSheetId) return s;
         if (s.type === 'waveform') return s;
-        return { ...s, nodes: curNodes, wires: curWires };
+        return { ...s, nodes: nodesToSave, wires: wiresToSave };
       })
     );
 
     // 2. Chuyển sang sheet mới
     const targetSheet = sheets.find((s) => s.id === targetSheetId);
     setActiveSheetId(targetSheetId);
-    if (targetSheet?.type !== 'waveform') {
-      setNodes(targetSheet?.nodes || []);
-      setWiresRaw(targetSheet?.wires || []);
-    }
     setSelected(null);
-  }, [activeSheetId, sheets, setNodes, setWiresRaw]);
+
+    if (targetSheet?.type !== 'waveform') {
+      const destNodes = targetSheet?.nodes || [];
+      const destWires = targetSheet?.wires || [];
+
+      if (copyGroup && (copyGroup.templateNodes?.length > 0 || copyGroup.items?.length > 0)) {
+        // Tái tạo khối copy trên sheet mới theo vị trí chuột
+        const mouseScreen = lastMouse.current || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        const flowPos = screenToFlowPosition(mouseScreen);
+        const targetFlowPos = {
+          x: Math.round(flowPos.x / GRID) * GRID,
+          y: Math.round(flowPos.y / GRID) * GRID,
+        };
+
+        const { newNodes, newWires, copyGroup: newCg } = instantiateClonedBlock({
+          templateNodes: copyGroup.templateNodes || [],
+          templateWires: copyGroup.templateWires || [],
+          anchor: copyGroup.anchor || targetFlowPos,
+          targetFlowPos,
+          destNodes,
+          destWires,
+        });
+
+        setNodes([...destNodes, ...newNodes]);
+        setWiresRaw([...destWires, ...newWires]);
+        setCopyGroup(newCg);
+        setIsCopyMode(true);
+        setIsMoveMode(false);
+        setIsWiringMode(false);
+      } else {
+        setNodes(destNodes);
+        setWiresRaw(destWires);
+      }
+    }
+  }, [activeSheetId, sheets, setNodes, setWiresRaw, copyGroup, screenToFlowPosition]);
 
   // Tạo thêm sheet mới trong cùng project (hỗ trợ tab 'schematic' hoặc 'waveform')
   const handleNewSheet = useCallback((tabType = 'schematic') => {
     const curNodes = nodesRef.current;
     const curWires = wiresRef.current;
+
+    let nodesToSave = curNodes;
+    let wiresToSave = curWires;
+    if (copyGroup) {
+      const copyNodeIds = new Set((copyGroup.items || []).map((i) => i.id));
+      const copyWireIds = new Set((copyGroup.wireItems || []).map((i) => i.id));
+      nodesToSave = curNodes.filter((n) => !copyNodeIds.has(n.id));
+      wiresToSave = curWires.filter((w) => !copyWireIds.has(w.id));
+    }
+
     const newId = 'sheet_' + Math.random().toString(36).slice(2, 9);
 
     let newSheet;
@@ -221,20 +299,46 @@ function Flow() {
       const updated = prev.map((s) => {
         if (s.id !== activeSheetId) return s;
         if (s.type === 'waveform') return s;
-        return { ...s, nodes: curNodes, wires: curWires };
+        return { ...s, nodes: nodesToSave, wires: wiresToSave };
       });
       return [...updated, newSheet];
     });
 
     setActiveSheetId(newId);
-    if (tabType !== 'waveform') {
-      setNodes([]);
-      setWiresRaw([]);
-    }
     setSelected(null);
-  }, [sheets, activeSheetId, setNodes, setWiresRaw]);
 
-  // Xóa một sheet khỏi project
+    if (tabType !== 'waveform') {
+      if (copyGroup && (copyGroup.templateNodes?.length > 0 || copyGroup.items?.length > 0)) {
+        const mouseScreen = lastMouse.current || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+        const flowPos = screenToFlowPosition(mouseScreen);
+        const targetFlowPos = {
+          x: Math.round(flowPos.x / GRID) * GRID,
+          y: Math.round(flowPos.y / GRID) * GRID,
+        };
+
+        const { newNodes, newWires, copyGroup: newCg } = instantiateClonedBlock({
+          templateNodes: copyGroup.templateNodes || [],
+          templateWires: copyGroup.templateWires || [],
+          anchor: copyGroup.anchor || targetFlowPos,
+          targetFlowPos,
+          destNodes: [],
+          destWires: [],
+        });
+
+        setNodes(newNodes);
+        setWiresRaw(newWires);
+        setCopyGroup(newCg);
+        setIsCopyMode(true);
+        setIsMoveMode(false);
+        setIsWiringMode(false);
+      } else {
+        setNodes([]);
+        setWiresRaw([]);
+      }
+    }
+  }, [sheets, activeSheetId, setNodes, setWiresRaw, copyGroup, screenToFlowPosition]);
+
+  // Xóa một sheet khỏi project (chỉ thực hiện sau khi xác nhận)
   const handleCloseSheet = useCallback((sheetIdToClose) => {
     if (sheets.length <= 1) {
       // Chỉ còn 1 sheet -> reset trắng trang đó
@@ -264,6 +368,23 @@ function Flow() {
     }
   }, [sheets, activeSheetId, setNodes, setWiresRaw]);
 
+  // Yêu cầu đóng sheet -> mở modal xác nhận
+  const handleRequestCloseSheet = useCallback((sheetIdToClose) => {
+    const tab = sheets.find((s) => s.id === sheetIdToClose) || { id: sheetIdToClose, name: sheetIdToClose };
+    setConfirmCloseTab({
+      tab: { ...tab, title: tab.name || tab.title || tab.id },
+      isLastTab: sheets.length <= 1,
+    });
+  }, [sheets]);
+
+  // Xác nhận đóng sheet từ modal
+  const handleConfirmCloseSheet = useCallback(() => {
+    if (!confirmCloseTab) return;
+    const sheetIdToClose = confirmCloseTab.tab.id;
+    setConfirmCloseTab(null);
+    handleCloseSheet(sheetIdToClose);
+  }, [confirmCloseTab, handleCloseSheet]);
+
   // Đổi tên sheet
   const handleRenameSheet = useCallback((sheetId, newName) => {
     const trimmed = (newName || '').trim();
@@ -288,8 +409,6 @@ function Flow() {
   const handleRectTextChange = useCallback((id, text) => {
     setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text } } : n)));
   }, [setNodes]);
-
-  const { screenToFlowPosition, flowToScreenPosition, fitView } = useReactFlow();
 
   const [contextMenu, setContextMenu] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -402,9 +521,15 @@ function Flow() {
         getCanEdit: () => canEdit,
         getAlignmentGuides: () => alignmentGuidesRef.current,
         generateSpiceNetlist,
+        getSheets: () => sheets,
+        getActiveSheetId: () => activeSheetId,
+        getCopyGroup: () => copyGroup,
+        setCopyGroup,
+        fitView,
+        setViewport,
       };
     }
-  }, [setWires, setNodes, setSheets, setSelected, setIsPropertyPanelOpen, toggleSwitchNode, wires, nodes, canEdit]);
+  }, [setWires, setNodes, setSheets, setSelected, setIsPropertyPanelOpen, toggleSwitchNode, wires, nodes, canEdit, fitView, setViewport]);
   const [placingType, setPlacingType] = useState(null);
   const [ghostScreenPos, setGhostScreenPos] = useState(null);
   const [ghostFlowPos, setGhostFlowPos] = useState(null);
@@ -794,9 +919,23 @@ function Flow() {
   }, []);
 
   const handleGlobalMouseMove = useCallback((e) => {
-        lastMouse.current = { x: e.clientX, y: e.clientY };
+    lastMouse.current = { x: e.clientX, y: e.clientY };
     const fp = screenToFlowPosition({ x: e.clientX, y: e.clientY });
     sendCursor(fp.x, fp.y);
+
+    // Kéo chuột phải để vẽ ô vuông Zoom Box
+    if (rightDragStartRef.current) {
+      const dx = e.clientX - rightDragStartRef.current.screenX;
+      const dy = e.clientY - rightDragStartRef.current.screenY;
+      if (Math.hypot(dx, dy) > 5) {
+        didRightDragRef.current = true;
+        setRightZoomBox({
+          startScreen: { x: rightDragStartRef.current.screenX, y: rightDragStartRef.current.screenY },
+          curScreen: { x: e.clientX, y: e.clientY },
+        });
+      }
+      return;
+    }
 
     if (moveGroup || copyGroup || cursorNodeId) {
       pendingMovePos.current = { clientX: e.clientX, clientY: e.clientY };
@@ -885,14 +1024,53 @@ function Flow() {
       }
     }
   }, [moveGroup, copyGroup, cursorNodeId, screenToFlowPosition, setNodes, setWiresRaw, sendCursor]);
-  // --- BẮT ĐẦU VÀ KẾT THÚC QUÉT KHỐI DÂY ĐIỆN ---
+  // --- BẮT ĐẦU VÀ KẾT THÚC QUÉT KHỐI DÂY ĐIỆN VÀ ZOOM BOX ---
   const handleMouseDown = useCallback((e) => {
-  if (e.button !== 0) return;
-  if (!isWiringMode && !isMoveMode && !isCopyMode && !placingType && !textTool) {
-    selectionStart.current = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-    setIsBoxSelecting(true); // bắt đầu kéo -> tắt pointer-events của wire
-  }
+    // Chuột phải (button === 2): chuẩn bị kéo Zoom Box
+    if (e.button === 2) {
+      didRightDragRef.current = false;
+      rightDragStartRef.current = {
+        screenX: e.clientX,
+        screenY: e.clientY,
+        flow: screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+      };
+      return;
+    }
+  }, [screenToFlowPosition]);
+
+  const handleSelectionStart = useCallback((e) => {
+    if (!isWiringMode && !isMoveMode && !isCopyMode && !placingType && !textTool) {
+      selectionStart.current = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      setIsBoxSelecting(true);
+    }
   }, [isWiringMode, isMoveMode, isCopyMode, placingType, textTool, screenToFlowPosition]);
+
+  // Kết thúc kéo chuột phải để Zoom Box hoặc kết thúc quét khối
+  useEffect(() => {
+    const handleWindowMouseUp = (e) => {
+      setIsBoxSelecting(false);
+      if (e.button === 2 && rightDragStartRef.current) {
+        if (didRightDragRef.current) {
+          const curFlow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          const startFlow = rightDragStartRef.current.flow;
+          const minX = Math.min(startFlow.x, curFlow.x);
+          const maxX = Math.max(startFlow.x, curFlow.x);
+          const minY = Math.min(startFlow.y, curFlow.y);
+          const maxY = Math.max(startFlow.y, curFlow.y);
+          const width = maxX - minX;
+          const height = maxY - minY;
+
+          if (width > 15 && height > 15) {
+            fitBounds({ x: minX, y: minY, width, height }, { duration: 300, padding: 0.05 });
+          }
+        }
+        rightDragStartRef.current = null;
+        setRightZoomBox(null);
+      }
+    };
+    window.addEventListener('mouseup', handleWindowMouseUp);
+    return () => window.removeEventListener('mouseup', handleWindowMouseUp);
+  }, [screenToFlowPosition, fitBounds]);
 
   const handleNodesChange = useCallback((changes) => {
     // Loại bỏ các thay đổi type 'select' do React Flow tự phát sinh khi box-select
@@ -1126,9 +1304,32 @@ function Flow() {
     isPropertyPanelOpen, setIsPropertyPanelOpen,
     disabled: isWaveformTab,
   });
- 
- useEffect(() => {
-  const forceDropOnClick = (e) => {
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        handleToggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleSidebar]);
+
+  useEffect(() => {
+   const forceDropOnClick = (e) => {
+     // Không drop nếu click vào thanh tab bar, popup dialog hoặc các nút điều khiển bên ngoài canvas
+     if (
+       e.target.closest('#circuit-tab-bar') ||
+       e.target.closest('.circuit-tab-bar') ||
+       e.target.closest('[role="dialog"]') ||
+       e.target.closest('#btn-toggle-device-list')
+     ) {
+       return;
+     }
     if ((moveGroup || copyGroup || cursorNodeId) && e.button === 0) {
       if (moveGroup?.labelItem) {
         e.stopPropagation();
@@ -1188,17 +1389,24 @@ function Flow() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f4f4f4', display: 'flex' }}>
-      {!isWaveformTab && (
-        <ComponentPalette onComponentDragStart={(type) => setDragType(type)} />
+      {!isWaveformTab && isSidebarOpen && (
+        <ComponentPalette
+          onComponentDragStart={(type) => setDragType(type)}
+          onToggleCollapse={handleToggleSidebar}
+        />
       )}
 
       <div 
         ref={reactFlowWrapper} 
         onMouseMove={handleGlobalMouseMove}
-        
+        onMouseDown={handleMouseDown}
         onContextMenu={(e) => {
           if (isWaveformTab) return;
           e.preventDefault();
+          if (didRightDragRef.current) {
+            didRightDragRef.current = false;
+            return;
+          }
           const hasSelection = nodes.some(n => n.selected) || wires.some(w => w.selected);
           if (hasSelection) setContextMenu({ x: e.clientX, y: e.clientY });
         }}
@@ -1226,6 +1434,24 @@ function Flow() {
           />
         ) : (
           <>
+            {rightZoomBox && (
+              <div
+                id="right-zoom-box"
+                style={{
+                  position: 'fixed',
+                  left: Math.min(rightZoomBox.startScreen.x, rightZoomBox.curScreen.x),
+                  top: Math.min(rightZoomBox.startScreen.y, rightZoomBox.curScreen.y),
+                  width: Math.abs(rightZoomBox.curScreen.x - rightZoomBox.startScreen.x),
+                  height: Math.abs(rightZoomBox.curScreen.y - rightZoomBox.startScreen.y),
+                  border: '1.5px dashed #1677ff',
+                  background: 'rgba(22, 119, 255, 0.12)',
+                  pointerEvents: 'none',
+                  zIndex: 9999,
+                  boxShadow: '0 0 8px rgba(22, 119, 255, 0.25)',
+                }}
+              />
+            )}
+
             {contextMenu && (
           <div
             id="context-menu" 
@@ -1262,7 +1488,7 @@ function Flow() {
           deleteKeyCode={null}
           
           nodesDraggable={false} 
-          panOnDrag={[1, 2]} 
+          panOnDrag={[1]} 
           selectionMode="partial" 
           onlyRenderVisibleElements={true}
           zoomOnDoubleClick={false}
@@ -1276,8 +1502,11 @@ function Flow() {
           selectionOnDrag={!isWiringMode && !placingType && !isMoveMode && !isCopyMode && !textTool}    
           
           selectNodesOnDrag={false}
-          onSelectionStart={handleMouseDown}
-          onSelectionEnd={handleMouseUp}
+          onSelectionStart={handleSelectionStart}
+          onSelectionEnd={(e) => {
+            handleMouseUp(e);
+            setIsBoxSelecting(false);
+          }}
           
           onNodeClick={(e, node) => {
             if (textTool) return;
@@ -1388,7 +1617,7 @@ function Flow() {
           onDelete={deleteSelected}
           readOnly={!canEdit}
         />
-        <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div id="top-left-toolbar" style={{ position: 'absolute', top: 10, left: 10, zIndex: 21, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CloudPanel
             nodes={nodes} wires={wires} setNodes={setNodes} setWires={setWires}
             sheets={sheets} setSheets={setSheets}
@@ -1435,6 +1664,49 @@ function Flow() {
             <span>Netlist</span>
           </button>
         </div>
+
+        {!isWaveformTab && !isSidebarOpen && (
+          <button
+            id="btn-toggle-device-list"
+            type="button"
+            onClick={handleToggleSidebar}
+            title="Show Device List (Ctrl+B)"
+            style={{
+              position: 'absolute',
+              top: 90,
+              left: 0,
+              zIndex: 40,
+              width: 16,
+              height: 40,
+              borderTopRightRadius: 6,
+              borderBottomRightRadius: 6,
+              background: '#fff',
+              border: '1px solid #d9d9d9',
+              borderLeft: 'none',
+              boxShadow: '2px 0 6px rgba(0,0,0,0.08)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 10,
+              color: '#1677ff',
+              padding: 0,
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.width = '20px';
+              e.currentTarget.style.background = '#e6f4ff';
+              e.currentTarget.style.borderColor = '#1677ff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.width = '16px';
+              e.currentTarget.style.background = '#fff';
+              e.currentTarget.style.borderColor = '#d9d9d9';
+            }}
+          >
+            ▶
+          </button>
+        )}
 
         {/* Banner hiển thị khi người dùng ở chế độ Chỉ xem */}
         {!canEdit && (
@@ -1595,8 +1867,16 @@ function Flow() {
           activeTabId={activeSheetId}
           onSelectTab={handleSelectSheet}
           onNewTab={handleNewSheet}
-          onCloseTab={handleCloseSheet}
+          onCloseTab={handleRequestCloseSheet}
           onRenameTab={handleRenameSheet}
+        />
+
+        <ConfirmDeleteTabDialog
+          isOpen={!!confirmCloseTab}
+          tab={confirmCloseTab?.tab}
+          isLastTab={confirmCloseTab?.isLastTab}
+          onConfirm={handleConfirmCloseSheet}
+          onCancel={() => setConfirmCloseTab(null)}
         />
 
         <SpiceNetlistDialog
